@@ -7,7 +7,7 @@ How the agents fit in, and why: `docs/WORKFLOW.md`.
 ## How to run a session
 
 1. Start `claude` in the repo root. The first prompt of each slice has Claude create the slice branch from the latest `main`; later prompts continue on it. Sessions start in plan mode (set in `.claude/settings.json`).
-2. If the Overview says effort **high**, run `/effort high` (press `s` to apply it to this session only). Optional: `/rename S03 nhl adapter` so `claude --resume` finds it later.
+2. Set the effort the Overview gives, every session: `/effort medium` or `/effort high`. A level typed after `/effort` is also saved as your default, so skipping this step means inheriting the last session's level. Optional: `/rename S03 nhl adapter` so `claude --resume` finds it later.
 3. Paste the session's prompt.
 4. Read the plan. Push back, or press `Ctrl+G` to edit it. Approve with **"Yes, and use auto mode"** (or **"manually approve edits"** while you're still learning how Claude works).
 5. Watch the first few minutes; press `Esc` to interrupt the moment it heads somewhere wrong.
@@ -15,7 +15,7 @@ How the agents fit in, and why: `docs/WORKFLOW.md`.
 7. Read those files, in your editor or in the PR's **Files changed** tab. Ask questions, or run `/walkthrough <area>` for a guided tour.
 8. Exit. The next session starts fresh; `PROGRESS.md`, git and the PR carry the state.
 
-**In the cloud** (sessions marked "either" in the Overview): start the session at claude.ai/code — pick the repo, the slice branch, **Plan** mode — or with `claude --cloud "<prompt>"` from the repo, and paste the same prompt. A cloud session works on its own branch, so its `/handoff` opens a small PR into the slice branch; merge it on GitHub and the slice PR updates. Live checks ("run by you") stay local: `git pull` the slice branch first, or bring the whole session to your terminal with `claude --teleport`. Details: WORKFLOW.md → Cloud sessions.
+**In the cloud** (sessions marked "either" in the Overview): start the session at claude.ai/code — pick the repo, the slice branch (`main` for a slice's first session), **Plan** mode — or with `claude --cloud "<prompt>"` from the repo, and paste the same prompt. Set effort with `/effort <level>` as the first message. The session switches to the slice branch (creating it for a slice's first session), so `/handoff` pushes and updates the slice PR exactly as it does locally (DECISIONS.md D-020). Live checks ("run by you") stay local: `git pull` the slice branch first, or bring the whole session to your terminal with `claude --teleport`. Details: WORKFLOW.md → Cloud sessions.
 
 **Sizing.** A session is one reviewable change, usually a few hundred to ~1,500 changed lines. Opus 5.5 has a 1M-token window, so `/context` will rarely look full; use an absolute budget instead: if the session passes **~200K tokens** of context before the work is done, stop at a green checkpoint, run `/handoff`, and continue in a new session with the "Resume" template at the bottom. A clean restart beats a long, compacted session.
 
@@ -23,7 +23,7 @@ How the agents fit in, and why: `docs/WORKFLOW.md`.
 
 ## Overview
 
-All sessions run on **Opus 5.5**, the Pro default. **Effort** is what to set with `/effort` (Opus 5.5 defaults to medium); `/slice-review` and the reviewer subagent run at high automatically. **Where**: *local* needs your machine (phone, mise, consoles, secrets, or live upstream calls); *either* also runs well as a cloud session.
+All sessions run on **Opus 5.5**, the Pro default. **Effort** is what to set with `/effort` at the start of every session (Opus 5.5 defaults to medium, but a typed level becomes your default); `/slice-review` and the reviewer subagent run at high automatically. **Where**: *local* needs your machine (phone, mise, consoles, secrets, or live upstream calls); *either* also runs well as a cloud session.
 
 | ID | Session | Branch | Size | Effort | Where | You can try afterwards |
 |---|---|---|---|---|---|---|
@@ -31,9 +31,11 @@ All sessions run on **Opus 5.5**, the Pro default. **Effort** is what to set wit
 | S00 | Bootstrap | `slice-0-setup` | M | medium | local | App placeholder on phone + web; `/health`; CI on the PR |
 | S01 | Data spike + fixtures | `slice-0-setup` | M | medium | local | `pnpm spike --date …` prints Latvians' lines |
 | R0 | Slice 0 review + fixes | `slice-0-setup` | S+S | high | either | Slice 0 merged |
-| S02 | Schema, domain, selection rule, nationality | `slice-1-data-core` | L | high | either | Selection rule + DB tests; local DB |
+| S02a | Domain model, selection rule, nationality | `slice-1-data-core` | M | high | either | Selection-rule and nationality tests |
+| S02b | Database schema + repositories | `slice-1-data-core` | M | high | either | Local DB; idempotency tests |
 | S03 | NHL adapter | `slice-1-data-core` | M | medium | either | `pnpm inspect nhl boxscore …` |
-| S04 | Jobs, scheduler, recap CLI | `slice-1-data-core` | L | high | either | `pnpm recap` — terminal morning recap (NHL) |
+| S04a | Jobs + recap CLI | `slice-1-data-core` | M | high | either | `pnpm recap` — terminal morning recap (NHL) |
+| S04b | Season stats, corrections, scheduler | `slice-1-data-core` | M | high | either | The dev server schedules its own runs |
 | R1 | Slice 1 review + fixes | `slice-1-data-core` | S+S | high | either | Slice 1 merged |
 | S05 | ESPN NBA adapter + jobs | `slice-2-nba` | L | high | either | `pnpm recap` with NHL + NBA |
 | R2 | Slice 2 review + fixes | `slice-2-nba` | S+S | high | either | Slice 2 merged |
@@ -43,7 +45,7 @@ All sessions run on **Opus 5.5**, the Pro default. **Effort** is what to set wit
 | S08 | App shell, settings, screenshots | `slice-4-app-v1` | M | medium | local | Settings on phone; `pnpm screenshots` |
 | S09 | Main page | `slice-4-app-v1` | L | high | local | **The morning recap app** |
 | R4 | Slice 4 review + fixes | `slice-4-app-v1` | S+S | high | either | Slice 4 merged |
-| S10 | Deploy backend | `slice-6a-ship` | M | medium | local | Public API with a running scheduler |
+| S10 | Deploy backend | `slice-6a-ship` | L | medium | local | Public API with a running scheduler and a staleness alert |
 | S11 | Android build + Play closed test | `slice-6a-ship` | M | medium | local | Friends install it; **14-day clock starts** |
 | R6a | Slice 6a review + fixes | `slice-6a-ship` | S+S | high | either | Slice 6a merged |
 | S12 | Search, favorites, hidden | `slice-5-players-games` | M | medium | local | Star/hide players |
@@ -78,7 +80,7 @@ Every slice is one pull request; its review rows run on the slice's branch. Slic
 **You:** read VISION.md yourself first. You're the product owner, so you're the best judge of which findings matter.
 
 ```text
-Session K0 — Kit review. Locally, first create branch `kit-review` from the latest `main`; in a cloud session, use the session's own branch.
+Session K0 — Kit review. First create branch `kit-review` from the latest `main` (in a cloud session too).
 
 You haven't seen how these docs were written. Review them as a skeptical senior engineer before any code exists. Read every file in the repo: CLAUDE.md, everything in docs/ and .claude/ (settings, hooks, agents, skills, rules), .gitattributes and apps/server/data/nationality-overrides.json. Where a file relies on a Claude Code feature (skill or agent frontmatter, hooks, permission rules, plan or auto mode, cloud sessions), check it against the current docs at code.claude.com/docs instead of trusting it.
 
@@ -110,7 +112,8 @@ I'll reply with a decision for each finding. Then apply the accepted ones, put d
 - `apps/mobile`: current stable Expo SDK via `create-expo-app` (default template, example screens removed), one placeholder screen that renders a value imported from `packages/shared`. App identity in `app.json` per VISION §11: name `Our Players`, slug `our-players`, scheme `ourplayers`, `android.package` `io.github.adve1s.ourplayers`.
 - `packages/shared`: consumed as TypeScript source by server and app; one trivial pure function with a test.
 - Root scripts for every `CLAUDE.md` command; ones that arrive later print which session adds them and exit with code 1.
-- CI: `.github/workflows/ci.yml` runs on pull requests and on pushes to `main` — frozen-lockfile install, then `pnpm verify` — in a job named `verify`.
+- CI: `.github/workflows/ci.yml` runs on pull requests and on pushes to `main` — frozen-lockfile install, then `pnpm verify` — in a job named `verify` on a Node 22 and 24 matrix, so the checks read `verify (22)` and `verify (24)`.
+- Cloud sessions: a second SessionStart hook that runs `corepack enable && pnpm install --frozen-lockfile` only when `CLAUDE_CODE_REMOTE` is `true` (a no-op locally); then shorten the cloud gotcha in CLAUDE.md.
 - `README.md`: what the project is, a quick start, links to `docs/`. `.gitignore` additions for the generated stuff.
 
 **Out of scope:** any data fetching, DB, real screens.
@@ -123,9 +126,9 @@ I'll reply with a decision for each finding. Then apply the accepted ones, put d
 5. Every command in `CLAUDE.md` exists; not-yet-implemented ones name their session.
 6. Editing a `.ts` file through Claude gets it formatted by the hook (show a before/after).
 7. `app.json` carries the app identity from VISION §11.
-8. After `/handoff` pushes, the draft PR's `verify` check passes (the handoff reports it).
+8. After `/handoff` pushes, the draft PR's `verify (22)` and `verify (24)` checks pass (the handoff reports it).
 
-**You:** run the phone check: allow Metro and the dev API through Omarchy's firewall (WORKFLOW.md → One-time setup, step 5), then scan the QR code with Expo Go and confirm the placeholder renders. After the first green CI run, protect `main` (step 4).
+**You:** run the phone check: allow Metro and the dev API through Omarchy's firewall (WORKFLOW.md → One-time setup, step 5), then scan the QR code with Expo Go and confirm the placeholder renders. After the first green CI run, add the required `verify` checks to `main`'s protection (step 4, second part).
 
 ```text
 Session S00 — Bootstrap (slice 0). Create branch `slice-0-setup` from the latest `main`.
@@ -150,8 +153,8 @@ After I approve: build it, keeping code minimal — this session is plumbing, no
 
 **In scope**
 - `apps/server/src/http/polite-client.ts`: ≤ 1 request/s per host, User-Agent `OurPlayers/<version> (+<repo URL>)` with the GitHub repo URL as the contact (from config), timeout, retries on 429/5xx/network errors with exponential backoff + jitter, honors `Retry-After`, no retry on other 4xx. Unit-tested with fake timers and a fake fetch.
-- `pnpm fixtures:record <source> <endpoint> <id-or-date>` → `apps/server/test/fixtures/<source>/<endpoint>/<id>.json` plus `<id>.meta.json` (url, fetchedAt, status, bytes); refuses to overwrite without `--force`.
-- Throwaway `pnpm spike --date YYYY-MM-DD` (in `apps/server/scripts/spike/`): prints Latvian players' lines for that game day in both leagues, plus total requests and runtime. Replaced by `pnpm recap` in S04.
+- `pnpm fixtures:record <source> <endpoint> <id-or-date>` → `apps/server/test/fixtures/<source>/<endpoint>/<id>.json` plus `<id>.meta.json` (url, fetchedAt, status, bytes); refuses to overwrite without `--force`; `--as <name>` saves under another file name, so a re-recorded response can sit next to the old one.
+- Throwaway `pnpm spike --date YYYY-MM-DD` (in `apps/server/scripts/spike/`): prints Latvian players' lines for that game day in both leagues, plus total requests and runtime. Replaced by `pnpm recap` in S04a.
 - Fixture set (minimum). It's early October 2026, so use last season's regular season for most, plus one 2026 preseason game per league:
   - NHL: `score` and `schedule` for one game day with Latvians playing; `boxscore` for a game with a Latvian skater, one with a Latvian goalie, an OT game, a shootout game, a preseason game; `roster` for two teams with Latvians; `player-landing` for a Latvian skater and a goalie; first page of `skater-summary` and `goalie-summary`.
   - NBA: `scoreboard` for the same game day; `summary` for a game Porziņģis played, a game with a DNP, an OT game, a preseason game; `athlete` for Porziņģis (3102531), Embiid (3059318) and Towns (3136195) — the latter two exercise country mapping and the overrides; a team `roster` if it carries birthplaces; `overview` (season stats) for Porziņģis.
@@ -188,44 +191,68 @@ Fresh session on `slice-0-setup`: `/slice-review 0`. It's a light review: plumbi
 
 ## Slice 1 — Data core (`slice-1-data-core`)
 
-### S02 — Schema, domain model, selection rule, nationality
+### S02a — Domain model, selection rule, nationality
 
-**Goal:** the normalized model and database, plus the two pieces of core logic — the selection rule and nationality resolution — written test-first from the spec.
+**Goal:** the normalized model in `packages/shared`, plus the two pieces of core logic, the selection rule and nationality resolution, written test-first from the spec. Pure code only; the database follows in S02b.
 
 **In scope**
 - `packages/shared`: league / status / kind enums, alpha-3 country type, normalized model types (team, player, game, stat line, season stats), zod schemas for stat payloads per kind; `selection.ts` (`isShown` + `Prefs`).
+- Nationality (VISION §7): zod-validated loader for `apps/server/data/nationality-overrides.json` (it already holds Embiid and Towns), and a pure resolver: the override if one exists, else the birth country, else `null`, returned with its source.
+
+**Out of scope:** the database and repositories (S02b), adapters, jobs, API, app.
+
+**Acceptance criteria**
+1. Selection-rule tests: one per behavior in VISION §3 (test names state the behavior), plus a check over generated inputs that `isShown` matches the set formula.
+2. Nationality tests: an override replaces the birth country (source `override`); without one, the birth country is used (source `birth`); an unknown birth country gives `null`; an invalid overrides file (bad JSON, unknown country code, duplicate player) fails with a message naming the file and the entry; the committed overrides file loads cleanly.
+3. The stat payload schemas accept a valid payload of each kind and reject invalid ones with a clear error.
+4. `pnpm verify` green.
+
+**You (optional, recommended):** write `isShown` yourself. Tell Claude at plan approval: "I'll implement isShown." It writes the stub and has the test-writer produce the tests, then waits; you make them green; Claude reviews your code.
+
+```text
+Session S02a — Domain model, selection rule, nationality (slice 1). Create branch `slice-1-data-core` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S02a (the contract), docs/VISION.md §3, §7 and §8, docs/DECISIONS.md D-009, D-010 and D-012, and docs/sources/*.md. First run the tests.
+
+In plan mode, propose: the shared domain types and zod schemas (show them); how overrides are loaded and validated; the resolver's signature; and the exact list of test cases for the selection rule and nationality resolution.
+
+After I approve, red/green:
+1. Create stubs for isShown and the nationality resolver: real signatures, bodies throw "not implemented".
+2. Use the test-writer subagent to write their tests from VISION §3 and §7 only. Run them and confirm they fail on "not implemented". Commit: `test: selection rule and nationality spec`.
+3. Implement until green without changing those tests — if one looks wrong, stop and tell me.
+4. Then the stat payload schemas and the overrides loader, with tests.
+
+Prove each acceptance criterion with output, then tell me it's ready for /handoff.
+```
+
+### S02b — Database schema and repositories
+
+**Goal:** the database per VISION §8, and repositories that write the normalized model idempotently.
+
+**In scope**
 - `apps/server/src/db`: Drizzle `pg-core` schema per VISION §8; PGlite client for dev (file-backed under `.data/`) and tests (in memory); node-postgres client when `DATABASE_URL` is set; generated migrations; `db:migrate`, `db:generate`, `db:reset`.
-- Repositories with idempotent upserts by natural key: teams, players (+ external IDs), games, stat lines, season stats, job runs; nationality recomputation.
-- Nationality (VISION §7): zod-validated loader for `apps/server/data/nationality-overrides.json` (already holds Embiid and Towns), and a resolver: override if one exists, else birth country, else `null` — with its source.
+- Repositories with idempotent upserts by natural key: teams, players (+ external IDs), games, stat lines (payloads validated with S02a's schemas), season stats, job runs.
+- Nationality recomputation: applies S02a's resolver to stored players, and warns about overrides whose player isn't in the DB or whose name doesn't match the stored name.
 - Test helper `createTestDb()` (in-memory PGlite with migrations applied).
 - `.gitattributes`: mark the generated migration snapshots `linguist-generated`, like the fixtures.
 
 **Out of scope:** adapters, jobs, API, app.
 
 **Acceptance criteria**
-1. Selection-rule tests: one per behavior in VISION §3 (test names state the behavior), plus a check over generated inputs that `isShown` matches the set formula.
-2. Nationality tests: an override replaces the birth country (source `override`); without one, the birth country is used (source `birth`); an unknown birth country gives `null`; an override whose player isn't in the DB, or whose name doesn't match the stored name, logs a warning; an invalid overrides file (bad JSON, unknown country code, duplicate player) fails with a message naming the file and the entry; the committed overrides file loads cleanly.
-3. `pnpm db:migrate` succeeds on a fresh local DB, and `pnpm db:generate` right afterwards produces no new migration.
-4. Writing the same normalized game and lines twice leaves identical rows (PGlite test).
-5. Invalid stat payloads are rejected on write with a clear error.
-6. `pnpm verify` green.
-
-**You (optional, recommended):** write `isShown` yourself. Tell Claude at plan approval: "I'll implement isShown." It writes the stub and has the test-writer produce the tests, then waits; you make them green; Claude reviews your code.
+1. `pnpm db:migrate` succeeds on a fresh local DB, and `pnpm db:generate` right afterwards produces no new migration.
+2. Writing the same normalized game and lines twice leaves identical rows (PGlite test).
+3. Invalid stat payloads are rejected on write with a clear error.
+4. Nationality recomputation (PGlite tests): stored players get their nationality and its source from the resolver; an override whose player isn't in the DB, or whose name doesn't match the stored name, logs a warning.
+5. `pnpm verify` green.
 
 ```text
-Session S02 — Schema, domain model, selection rule, nationality (slice 1). Create branch `slice-1-data-core` from the latest `main`.
+Session S02b — Database schema and repositories (slice 1, branch `slice-1-data-core`).
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S02 (the contract), docs/VISION.md §3, §7 and §8, docs/DECISIONS.md D-004, D-009, D-010, D-012, and docs/sources/*.md. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S02b (the contract), docs/VISION.md §7 and §8, docs/DECISIONS.md D-004, D-005, D-010 and D-012, and the shared domain types from S02a. First run the tests.
 
-In plan mode, propose: the shared domain types and zod schemas (show them); the Drizzle schema — tables, keys, indexes — mapped to VISION §8; how the dev, test and prod DB clients differ; the repository functions and their natural keys; how overrides are loaded, validated and applied; and the exact list of test cases for the selection rule and nationality resolution.
+In plan mode, propose: the Drizzle schema — tables, keys, indexes — mapped to VISION §8; how the dev, test and prod DB clients differ; the repository functions and their natural keys; how nationality recomputation applies the resolver and reports override warnings; and the test list mapped to the acceptance criteria.
 
-After I approve, red/green:
-1. Create stubs for isShown and the nationality resolver: real signatures, bodies throw "not implemented".
-2. Use the test-writer subagent to write their tests from VISION §3 and §7 only. Run them and confirm they fail on "not implemented". Commit: `test: selection rule and nationality spec`.
-3. Implement until green without changing those tests — if one looks wrong, stop and tell me.
-4. Then the schema, migrations, repositories and idempotency tests.
-
-Prove each acceptance criterion with output, then tell me it's ready for /handoff.
+After I approve: red/green for the repositories and the recomputation. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
 ```
 
 ### S03 — NHL adapter
@@ -237,7 +264,7 @@ Prove each acceptance criterion with output, then tell me it's ready for /handof
 - `packages/shared/src/countries.ts`: alpha-3 validation; scaffold for the ESPN name → code alias map.
 - `pnpm inspect nhl <endpoint> <fixture-id>` prints the normalized result.
 
-**Out of scope:** DB writes and jobs (S04), ESPN (S05).
+**Out of scope:** DB writes and jobs (S04a/S04b), ESPN (S05).
 
 **Acceptance criteria**
 1. Every NHL fixture has at least one mapper test asserting specific values read from the raw JSON (no whole-object snapshots).
@@ -263,37 +290,64 @@ After I approve, red/green:
 Prove each acceptance criterion with output, then tell me it's ready for /handoff.
 ```
 
-### S04 — Ingestion jobs, scheduler, recap CLI
+### S04a — Ingestion jobs + recap CLI
 
-**Goal:** NHL data flows into the database on a schedule, and the terminal recap works — the first genuinely usable thing.
+**Goal:** NHL data flows into the database through jobs you run by hand, and the terminal recap works — the first genuinely usable thing.
 
 **In scope**
 - Job runner: `job_runs` rows, per-job overlap lock, structured logs.
-- Jobs per VISION §6.1: `schedule`, `results` (finalization + one correction re-fetch ≥ 6 h later), `roster` (with nationality recomputation), `season-stats`, `backfill`; unknown players in box scores become stubs and get enriched.
-- Scheduler (croner or similar) driven by a **pure** "what should run now?" function; runs only with `SCHEDULER_ENABLED=1`.
-- Game-day helpers in `packages/shared` (latest started game day, previous/next game day).
+- Jobs per VISION §6.1: `schedule`; `results` (finalization: for each game that became final, fetch its box score once and store every line); `roster` (nationality recomputation, plus the off-roster rule in §6.1); `backfill`. Unknown players in box scores become stubs and get enriched.
 - `pnpm job …` and `pnpm recap --date … [--countries …]`; remove the spike.
 - Fixture-backed fake fetcher for job tests.
+
+**Out of scope:** season stats, corrections and the scheduler (S04b); ESPN; API; app.
+
+**Acceptance criteria**
+1. Job tests (PGlite + fixture-backed fetcher): results stores lines for final games only; re-running changes nothing; an unknown player becomes an enriched stub; roster sets a player who is missing from every roster of his league to `active = false` with no current team, and restores him when he reappears; when any of that league's roster fetches fails, no `active` flag changes and `job_runs` records the partial failure.
+2. Starting a job while the same job runs is skipped and logged.
+3. Every run writes a `job_runs` row with counts; a forced failure records the error.
+4. Live, run by you: `pnpm job roster --league nhl`, `pnpm job backfill --league nhl --from <d> --to <d>`, then `pnpm recap --date <d> --countries LVA` shows the Latvians' lines matching nhl.com.
+5. Spike removed; scripts and docs updated.
+6. `pnpm verify` green.
+
+```text
+Session S04a — Ingestion jobs + recap CLI (slice 1, branch `slice-1-data-core`).
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S04a (the contract), and docs/VISION.md §6, §7 and §8. First run the tests.
+
+In plan mode, propose: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
+
+After I approve: red/green for job behavior (you write these tests; no test-writer needed). Prove each criterion with output. For criterion 4, give me the exact commands and wait for my result before calling it done. Then tell me it's ready for /handoff.
+```
+
+### S04b — Season stats, corrections, scheduler
+
+**Goal:** the pipeline runs on its own: season stats, box-score corrections, and a scheduler that decides what to run.
+
+**In scope**
+- `season-stats` job (NHL bulk endpoints, totals) for rostered players. The current season per league is derived from the stored schedule, not configured: the season of the most recent game that has started, falling back to the next scheduled game. Record this in DECISIONS.md; `/v1/meta` reuses it in S06.
+- Corrections in `results`: re-fetch each final box score once, at least 6 h after it went final.
+- Scheduler (croner or similar) driven by a **pure** "what should run now?" function; runs only with `SCHEDULER_ENABLED=1`.
+- Game-day helpers in `packages/shared` (latest started game day, previous/next game day).
 
 **Out of scope:** ESPN, API, app.
 
 **Acceptance criteria**
-1. Job tests (PGlite + fixture-backed fetcher): results stores lines for final games only; re-running changes nothing; a correction re-fetch updates changed numbers; an unknown player becomes an enriched stub.
-2. Scheduler decision logic, with an injected clock: no upstream calls when nothing is in progress; polling during game windows; corrections after 6 h.
-3. Starting a job while the same job runs is skipped and logged.
-4. Live, run by you: `pnpm job roster --league nhl`, `pnpm job backfill --league nhl --from <d> --to <d>`, then `pnpm recap --date <d> --countries LVA` shows the Latvians' lines matching nhl.com.
-5. Every run writes a `job_runs` row with counts; a forced failure records the error.
-6. Spike removed; scripts and docs updated.
-7. `pnpm verify` green.
+1. Season-stats tests over the bulk fixtures: totals stored per rostered player with season and season type. Current-season derivation tested, including preseason and the rollover between seasons.
+2. A correction re-fetch updates changed numbers, and happens only once per game (tests).
+3. Scheduler decision logic, with an injected clock: no upstream calls when nothing is in progress; polling during game windows; corrections after 6 h; `schedule` at startup when no future games are stored.
+4. Game-day helpers tested with an injected clock and time zone.
+5. Live, run by you: `pnpm job season-stats --league nhl` logs its request count, and `SCHEDULER_ENABLED=1 pnpm dev:server` logs the decisions of its first ticks.
+6. `pnpm verify` green.
 
 ```text
-Session S04 — Ingestion jobs, scheduler, recap CLI (slice 1, branch `slice-1-data-core`).
+Session S04b — Season stats, corrections, scheduler (slice 1, branch `slice-1-data-core`).
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S04 (the contract), and docs/VISION.md §6, §7 and §8. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S04b (the contract), docs/VISION.md §6 and §8, and the job runner and jobs from S04a. First run the tests.
 
-In plan mode, propose: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: when to poll, how finalization and corrections work, which games a run looks at; the scheduler's pure "what should run now?" function and its test cases; the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
+In plan mode, propose: the season-stats job and how the current season is derived; how corrections fit into results; the scheduler's pure "what should run now?" function and its test cases; the game-day helpers; and the live commands I'll run at the end.
 
-After I approve: red/green for the decision logic and job behavior (you write these tests; no test-writer needed). Prove each criterion with output. For criterion 4, give me the exact commands and wait for my result before calling it done. Then tell me it's ready for /handoff.
+After I approve: red/green for the decision logic, corrections and season stats. Prove each criterion with output. For criterion 5, give me the exact commands and wait for my result. Then tell me it's ready for /handoff.
 ```
 
 ### R1 — Slice 1 review
@@ -347,7 +401,7 @@ Fresh session on `slice-2-nba`: `/slice-review 2` → read the review on the PR 
 
 **In scope**
 - Hono app structure under `apps/server/src/api/`; zod contract in `packages/shared/src/contract/` (params + responses); preferences parsing and validation.
-- `GET /v1/meta`, `GET /v1/days/{gameDate}`, `GET /v1/games/{gameId}`, `GET /health` per VISION §10: ordering rules (§4.1), did-not-play rows, prev/next game day, cache headers, error format, request logs without query strings.
+- `GET /v1/meta`, `GET /v1/days/{gameDate}`, `GET /v1/games/{gameId}`, `GET /health` per VISION §10 (`/health/data` arrives in S10): ordering rules (§4.1), did-not-play rows, prev/next game day, cache headers, error format, request logs without query strings.
 - API test harness: in-memory PGlite seeded by running the real ingestion over fixtures.
 
 **Out of scope:** players, search, countries, CORS (S07); app.
@@ -355,10 +409,10 @@ Fresh session on `slice-2-nba`: `/slice-review 2` → read the review on the PR 
 **Acceptance criteria**
 1. Every response in tests parses with the shared contract schema.
 2. Filtering behavior: followed country shown; hidden player removed; favorite from another country included; league filter applied to everyone.
-3. Ordering and rows: games with shown players first; DNP and "Not in lineup" rows; prev/next game day.
+3. Ordering and rows: games with shown players first; DNP and "Not in lineup" rows, and no "Not in lineup" row for a player with no current team; prev/next game day.
 4. `latestGameDate` with an injected clock: 08:00 in Riga returns the previous US date.
 5. Bad parameters → 400 with the error format; logs contain no query strings (test).
-6. With S04/S05 data loaded, `curl "localhost:3001/v1/days/<date>?countries=LVA"` returns that night's lines; 100 sequential requests show p95 under 150 ms (print it).
+6. With S04a/S05 data loaded, `curl "localhost:3001/v1/days/<date>?countries=LVA"` returns that night's lines; 100 sequential requests print their p95, next to the row counts of `games` and `stat_lines` (a smoke check — the real p95 target is measured in production in S10).
 7. `pnpm verify` green.
 
 ```text
@@ -385,7 +439,7 @@ After I approve: red/green. Prove each criterion with output (including the curl
 **Acceptance criteria**
 1. Search: "porzingis", "PORZ", "merzlikins" and "girgen" find the right players; an empty query → 400; the limit is respected.
 2. Player detail: season stats per kind; game log newest first, at most 10; nationality carries its source (Embiid: USA, `override`).
-3. Countries: only countries with players, with counts per league; Embiid counts for USA, not CMR.
+3. Countries: only countries with active players, with counts per league; Embiid counts for USA, not CMR.
 4. CORS: an allowed origin gets the headers; others don't.
 5. Typed client tests pass against the in-memory app.
 6. `pnpm verify` green.
@@ -422,6 +476,8 @@ Fresh session on `slice-3-read-api`: `/slice-review 3` → read the review on th
 - Friendly error and offline states; an error boundary.
 
 **Out of scope:** Main page content (S09), search and favorites (S12), player and game pages (S13).
+
+**You, in parallel (long lead time for S11):** create the Google Play Console personal developer account and finish its identity verification, which can take days. Start collecting 15+ testers' Google-account email addresses — people who'd actually open the app, since Google also checks that testers used it.
 
 **Acceptance criteria**
 1. A fresh install defaults to Latvia + both leagues; preferences survive a web reload and an Android relaunch.
@@ -482,13 +538,15 @@ Claude prepares configs, scripts, text and runbooks; you do the account and cons
 
 ### S10 — Deploy the backend
 
-**Goal:** the API and scheduler running on an always-on host with Postgres, documented well enough to redeploy from scratch.
+**Goal:** the API and scheduler running on an always-on host with Postgres, documented well enough to rebuild from scratch, and an alert reaches you when data goes stale.
 
 **In scope**
-- A short hosting options memo (an always-on small VPS with Docker Compose vs a PaaS with managed Postgres: cost, effort, backups, how each runs the scheduler) → you pick.
+- A short hosting options memo (an always-on small VPS with Docker Compose vs a PaaS with managed Postgres): cost, effort, how each runs the scheduler, and whether its router or reverse proxy logs request query strings — and how to stop that (VISION §11) → you pick.
 - An upstream probe script you run **from the candidate host** before committing to it (both APIs answer, normal latency, no block).
-- Dockerfile (multi-stage), production config via env, migrations on deploy, scheduler on, health check, log retention, daily DB backup.
-- `docs/DEPLOY.md`: deploy, rollback, backup and restore, rotating secrets. Production API URL wired into the app config.
+- Dockerfile (multi-stage), production config via env, migrations on deploy, scheduler on, health check, log retention. Platform and proxy access logs record no query strings.
+- Staleness alerting (VISION §10, §12): `/health/data` returns 503 when, during the season, the last successful `results` run is too old or the last few runs failed (propose the thresholds); a free external uptime monitor polls it and emails you. The host's health check keeps using `/health`, which stays green during upstream outages.
+- A per-IP rate limit on the read API (at the reverse proxy or in the app), answering 429 in the error format.
+- `docs/DEPLOY.md`: deploy, rollback, rebuild from scratch (migrations, `roster`, the season-to-date `backfill`, then `season-stats`, with request count and duration — DECISIONS.md D-021), rotating secrets. Production API URL wired into the app config.
 
 **Out of scope:** Android build (S11), web hosting (S14).
 
@@ -496,16 +554,21 @@ Claude prepares configs, scripts, text and runbooks; you do the account and cons
 1. Probe output from the chosen host shows both APIs reachable (pasted by you).
 2. `https://<api>/health` OK; `/v1/meta` fresh; after a few hours, `job_runs` shows scheduled runs.
 3. No secrets in git (the reviewer checks).
-4. Season-to-date backfill completed in production.
-5. `docs/DEPLOY.md` lets someone redeploy from zero.
-6. `pnpm verify` green.
+4. The rebuild from `docs/DEPLOY.md` performed once on the host (migrations, `roster`, the season-to-date `backfill`, then `season-stats`), with request count and duration recorded in DEPLOY.md.
+5. `docs/DEPLOY.md` covers deploy, rollback, rebuild and secret rotation from zero; the reviewer walks through it against the repo.
+6. A production access-log line for a `/v1/days` request shows no query string (pasted).
+7. A forced staleness or failure makes `/health/data` return 503 and the monitor emails you (you confirm), while `/health` stays 200.
+8. `/v1/days/{date}` p95 is under 150 ms server-side against a DB holding a full season — last season backfilled, locally or on the host (VISION §12; print the measurement and the row counts).
+9. Lines arrive within ~15 minutes of a game going final (VISION §2): for one night's games, `boxscore_fetched_at` minus the start of the last `results` run that still saw the game not final is at most 15 minutes (show the query).
+10. Requests over the rate limit get 429.
+11. `pnpm verify` green.
 
 ```text
 Session S10 — Deploy the backend (slice 6a). Create branch `slice-6a-ship` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S10 (the contract), docs/VISION.md §6, §9 (etiquette) and §11. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S10 (the contract), docs/VISION.md §2, §6, §9 (etiquette), §11 and §12, and docs/DECISIONS.md D-021. First run the tests.
 
-In plan mode, start with the hosting options memo and wait for my choice. Then propose: the upstream probe script I'll run on the host; Dockerfile and runtime config; how migrations and the scheduler run in production; backups; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
+In plan mode, start with the hosting options memo and wait for my choice. Then propose: the upstream probe script I'll run on the host; Dockerfile and runtime config; how migrations and the scheduler run in production; how access logs avoid query strings; the staleness rule for `/health` and the uptime monitor; the rate limit; the rebuild procedure; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
 
 After I approve: build it, hand me each console/host step as an exact checklist, and wait for my results where criteria depend on them. Then tell me it's ready for /handoff.
 ```
@@ -515,6 +578,7 @@ After I approve: build it, hand me each console/host step as an exact checklist,
 **Goal:** friends can install the app from Google Play's closed testing track, and the 14-day clock starts.
 
 **In scope**
+- Prerequisite from S08: the Play Console account is verified and the tester list exists.
 - App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Add icon and adaptive icon, splash, and the production `EXPO_PUBLIC_API_URL`.
 - `eas.json` profiles (development, preview, production), version codes, a production AAB build.
 - `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers, privacy policy (a hosted page — GitHub Pages works for a public repo), tester invitation message and a "keep testers opted in" plan.
@@ -530,12 +594,14 @@ After I approve: build it, hand me each console/host step as an exact checklist,
 5. `docs/store/` complete; privacy policy URL live.
 6. In-app About shows the non-affiliation note; no logos or player photos anywhere.
 
+**You:** time a warm open of the installed app on your phone (VISION §2: under 2 s on a mid-range Android) and note the result in PROGRESS.md. Remind testers to open it on match mornings — Google checks that they used it.
+
 ```text
 Session S11 — Android build + Play closed test (slice 6a, branch `slice-6a-ship`).
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S11 (the contract), docs/VISION.md §4.6 and §11. First run the tests.
 
-In plan mode, propose: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; the docs/store/ files with draft contents; and the step-by-step console checklist for EAS and Play Console (internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code.
+In plan mode, propose: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; the docs/store/ files with draft contents; and the step-by-step console checklist for EAS and Play Console (internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
 
 After I approve: do the repo work, then walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
 ```
@@ -632,7 +698,7 @@ After I approve: build it, screenshot the built site, walk me through deployment
 **In scope**
 - Once 12+ testers have been opted in for 14 continuous days: draft the production-access answers (`docs/store/production-access.md`) from the tester feedback log.
 - Fix tester-reported issues first, each in its own bug-fix session (template below).
-- `docs/RUNBOOK.md`: upstream breakage (detect via `job_runs` → record a fresh fixture → red test → fix the adapter), season rollover, adding a nationality override, adding a league (checklist), switching NHL to the ESPN backup.
+- `docs/RUNBOOK.md`: upstream breakage (detect via the staleness alert and `job_runs` → record a fresh fixture → red test → fix the adapter), season rollover, adding a nationality override, adding a league (checklist), switching NHL to the ESPN backup.
 
 **Acceptance criteria**
 1. Application submitted; answers saved.
@@ -662,13 +728,13 @@ Fresh session on `slice-6b-web-launch`: `/slice-review 6b` → **Review fixes** 
 ```text
 Session R<n>-fix — address the slice <n> review (branch `slice-<n>-…`).
 
-Read docs/PROGRESS.md and the review: docs/reviews/slice-<n>.md, or — if the review ran in a cloud session — the review posted on the slice PR. My decisions:
+Read docs/PROGRESS.md and the review: docs/reviews/slice-<n>.md. My decisions:
 - F1: accept
 - F2: reject — <why>
 - F3: defer
 <one line per finding>
 
-Record my decisions in the Decision column of docs/reviews/slice-<n>.md (create the file from the PR review if it doesn't exist yet). In plan mode: for each accepted finding, propose the smallest fix and the test that proves it. Leave rejected findings alone; move deferred ones to the PROGRESS.md parking lot.
+Record my decisions in the Decision column of docs/reviews/slice-<n>.md. In plan mode: for each accepted finding, propose the smallest fix and the test that proves it. Leave rejected findings alone; move deferred ones to the PROGRESS.md parking lot.
 
 After I approve: red/green per finding. When `pnpm verify` is green, tell me it's ready for /handoff. After the handoff, and once CI is green, I'll merge the PR.
 ```
@@ -686,7 +752,7 @@ First run the tests. In plan mode, find the root cause (use a subagent for wide 
 ```text
 The <nhl|espn-nba> adapter broke. Evidence: <job_runs error / failing endpoint / log line>.
 
-First run the tests. Record a fresh fixture for the failing endpoint with `pnpm fixtures:record` and show me how its shape differs from the existing fixture. Keep the old fixture; the new one becomes an extra test case. In plan mode, propose the adapter change. After I approve: red/green, then tell me it's ready for /handoff.
+First run the tests. Record a fresh fixture for the failing endpoint with `pnpm fixtures:record … --as <id>-<YYYY-MM-DD>` and show me how its shape differs from the existing fixture. Keep the old fixture; the new one becomes an extra test case. In plan mode, propose the adapter change. After I approve: red/green, then tell me it's ready for /handoff.
 ```
 
 **Small change** (skip plan mode with `Shift+Tab` first):

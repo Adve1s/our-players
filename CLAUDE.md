@@ -17,14 +17,14 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 
 ## Commands (repo root)
 - `pnpm install`
-- `pnpm verify` — typecheck + lint + all tests. Must be green before every commit; CI runs it on every PR.
+- `pnpm verify` — typecheck + lint + all tests. Must be green before every commit (one exception under Workflow); CI runs it on every PR.
 - `pnpm test [path-or-name-filter]` — Vitest across packages; pass a filter to run one area
 - `pnpm dev:server` — API on :3001 with a local PGlite DB (`apps/server/.data/`); scheduler off unless `SCHEDULER_ENABLED=1`
 - `pnpm dev:mobile` — Expo dev server (`w` = web, QR = Android via Expo Go)
-- `pnpm job <name> [--league nhl|nba] [--date YYYY-MM-DD] [--from --to]` — run one ingestion job now (S04+)
-- `pnpm recap --date YYYY-MM-DD [--countries LVA]` — terminal morning recap from the DB (S04+)
+- `pnpm job <name> [--league nhl|nba] [--date YYYY-MM-DD] [--from --to]` — run one ingestion job now (S04a+)
+- `pnpm recap --date YYYY-MM-DD [--countries LVA]` — terminal morning recap from the DB (S04a+)
 - `pnpm inspect <source> <endpoint> <fixture-id>` — print the normalized result of a fixture (S03+)
-- `pnpm fixtures:record <source> <endpoint> <id-or-date>` — record a raw upstream response (S01+)
+- `pnpm fixtures:record <source> <endpoint> <id-or-date> [--as <name>]` — record a raw upstream response (S01+); `--as` saves it under another file name
 - `pnpm db:generate` (new migration after schema change) · `pnpm db:migrate` · `pnpm db:reset` (local only)
 - `pnpm screenshots` — capture the web build's key screens to `apps/mobile/.screenshots/` (S08+)
 
@@ -58,7 +58,8 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 ## Workflow
 - Each session follows its section in `docs/SESSIONS.md`: scope, out-of-scope list and acceptance criteria are the contract. Sessions start in plan mode; don't edit until I approve the plan.
 - One branch and one pull request per slice (`slice-<n>-<slug>` → `main`). `/handoff` commits, pushes and updates the PR; I merge once CI passes. Never merge, rebase, force-push or push to `main`.
-- Small Conventional Commits; `pnpm verify` green before each commit. Use the `gh` CLI for GitHub (PRs, checks, comments).
+- Small Conventional Commits; `pnpm verify` green before each commit. The one exception is the red-phase `test:` commit a session prompt asks for: there the only failures may be the new tests failing on "not implemented". Use the `gh` CLI for GitHub (PRs, checks, comments).
+- In a cloud session, work on the slice branch the prompt names, not the session's own branch: `git switch` to it, or create it from `origin/main` for a slice's first session.
 - Stay in scope: put out-of-scope ideas in the PROGRESS.md parking lot instead of doing them.
 - If product behavior is unclear, ask. If the same approach fails twice, stop and explain instead of trying a third variant.
 - Show evidence, not assertions: paste the command and its output when claiming something works.
@@ -67,7 +68,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 
 ## Gotchas
 - I develop on Arch Linux (Omarchy); CI runs on Ubuntu. Scripts must work on both — no macOS-only commands or flags (`open`, `pbcopy`, `sed -i ''`).
-- Cloud sessions (`CLAUDE_CODE_REMOTE=true`) start without `node_modules` (run `pnpm install` first), run Node 22 (code must work on Node 22 and 24), and can't reach the NHL/ESPN APIs — tests don't need them.
+- Cloud sessions (`CLAUDE_CODE_REMOTE=true`) start without `node_modules`; a SessionStart hook installs them (from S00 on — before that, run `pnpm install` first). They run Node 22 (code must work on Node 22 and 24), and can't reach the NHL/ESPN APIs — tests don't need them.
 - Expo + pnpm: keep `nodeLinker: hoisted` in `pnpm-workspace.yaml`; some React Native libraries break with isolated installs.
 - NHL `birthCountry` is already alpha-3. ESPN `birthPlace.country` is a name ("Cameroon"; US-born players show "USA") — map it in `packages/shared/src/countries.ts` (ESPN spellings as aliases; England/Scotland/Wales → GBR). Unknown → `null` plus a warning, never a guess.
 - NHL season IDs look like `20262027`; ESPN labels a season by its end year (`2027`). Store `"2026-27"`.
