@@ -1,0 +1,4 @@
+# Collapse recorded and generated files in GitHub pull-request diffs.
+# They still appear in the file list; click a file to expand it.
+apps/server/test/fixtures/** linguist-generated=true
+pnpm-lock.yaml linguist-generated=true

@@ -1,0 +1,18 @@
+{
+  "overrides": [
+    {
+      "player": "nba-3059318",
+      "name": "Joel Embiid",
+      "nationality": "USA",
+      "note": "Born in Yaoundé, Cameroon; represents the USA (2024 Olympics).",
+      "addedAt": "2026-10-02"
+    },
+    {
+      "player": "nba-3136195",
+      "name": "Karl-Anthony Towns",
+      "nationality": "DOM",
+      "note": "Born in Edison, NJ, USA; represents the Dominican Republic (2023 FIBA World Cup).",
+      "addedAt": "2026-10-02"
+    }
+  ]
+}

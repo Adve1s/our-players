@@ -1,0 +1,64 @@
+# Decisions
+
+Lightweight decision records. Append new ones at the end (`/handoff` does this); never rewrite history — supersede instead ("Superseded by D-0xx").
+
+Format: **ID — Title** (date, status) · Decision · Why · Alternatives considered.
+
+---
+
+**D-001 — Monorepo with pnpm workspaces** (2026-10-02, accepted)
+`apps/mobile`, `apps/server`, `packages/shared`. Why: one TypeScript contract shared by app and server; one place for Claude to see everything. Alternatives: separate repos (contract drift, more ceremony).
+
+**D-002 — Scheduled ingestion into our own DB; user-agnostic read API** (2026-10-02, accepted)
+Jobs fetch by game/league on a schedule; users never trigger upstream calls; the app sends preferences and gets filtered results. Why: politeness to unofficial APIs, resilience to upstream outages, no accounts needed. Alternatives: on-demand proxying (rate-limit and blocking risk, slow).
+
+**D-003 — One adapter per upstream source, mapping to a normalized model** (2026-10-02, accepted)
+Why: both sources are unofficial and will change; a breakage should mean fixing one adapter.
+
+**D-004 — PostgreSQL everywhere: PGlite for local dev and tests, real Postgres in production** (2026-10-02, accepted — changes the brief's "SQLite in dev")
+Why: "SQLite in dev, Postgres in prod" means two dialects. Drizzle needs separate schema definitions per dialect (`sqliteTable` vs `pgTable`); Prisma pins one provider per schema with provider-specific migrations. Behavior also differs where this app cares (case-insensitive search, JSON columns, dates, booleans), so tests on SQLite wouldn't prove production behavior. PGlite is Postgres compiled to WASM that runs in-process: no install, no Docker, real Postgres semantics, and Drizzle supports it (`drizzle-orm/pglite`). Alternatives: SQLite everywhere including production (viable for one small server, but the brief wants Postgres when deployed); Docker Postgres locally (heavier setup).
+
+**D-005 — Drizzle ORM + drizzle-kit migrations** (2026-10-02, accepted)
+Why: TypeScript-first, SQL-shaped (easy to learn and review), supports PGlite and node-postgres with the same `pg-core` schema. Alternatives: Prisma (heavier toolchain, less SQL-visible), Kysely (query builder only; we'd hand-write more).
+
+**D-006 — Hono for the HTTP API** (2026-10-02, accepted)
+Why: small API surface similar to ASP.NET minimal APIs; `app.request()` makes API tests trivial without a running server; first-class zod validation. Alternatives: Fastify (equally fine, more concepts), Express (dated typing story).
+
+**D-007 — Vitest for all tests; mobile UI verified with screenshots** (2026-10-02, accepted)
+Why: one fast runner for shared + server; UI logic that matters lives in pure modules; screens are checked by a Playwright screenshot script on the web build plus manual phone checks, which gives Claude a visual way to verify its UI work. Alternatives: jest-expo component tests (slower, low value for this app in v1).
+
+**D-008 — Biome for formatting and linting** (2026-10-02, accepted)
+Why: one fast tool and one config for the whole monorepo; fast enough to run on every edit via a hook. Alternatives: ESLint + Prettier (two tools, more config).
+
+**D-009 — Nationality = sporting nationality: one alpha-3 code per player; birth country by default; overrides by player ID in a JSON file** (2026-10-02, accepted)
+Nationality means the national team a player represents. Each player has one code (or none) with its source, `birth` or `override`. Overrides live in `apps/server/data/nationality-overrides.json`, keyed by public player ID; the first two are Embiid (born CMR → USA) and Towns (born USA → DOM). Why: a player represents one national team, so one value matches the definition and keeps the schema and selection rule simple; the NHL already returns alpha-3; overrides are rare, human-curated and benefit from git review. Alternatives: a set of nationalities (citizenships — not what the app means), name-based matching for players not yet in a league (dropped until needed; Berrouet can be added by ID if he reaches the NBA), overrides in a DB table (needs an admin UI), alpha-2 codes (conversion needed for the NHL).
+
+**D-010 — Stable public IDs derived from source IDs** (2026-10-02, accepted)
+`nhl-<id>`, `nba-<espn id>`, same for games. Why: favorites are stored on devices without accounts; IDs must survive DB rebuilds and re-ingestion. If a source is ever swapped, old public IDs stay primary and new source IDs map through `player_external_ids`.
+
+**D-011 — Game day = the league's schedule date; default view = latest started game day** (2026-10-02, accepted)
+Why: in Latvia, "last night's games" happen on the previous US date and finish after midnight local time; using the viewer's local date would split one night of games across two days.
+
+**D-012 — Stat lines: common columns + typed JSONB per `kind`** (2026-10-02, accepted)
+Why: adding a sport or position means adding a `kind` and a zod schema rather than migrating wide nullable tables. Alternatives: one table per kind (more joins and migrations), one wide table (many nulls).
+
+**D-013 — No league/team logos or player photos in v1** (2026-10-02, accepted)
+Why: intellectual-property risk for a Play Store listing; text and team colors carry the information.
+
+**D-014 — Start the Play closed test before slice 5** (2026-10-02, accepted — reorders the brief's slices)
+Deploy the backend and ship the Android build to closed testing right after the main page works (slice 4), then build slice 5 while the 14-day clock runs. Why: the 14 days are the longest fixed wait in the project; testers can receive updates during the test.
+
+**D-015 — Agent workflow: builder + reviewer subagent at every handoff + fresh-session slice review posted to the PR; test-writer only for red phases** (2026-10-02, accepted)
+See `docs/WORKFLOW.md`. The per-session review always runs (the owner chose quality over usage on the Pro plan). Why: independent review catches what the builder rationalizes; a separate test author matters most where tests encode the spec (selection rule) or an external contract (adapters).
+
+**D-016 — One branch and one pull request per slice; CI on every PR; protected `main`; merge commits** (2026-10-02, accepted)
+Claude creates `slice-<n>-<slug>` from the latest `main`, opens a draft PR at the slice's first handoff, and pushes after every session; GitHub Actions runs `pnpm verify`; the slice review is posted to the PR; the owner merges with a merge commit. Why: a slice is the natural review unit, and the PR keeps its diff, CI results, session briefings and review in one place; merge commits keep the session-by-session history on `main`, including the red test commits. Alternatives: local branches only (no CI, no PR view), squash merges (lose the red/green history).
+
+**D-017 — App identity: "Our Players", Android package `io.github.adve1s.ourplayers`** (2026-10-02, accepted)
+Why: the package ID is permanent once uploaded to Google Play; the reverse of `adve1s.github.io` gives a unique ID without buying a domain. It meets Android's rules: at least two segments, each starting with a letter, only letters, digits and underscores. Alternatives: a purchased domain.
+
+**D-018 — Opus 5.5 for every session; effort per session; ~200K-token session budget** (2026-10-02, accepted)
+Opus 5.5 is the Pro default in Claude Code. Effort stays at its medium default except where the SESSIONS.md Overview says high (intricate logic and all reviews); the reviewer subagent and `/slice-review` pin `effort: high`. Sessions stop at a green checkpoint around 200K tokens of context even though the window is 1M. Why: the owner prefers the strongest included model; effort is the cheaper dial for hard sessions; context quality and usage degrade long before a 1M window fills. Alternatives: Sonnet by default (cheaper, weaker on hard sessions), `opusplan` (kept as a fallback if usage limits bite), Fable (bills usage credits on Pro).
+
+**D-019 — Cloud sessions for the sessions marked "either"; their work reaches the slice branch through a session PR** (2026-10-02, accepted)
+Backend sessions and reviews can run as cloud sessions, which the owner's $100 cloud credit pays for until 2026-11-05. A cloud session can push only its own branch, so `/handoff` opens a PR from it into the slice branch; a cloud `/slice-review` posts to the PR without committing. The code must run on Node 22 (the cloud default) as well as the pinned Node 24. Why: uses the credit instead of plan limits; the per-slice PR flow stays intact. Alternatives: local only (simpler, leaves the credit unused), one PR per session into `main` (loses the slice as the review unit).
