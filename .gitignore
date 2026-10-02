@@ -11,7 +11,24 @@ apps/mobile/.screenshots/
 # Expo
 .expo/
 apps/mobile/.expo/
+apps/mobile/expo-env.d.ts
 web-build/
+.metro-health-check*
+
+# Generated native projects (Expo prebuild) and signing material
+apps/mobile/android/
+apps/mobile/ios/
+.kotlin/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+
+# Logs
+*.log
+npm-debug.*
 
 # Environment and secrets
 .env

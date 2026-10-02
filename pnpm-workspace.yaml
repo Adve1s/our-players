@@ -8,3 +8,9 @@ nodeLinker: hoisted
 # Dependencies allowed to run install scripts (pnpm blocks all others).
 allowBuilds:
   esbuild: true
+
+
+# react-native-worklets asks for any @react-native/metro-config; keep it on
+# react-native's own version so the peer check stays clean.
+overrides:
+  '@react-native/metro-config': 0.86.3
