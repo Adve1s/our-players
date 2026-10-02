@@ -1,6 +1,6 @@
 # Our Players — Vision & v1 Spec
 
-Status: v1 spec · Last updated: 2026-10-02
+Status: v1 spec · Last updated: 2026-10-03
 
 This is the source of truth for **what** we build and **why**. How it gets built, session by session, is in `docs/SESSIONS.md`; decisions and their rationale are in `docs/DECISIONS.md`. If code and this document disagree, raise it — don't silently pick one.
 
@@ -54,7 +54,7 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
   - live → "Live" (no live updates in v1; data refreshes on pull)
   - final → "Final", "Final/OT", "Final/SO"
   - postponed / cancelled → label
-- **Stat cards** under each game, one per shown player who appeared in it, ordered by team (away first) then by points (descending):
+- **Stat cards** under each game, one per shown player who appeared in it, ordered by team (away first); within a team, skaters and basketball players by points (descending), then goalies:
 
 | Kind | Card content | Example |
 |---|---|---|
@@ -62,7 +62,7 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
 | Hockey goalie | SV/SA · SV% · GA · decision | `28/30 · .933 · 2 GA · W` |
 | Basketball | PTS · REB · AST · MIN, then shooting | `22 PTS · 8 REB · 3 AST · 31 MIN` / `FG 8-15 · 3PT 3-7 · FT 3-3` |
 
-- **Did-not-play rows:** if the box score lists a shown player as not playing (NBA DNP), show "DNP — reason". If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
+- **Did-not-play rows:** if the box score lists a shown player as not playing (NBA DNP), show "DNP — reason". If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". A player on no current roster (sent to the AHL or G League, released, retired) has no current team, so he gets no such row. (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
 - **States:** loading skeleton; empty ("No games on this day", or "None of your players played on Fri, Oct 10" with a jump to the previous game day); error with retry; offline shows the last cached data with a banner.
 - **Pull to refresh.** Tapping a game opens the Game page; tapping a player opens the Player page (both slice 5).
 
@@ -130,7 +130,7 @@ Android app / web app ──── HTTPS GET /v1/... (preferences in the query) 
 |---|---|---|
 | `schedule` | daily 09:00, and at startup if no future games are stored | Upcoming games for the next 7 days, per league |
 | `results` | every 10 min | Only does work if some game has started and isn't final yet: fetch that game day's scoreboard; for each game that became final, fetch its box score once and store every player's stat line. Corrections: re-fetch each final box score once, at least 6 h after it went final |
-| `roster` | daily 10:00 | All teams' rosters: players, teams, positions, birth countries; recompute nationalities with the overrides (§7) |
+| `roster` | daily 10:00 | All teams' rosters: players, teams, positions, birth countries; recompute nationalities with the overrides (§7). A player missing from every roster of his league gets no current team and `active = false`, but only when all of that league's rosters were fetched successfully; otherwise no `active` flag changes and the run records the partial failure. He becomes active again when he reappears |
 | `season-stats` | daily 11:00 | Official season stats for rostered players (bulk endpoints where they exist) |
 | `backfill` | manual (CLI) | Schedule + results for a date range — dev data, and the season-to-date at launch |
 
@@ -224,7 +224,7 @@ Why common columns plus typed JSON: new sports and positions add a `kind` and a 
 **Questions S01 must answer** (recorded in `docs/sources/*.md`):
 1. Do NHL `/score/{date}` and ESPN `dates=` use the same game-day convention? (Check a late West Coast game.)
 2. Which game states and status names actually occur?
-3. Do the roster endpoints include birth country (NHL roster; ESPN team roster), or is a per-player call needed?
+3. Do the roster endpoints include birth country (NHL roster; ESPN team roster), or is a per-player call needed? Do they list injured players, and players assigned to the AHL or G League?
 4. Where do period scores live (NHL boxscore vs other gamecenter endpoints; ESPN linescores)?
 5. Is there a bulk NBA season-stats endpoint, or is it one overview call per athlete?
 6. How does ESPN represent DNP and its reason?
@@ -245,26 +245,27 @@ All responses are JSON validated by zod schemas in `packages/shared/src/contract
 | `GET /v1/players/search?q=&leagues=` | up to 20 player summaries |
 | `GET /v1/players?ids=` | player summaries for a list of IDs (favorites and hidden lists) |
 | `GET /v1/players/{playerId}` | bio, nationality with its source, season stats, last 10 game lines |
-| `GET /v1/countries?leagues=` | countries (by sporting nationality) that have players, with counts per league |
-| `GET /health` | DB status and last successful run per job |
+| `GET /v1/countries?leagues=` | countries (by sporting nationality) that have active players, with counts per league |
+| `GET /health` | Liveness for the host's health check: 200 when the DB answers, plus the last successful run per job. Never fails because upstream data is stale |
+| `GET /health/data` | Freshness for the uptime monitor: 503 when, during the season, results have gone stale |
 
-Errors: `{ "error": { "code": "BAD_REQUEST", "message": "..." } }`. Day and game responses send `Cache-Control: public, max-age=60, stale-while-revalidate=300`. Request logs omit query strings, so preferences are never logged. CORS allows the web app's origin.
+Errors: `{ "error": { "code": "BAD_REQUEST", "message": "..." } }`. Day and game responses send `Cache-Control: public, max-age=60, stale-while-revalidate=300`. Request logs omit query strings, so preferences are never logged — this covers the host's router and reverse-proxy access logs too, not only ours. CORS allows the web app's origin. A per-IP rate limit protects the small host (429 in the error format).
 
 ## 11. Platforms, distribution and policies
 
 - **App identity:** name **Our Players**; Android package ID **`io.github.adve1s.ourplayers`** — the reverse of `adve1s.github.io`, the usual way to get a unique ID without owning a domain. It's set in `app.json` from S00 and becomes permanent once the first build is uploaded to Google Play.
 - **One Expo codebase** (Expo Router) for Android and web. No iOS App Store.
-- **Android / Google Play:** EAS Build produces an AAB; Play App Signing. The developer account is personal, so before production the app needs a **closed test with at least 12 testers opted in continuously for 14 days**; recruit 15 or more as a buffer, because a dropout can break the streak. Then apply for production access (questions about the test, the app and its readiness). Start the closed test as soon as the main page works against a deployed backend, so the 14 days run while slice 5 is built.
-- **Play listing prep:** privacy policy URL (GitHub Pages works for a public repo); Data safety form answered honestly (preferences are sent to our server to filter results and are neither stored nor logged; no accounts, ads or analytics); content rating questionnaire; store listing text, 512 px icon, 1024×500 feature graphic, phone screenshots.
+- **Android / Google Play:** EAS Build produces an AAB; Play App Signing. The developer account is personal, so before production the app needs a **closed test with at least 12 testers opted in continuously for 14 days**; recruit 15 or more as a buffer, because a dropout can break the streak. Then apply for production access (questions about the test, the app and its readiness). Start the closed test as soon as the main page works against a deployed backend, so the 14 days run while slice 5 is built. Create the Play Console account and recruit testers early (during S08): identity verification can take days, and Google also checks that testers actually used the app.
+- **Play listing prep:** privacy policy URL (GitHub Pages works for a public repo); Data safety form answered honestly (preferences are sent to our server to filter results and are neither stored nor logged — by our code or by the host's proxies; no accounts, ads or analytics); content rating questionnaire; store listing text, 512 px icon, 1024×500 feature graphic, phone screenshots.
 - **IP:** no league or team logos and no player photos; no "NHL"/"NBA" in the app name or icon (descriptive mentions in the listing only); a "not affiliated" note in the app and listing. Keep the project free and non-commercial, and credit the data sources.
 - **Web:** static export of the Expo web build on a static host, with a web manifest and icons so "Add to Home Screen" works on iPhone. The API allows the web origin via CORS. Favorites live per browser until accounts exist.
-- **Hosting (decided in S10):** must be always-on (the scheduler can't live on a host that sleeps); confirm both upstream APIs answer from the host before committing to it; Postgres with daily backups.
+- **Hosting (decided in S10):** must be always-on (the scheduler can't live on a host that sleeps); confirm both upstream APIs answer from the host before committing to it; Postgres. Every row can be fetched again, so recovery is a rebuild (migrations, `roster`, the season-to-date `backfill`, then `season-stats`), not a backup restore (D-021).
 
 ## 12. Quality bar
 
 - **Tests:** the selection rule exhaustively (§3 cases); every adapter mapper against recorded fixtures (each stat kind, each status, DNP, OT/SO); ingestion idempotency; API responses parse with the shared contract schemas; key screens screenshot-checked on web.
 - **Performance:** `/v1/days/{date}` under 150 ms p95 server-side with a full season stored.
-- **Resilience:** an upstream failure never breaks the app — the API serves stored data and `/health` and `dataUpdatedAt` reveal staleness.
+- **Resilience:** an upstream failure never breaks the app — the API serves stored data and `/health` and `dataUpdatedAt` reveal staleness. During the season, `/health/data` fails when results go stale and an external uptime monitor emails the owner; `/health` stays green, so the host never restarts the API over an upstream outage.
 - **Observability:** `job_runs` table, structured JSON logs without user preferences.
 
 ## 13. Glossary

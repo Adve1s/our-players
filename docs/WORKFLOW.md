@@ -47,13 +47,13 @@ Use both, at different cadences. A subagent is a fresh context window with its o
 
 A cloud session is a Claude Code session that runs on an Anthropic-managed VM against your GitHub repo instead of on your laptop. Start one at claude.ai/code, in the Claude mobile app, in the desktop app (choose **Cloud**), or from the terminal with `claude --cloud "<prompt>"`, which clones your current branch from GitHub (push first). Pull one back into your terminal, conversation and branch included, with `claude --teleport`.
 
-**Your $100 credit.** The cloud session credit on your account pays for cloud sessions first; after it's used up or expires (November 5, 2026), cloud sessions draw on your Pro plan's usage like local ones. It's a dollar balance, so check it after your first cloud session to see what one session costs.
+**Usage.** The Claude Code docs say cloud sessions share your plan's usage limits with local sessions, and the cloud VM itself costs nothing extra. If your account shows a cloud-session credit (yours was quoted as $100 until November 5, 2026), it may cover cloud sessions first. That isn't documented, so check `/usage` after your first cloud session before relying on it.
 
-**What fits the cloud in this project:** the sessions marked *either* in the SESSIONS.md Overview — K0, the backend sessions S02–S07 and the slice reviews. They need only the repo, the recorded fixtures and the tests. Keep the *local* ones local: S00 and S01 (your machine's setup, the phone check, recording live API data from your home connection, since unofficial APIs may block cloud IPs), the app sessions (your phone), and the shipping sessions (consoles and secrets). In October this is plenty of work to spend the credit on.
+**What fits the cloud in this project:** the sessions marked *either* in the SESSIONS.md Overview — K0, the backend sessions S02a–S07 and the slice reviews. They need only the repo, the recorded fixtures and the tests. Keep the *local* ones local: S00 and S01 (your machine's setup, the phone check, recording live API data from your home connection, since unofficial APIs may block cloud IPs), the app sessions (your phone), and the shipping sessions (consoles and secrets).
 
 **How a cloud session differs:**
-- **Its own branch.** Each cloud session works on a branch of its own, started from the branch you pick (the slice branch), and can push only that branch. `/handoff` therefore opens a small PR from it into the slice branch and posts the briefing there; you merge that PR on GitHub and the slice PR picks up the changes. A cloud `/slice-review` can't push either, so it posts the review to the slice PR only, and the fix session saves it to `docs/reviews/`.
-- **Plan mode from the dropdown.** Pick **Plan** in the mode dropdown when you start (cloud sessions offer Accept edits, Plan and Auto) and approve the plan in the browser. Set effort with `/effort high` as the first message where the Overview says high.
+- **The slice branch, not its own.** A cloud session starts on a branch of its own (`claude/…`), but its GitHub proxy lets it push any branch. So it switches to the slice branch named in the prompt (CLAUDE.md says so), or creates it from `origin/main` for a slice's first session. From there `/handoff` and `/slice-review` work exactly as they do locally: push the slice branch, create or update the slice's draft PR, commit the review file (DECISIONS.md D-020). Since a cloud session could push `main` too, branch protection (setup step 4) matters from day one.
+- **Plan mode from the dropdown.** Pick **Plan** in the mode dropdown when you start (cloud sessions offer Accept edits, Plan and Auto) and approve the plan in the browser. Set effort with `/effort medium` or `/effort high`, as the Overview says, as the first message.
 - **What it reads:** your repo's CLAUDE.md, `.claude/settings.json` (permissions and hooks), skills, agents and rules — everything committed. Not your personal `~/.claude` settings.
 - **Its machine:** Ubuntu with Node 22, pnpm and `gh` preinstalled; `node_modules` is installed fresh each session. Network access is limited to package registries and GitHub by default, so the NHL/ESPN APIs are unreachable — the tests don't need them. Live checks ("run by you") stay on your machine: `git pull` the slice branch, or `claude --teleport` the session.
 
@@ -61,7 +61,7 @@ A cloud session is a Claude Code session that runs on an Anthropic-managed VM ag
 
 ## One-time setup
 
-1. **Tools (Omarchy).** Node through mise, as Omarchy does it: `mise use -g node@24`, then `corepack enable` so the repo's pinned pnpm version is used. Install the GitHub CLI if it's missing (`sudo pacman -S github-cli`) and log in with `gh auth login`. Then install Claude Code, and put Expo Go on your Android phone. Accounts needed later: Expo (S11), Google Play Console (S11), a hosting provider (S10).
+1. **Tools (Omarchy).** Node through mise, as Omarchy does it: `mise use -g node@24`, then `corepack enable` so the repo's pinned pnpm version is used. Install the GitHub CLI if it's missing (`sudo pacman -S github-cli`) and log in with `gh auth login`. Then install Claude Code, and put Expo Go on your Android phone. Accounts needed later: Google Play Console (start in S08 — verification takes days), a hosting provider (S10), Expo (S11).
 2. **Repo.** Create it and add this kit:
    ```bash
    mkdir our-players && cd our-players
@@ -72,7 +72,9 @@ A cloud session is a Claude Code session that runs on an Anthropic-managed VM ag
    ```
    A **public** repo is the easy path. Branch protection and GitHub Pages (for the privacy policy) are free for public repos on GitHub Free, Actions minutes are free for public repos, and the API User-Agent can point to a page the API operators can open. A private repo needs GitHub Pro for branch protection; Pro is free for students through GitHub Education.
 3. **Repo settings** (GitHub → Settings → General): under Pull Requests, allow merge commits and turn on **Automatically delete head branches**.
-4. **Protect `main` after S00's first CI run** (Settings → Branches → add a rule for `main`): **Require a pull request before merging** with no required approvals (you can't approve your own PR), **Require status checks to pass** with the `verify` check, and **Do not allow bypassing the above settings**. Without that last box, repository admins skip the rule — that's you, and Claude working through your `gh` login.
+4. **Protect `main`, in two steps** (Settings → Branches → add a rule for `main`):
+   - *Now, before K0 merges:* **Require a pull request before merging** with no required approvals (you can't approve your own PR), and **Do not allow bypassing the above settings**. Without that last box, repository admins skip the rule — that's you, and Claude working through your `gh` login or a cloud session.
+   - *After S00's first CI run:* add **Require status checks to pass** with both checks, `verify (22)` and `verify (24)` (GitHub only lists a check once it has run).
 5. **Firewall, for testing on your phone.** Omarchy's firewall blocks incoming connections except SSH and LocalSend, so Expo Go can't reach Metro (8081) or the dev API (3001) on your computer. Allow both from your home network (adjust the range to yours):
    ```bash
    sudo ufw allow proto tcp from 192.168.0.0/16 to any port 8081,3001
@@ -105,7 +107,7 @@ A cloud session is a Claude Code session that runs on an Anthropic-managed VM ag
 | `.claude/hooks/format-file.mjs` | After every Edit/Write: formats that file with Biome (silent; skips fixtures; does nothing until Biome is installed in S00) |
 | `.claude/agents/reviewer.md` | Read-only reviewer: checks a diff against acceptance criteria, architecture rules and test trustworthiness; reports, never edits |
 | `.claude/agents/test-writer.md` | Writes failing tests from spec + fixtures before implementation; never touches `src/` |
-| `.claude/skills/handoff/` | `/handoff` — verify → reviewer → fix → PROGRESS/DECISIONS → commit → push → PR (the slice PR; from a cloud session, a small PR into the slice branch) → briefing posted on it → CI result |
+| `.claude/skills/handoff/` | `/handoff` — verify → reviewer → fix → PROGRESS/DECISIONS → commit → push → the slice PR (created on the first handoff) → briefing posted on it → CI result |
 | `.claude/skills/slice-review/` | `/slice-review <n>` — independent review of the slice's PR in a fresh session, at high effort → `docs/reviews/slice-<n>.md` + a PR review with inline comments |
 | `.claude/skills/walkthrough/` | `/walkthrough <area>` — a linear, read-in-order tour of code for you to learn from |
 | `.claude/rules/*.md` | Path-scoped instructions that load only when Claude works on matching files: adapters, mobile code, tests |
@@ -114,7 +116,7 @@ A cloud session is a Claude Code session that runs on an Anthropic-managed VM ag
 
 ## The session loop
 
-1. **Orient.** The SessionStart hook injects branch, recent commits and the current state. Set the effort the SESSIONS.md Overview gives for the session (`/effort high` or leave the default medium). The prompt tells Claude to read PROGRESS.md and its SESSIONS.md section, and to *first run the tests*.
+1. **Orient.** The SessionStart hook injects branch, recent commits and the current state. Set the effort the SESSIONS.md Overview gives for the session, every time: `/effort medium` or `/effort high`. A level typed after `/effort` also becomes your default, so leaving it out means inheriting the last session's level. The prompt tells Claude to read PROGRESS.md and its SESSIONS.md section, and to *first run the tests*.
 2. **Plan** (plan mode, read-only). Claude explores, possibly via the built-in Explore/Plan subagents, and proposes a plan. Check that it names files and interfaces, maps tests to the acceptance criteria, stays inside the scope, justifies any new dependency, and asks instead of guessing. Push back, or `Ctrl+G` to edit the plan in your editor (Neovim on Omarchy).
 3. **Approve.** "Yes, and use auto mode" lets Claude work without routine prompts while a classifier screens risky actions; your ask rules still stop it before pushes, merges, resets and new dependencies. While you're learning, "Yes, manually approve edits" lets you watch every change.
 4. **Build.** Red/green: failing test → watch it fail → implement → green. Interrupt with `Esc` the moment it drifts. One correction is normal; **after two failed corrections, stop**: exit or `/clear`, then restart with a better prompt that includes what you learned.
@@ -126,7 +128,7 @@ A cloud session is a Claude Code session that runs on an Anthropic-managed VM ag
 ## The slice loop
 
 1. The slice's last session is handed off; its PR is still a draft.
-2. New terminal on the slice branch: `claude`, then `/slice-review <n>` (or a cloud session started from the slice branch). Approve the review it presents in plan mode; it commits the review file (locally), posts it to the PR and marks the PR ready.
+2. New terminal on the slice branch: `claude`, then `/slice-review <n>` (or a cloud session started from the slice branch). Approve the review it presents in plan mode; it commits the review file, posts it to the PR and marks the PR ready.
 3. Open the PR (`gh pr view --web`): the summary is in the conversation tab, findings sit inline in **Files changed**. Decide accept, reject or defer for each finding.
 4. Run the "Review fixes" template from SESSIONS.md with your decisions, then `/handoff`.
 5. When CI is green, merge on GitHub with **Create a merge commit**, then `git switch main && git pull --ff-only`. The next slice starts from there.
@@ -173,14 +175,14 @@ Each practice below comes from Anthropic's Claude Code guidance or engineering w
 
 ### 8. Learning while delegating — your goal
 - After every session, read the files the briefing lists; use `/walkthrough` — Willison's "linear walkthrough" pattern — for code you didn't write.
-- Write some backend logic yourself where the tests already exist: `isShown` in S02; later candidates are country mapping, game-day math and the scheduler's decision function. Claude then reviews *your* code.
+- Write some backend logic yourself where the tests already exist: `isShown` in S02a; later candidates are country mapping, game-day math and the scheduler's decision function. Claude then reviews *your* code.
 - Read the reviewer's findings, especially the inline ones on the PR; they're a running code-review lesson. Ask "why this design?" and capture the answer in DECISIONS.md.
 
 ### 9. Models, effort and usage on Pro
 - **Model: Opus 5.5**, the default for Pro in Claude Code. Sonnet 5.5 and Haiku are included too; Fable 5.1 (the strongest) bills usage credits on Pro, which this project doesn't need. The subagents use `model: inherit`, so they run on whatever the session runs.
-- **Effort** sets how hard the model thinks per turn: `low`, `medium` (Opus 5.5's default), `high`, `xhigh`, `max`. The SESSIONS.md Overview marks each session; run `/effort high` for the marked ones. The reviewer subagent and `/slice-review` set `effort: high` themselves. For one hard question, put `ultrathink` in the prompt instead of raising effort for the whole session. `xhigh` and `max` cost a lot of usage for rare gains.
+- **Effort** sets how hard the model thinks per turn: `low`, `medium` (Opus 5.5's default), `high`, `xhigh`, `max`. The SESSIONS.md Overview gives each session's level; set it at the start of every session (`/effort medium` or `/effort high`), because a typed level is saved as your default. To change it for one session only, run `/effort` without an argument and press `s` in the slider. The reviewer subagent and `/slice-review` set `effort: high` themselves. For one hard question, put `ultrathink` in the prompt instead of raising effort for the whole session. `xhigh` and `max` cost a lot of usage for rare gains.
 - **Context:** Opus 5.5 and Sonnet 5.5 have 1M-token windows, and Claude Code auto-compacts only near the end of one. The window is no reason to let sessions grow: quality and usage both get worse as context fills (§1), hence the ~200K-token budget per session.
-- **If usage limits bite:** `/model opusplan` uses Opus in plan mode and Sonnet for the implementation, keeping the strong model where the thinking happens. Move sessions marked *either* to the cloud while the credit lasts (see Cloud sessions).
+- **If usage limits bite:** `/model opusplan` uses Opus in plan mode and Sonnet for the implementation, keeping the strong model where the thinking happens. If a cloud credit turns out to cover cloud sessions (see Cloud sessions), move sessions marked *either* there.
 - The reviewer runs at every handoff, as you chose. Subagents draw on the same usage limits as your session; `/usage` shows where usage goes.
 - Spreading sessions over days, as you plan, suits usage limits that reset over time. If a session runs out mid-way, stop at a green checkpoint (or `/handoff`) and continue later with the "Resume" template; PROGRESS.md, git and the PR carry the state.
 - **Optional:** Pro includes three one-time free runs of `/code-review ultra`, a cloud review by a fleet of agents that reproduces each finding before reporting it (after the free runs it bills usage credits, typically $5–25 per review). Spend them on the riskiest PRs — slices 1, 2 and 4 — with `/code-review ultra <PR number>`. Very large diffs (by default more than 500 files or 8,000 changed lines) are refused.
@@ -217,7 +219,7 @@ Specific to this project:
 | `gh pr view --web` · `gh pr checks` | Open the current branch's PR in the browser · see its CI status |
 | `/rename` · `claude --continue` · `claude --resume` | Name and resume sessions |
 | `/permissions` · `/hooks` · `/skills` · `/memory` · `/doctor` | Inspect and tidy the configuration |
-| `/model` · `/effort high` · `/usage` | Switch model · set effort (`s` = this session only) · see usage |
+| `/model` · `/effort high` · `/usage` | Switch model · set effort and save it as the default (`/effort` alone opens a slider: `s` = this session only) · see usage |
 | `claude --cloud "<prompt>"` · `claude --teleport` | Start a cloud session on the current branch · pull a cloud session into this terminal |
 | `/statusline <description>` | Set up a status line, e.g. showing context tokens used |
 
