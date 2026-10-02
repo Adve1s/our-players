@@ -9,7 +9,17 @@ import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 
 const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const FORMATTABLE = new Set([
-  '.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json', '.jsonc', '.css',
+  '.ts',
+  '.tsx',
+  '.mts',
+  '.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.json',
+  '.jsonc',
+  '.css',
 ]);
 const SKIP = /(^|[\\/])(node_modules|fixtures|\.data|\.expo|\.screenshots|dist|\.git)([\\/]|$)/;
 
