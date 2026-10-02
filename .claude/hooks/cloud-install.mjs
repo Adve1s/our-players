@@ -13,7 +13,8 @@ function run(command) {
     cwd: root,
     shell: true,
     stdio: ['ignore', process.stderr, process.stderr],
-    timeout: 600_000,
+    // Two commands must finish inside the hook's 600 s limit, so the FAILED line still prints.
+    timeout: 280_000,
   });
   return result.status === 0;
 }
