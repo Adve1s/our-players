@@ -9,7 +9,7 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 - **How to try it:** `pnpm install && pnpm verify`; `pnpm dev:server` then `curl localhost:3001/health`; `pnpm dev:mobile`, press `w`, or scan the QR code with Expo Go (needs the ufw rule from WORKFLOW.md step 5).
 - **Next session:** S01 — Data spike + fixtures (local, same branch).
 - **Notes for the next session:**
-  - Owner to-dos: phone check in Expo Go; after the first green CI run, add `verify (22)` and `verify (24)` as required checks on `main`.
+  - Done by the owner: the placeholder renders in Expo Go on the phone; `verify (22)` and `verify (24)` are required checks on `main`.
   - pnpm 12 fails installs on unapproved build scripts: a new dependency with an install script needs an `allowBuilds` entry in `pnpm-workspace.yaml` (only esbuild so far).
   - TypeScript 6 defaults `types` to `[]`: server code that uses Node globals relies on `types: ["node"]` in `apps/server/tsconfig.json`.
   - Server tests run with `apps/server/test/setup.ts`, which makes any real `fetch` throw.
@@ -48,5 +48,5 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Decisions: D-022 (toolchain pins), D-023 (Expo deps and pnpm settings).
 - Read these: `pnpm-workspace.yaml`, `.github/workflows/ci.yml`, `apps/server/src/config.ts`, `apps/mobile/app/index.tsx`, `packages/shared/package.json`.
 - Reviewer: approve, no findings; fixed 2 nits (hook timeouts, Node types removed from shared), parked 1 (mobile in Vitest projects).
-- CI: see the PR (first run).
-- Follow-ups: owner adds required checks on `main` after the first green run.
+- CI: green (`verify (22)`, `verify (24)`).
+- Follow-ups: none; the owner did the phone check and added the required checks on `main`.
