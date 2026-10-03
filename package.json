@@ -17,11 +17,12 @@
     "job": "node scripts/not-yet.mjs job S04a",
     "recap": "node scripts/not-yet.mjs recap S04a",
     "inspect": "node scripts/not-yet.mjs inspect S03",
-    "fixtures:record": "node scripts/not-yet.mjs fixtures:record S01",
+    "fixtures:record": "pnpm --filter @our-players/server fixtures:record",
     "db:generate": "node scripts/not-yet.mjs db:generate S02b",
     "db:migrate": "node scripts/not-yet.mjs db:migrate S02b",
     "db:reset": "node scripts/not-yet.mjs db:reset S02b",
-    "screenshots": "node scripts/not-yet.mjs screenshots S08"
+    "screenshots": "node scripts/not-yet.mjs screenshots S08",
+    "spike": "pnpm --filter @our-players/server spike"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fixtures:record": "tsx scripts/fixtures-record.ts",
+    "spike": "tsx scripts/spike/index.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
