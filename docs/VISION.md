@@ -208,7 +208,7 @@ S01 verified the endpoints, field paths and quirks in `docs/sources/nhl.md` and 
 
 **NHL — official but undocumented, keyless.** Base `https://api-web.nhle.com/v1`.
 - Player `/player/{id}/landing`: `birthCountry` (alpha-3), position, current team, `featuredStats`, `last5Games`, `seasonTotals` (career, including national-team entries).
-- Games: `/score/{date}`, `/schedule/{date}`, `/gamecenter/{gameId}/boxscore`.
+- Games: `/score/{date}`, `/schedule/{date}`, `/gamecenter/{gameId}/boxscore`; period scores from `/gamecenter/{gameId}/right-rail`.
 - Rosters: `/roster/{teamAbbrev}/current`.
 - Bulk season stats: `https://api.nhle.com/stats/rest/en/skater/summary?cayenneExp=seasonId=20262027` (paginated; goalie equivalent).
 - Community docs: https://github.com/Zmalski/NHL-API-Reference
@@ -217,7 +217,7 @@ S01 verified the endpoints, field paths and quirks in `docs/sources/nhl.md` and 
 - Scoreboard: `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD`.
 - Summary + box score: `.../nba/summary?event={eventId}`; `boxscore.players[].statistics[]` has `labels` [MIN, PTS, FG, 3PT, FT, REB, AST, TO, STL, BLK, OREB, DREB, PF, +/-], per-athlete `stats` arrays, `didNotPlay` and `starter` flags. Map by **label**, never by position in the array.
 - Athlete: `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/{id}` (`birthPlace.country` is a name).
-- Season stats: `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/{id}/overview` (splits "Regular Season" and "Career", per-game averages).
+- Season stats: bulk `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete` (per-game averages and totals, ~12 pages a season); per athlete `.../athletes/{id}/overview` (splits "Regular Season" and "Career", per-game averages).
 - Example: Kristaps Porziņģis = 3102531. Community docs: https://github.com/pseudo-r/Public-ESPN-API
 - ESPN also covers the NHL (`/sports/hockey/nhl/...`) — a possible backup source later.
 

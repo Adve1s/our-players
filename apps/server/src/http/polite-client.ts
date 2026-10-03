@@ -132,7 +132,7 @@ export function createPoliteClient(options: PoliteClientOptions): PoliteClient {
       // than stall a job silently until it lifts.
       if (state.nextAllowedAt - Date.now() > maxRetryAfterMs) {
         const until = new Date(state.nextAllowedAt).toISOString();
-        throw new UpstreamError(`${url}: ${host} on hold until ${until}`, url, attemptNo - 1);
+        throw new UpstreamError(`${url}: ${host} on hold until ${until}`, url, 0);
       }
       const startAt = Math.max(state.nextAllowedAt, retryAt);
       await sleep(startAt - Date.now());

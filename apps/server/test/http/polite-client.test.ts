@@ -207,7 +207,8 @@ describe('polite client', () => {
       { status: 200 },
     ]);
     await settle(c.get('https://a.example/1'));
-    vi.setSystemTime(T0 + 3_600_000);
+    // Inside the last minute of the hold: the request waits for it rather than failing or going early.
+    vi.setSystemTime(T0 + 3_540_000);
     const response = await settle(c.get('https://a.example/2'));
     expect(response).toMatchObject({ status: 200 });
     expect(calls.map((call) => call.at)).toEqual([0, 3_600_000]);
