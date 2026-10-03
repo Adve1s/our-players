@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "score",
+  "id": "2026-10-04",
+  "url": "https://api-web.nhle.com/v1/score/2026-10-04",
+  "fetchedAt": "2026-10-03T00:14:10.391Z",
+  "status": 200,
+  "bytes": 17171
+}

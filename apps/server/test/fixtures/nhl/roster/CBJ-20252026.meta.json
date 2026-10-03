@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "roster",
+  "id": "CBJ-20252026",
+  "url": "https://api-web.nhle.com/v1/roster/CBJ/20252026",
+  "fetchedAt": "2026-10-03T00:13:40.558Z",
+  "status": 200,
+  "bytes": 8557
+}

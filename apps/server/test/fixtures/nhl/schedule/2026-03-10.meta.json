@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "schedule",
+  "id": "2026-03-10",
+  "url": "https://api-web.nhle.com/v1/schedule/2026-03-10",
+  "fetchedAt": "2026-10-03T00:12:05.245Z",
+  "status": 200,
+  "bytes": 105323
+}

@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "skater-summary",
+  "id": "20252026",
+  "url": "https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=%5B%7B%22property%22%3A%22points%22%2C%22direction%22%3A%22DESC%22%7D%2C%7B%22property%22%3A%22playerId%22%2C%22direction%22%3A%22ASC%22%7D%5D&start=0&limit=100&cayenneExp=seasonId%3D20252026+and+gameTypeId%3D2",
+  "fetchedAt": "2026-10-03T00:14:03.130Z",
+  "status": 200,
+  "bytes": 46408
+}

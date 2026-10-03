@@ -1,0 +1,9 @@
+{
+  "source": "espn-nba",
+  "endpoint": "stats-byathlete",
+  "id": "2026-2",
+  "url": "https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=false&page=1&limit=50&sort=offensive.avgPoints%3Adesc&season=2026&seasontype=2",
+  "fetchedAt": "2026-10-03T00:15:36.609Z",
+  "status": 200,
+  "bytes": 366180
+}

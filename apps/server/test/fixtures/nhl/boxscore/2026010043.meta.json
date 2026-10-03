@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "boxscore",
+  "id": "2026010043",
+  "url": "https://api-web.nhle.com/v1/gamecenter/2026010043/boxscore",
+  "fetchedAt": "2026-10-03T00:13:52.485Z",
+  "status": 200,
+  "bytes": 12688
+}

@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "gamecenter-right-rail",
+  "id": "2025021018",
+  "url": "https://api-web.nhle.com/v1/gamecenter/2025021018/right-rail",
+  "fetchedAt": "2026-10-03T00:14:59.525Z",
+  "status": 200,
+  "bytes": 6359
+}

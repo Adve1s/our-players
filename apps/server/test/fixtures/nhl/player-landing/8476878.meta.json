@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "player-landing",
+  "id": "8476878",
+  "url": "https://api-web.nhle.com/v1/player/8476878/landing",
+  "fetchedAt": "2026-10-03T00:13:55.811Z",
+  "status": 200,
+  "bytes": 18886
+}

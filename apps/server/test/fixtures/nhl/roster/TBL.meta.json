@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "roster",
+  "id": "TBL",
+  "url": "https://api-web.nhle.com/v1/roster/TBL/current",
+  "fetchedAt": "2026-10-03T00:13:06.670Z",
+  "status": 200,
+  "bytes": 10706
+}

@@ -1,0 +1,9 @@
+{
+  "source": "espn-nba",
+  "endpoint": "summary",
+  "id": "401810798",
+  "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=401810798",
+  "fetchedAt": "2026-10-03T00:12:57.823Z",
+  "status": 200,
+  "bytes": 432141
+}
