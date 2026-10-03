@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Cloud sessions run Node 22, so the code must work there too.
+          - node: 22
+            node-version: '22'
+          # The pinned local version, read from the same file mise uses.
+          - node: 24
+            node-version-file: .tool-versions
+    steps:
+      - uses: actions/checkout@v7
+      # Reads the pnpm version from package.json's packageManager field.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          node-version-file: ${{ matrix.node-version-file }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify

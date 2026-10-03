@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "gamecenter-landing",
+  "id": "2025021018",
+  "url": "https://api-web.nhle.com/v1/gamecenter/2025021018/landing",
+  "fetchedAt": "2026-10-03T00:14:51.510Z",
+  "status": 200,
+  "bytes": 19631
+}

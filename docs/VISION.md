@@ -62,7 +62,7 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
 | Hockey goalie | SV/SA · SV% · GA · decision | `28/30 · .933 · 2 GA · W` |
 | Basketball | PTS · REB · AST · MIN, then shooting | `22 PTS · 8 REB · 3 AST · 31 MIN` / `FG 8-15 · 3PT 3-7 · FT 3-3` |
 
-- **Did-not-play rows:** if the box score lists a shown player as not playing (NBA DNP), show "DNP — reason". If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". A player on no current roster (sent to the AHL or G League, released, retired) has no current team, so he gets no such row. (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
+- **Did-not-play rows:** if the box score lists a shown player as not playing, show "DNP — reason" (or "DNP" when the source gives no reason). That covers NBA DNPs and NHL players who dressed but got no ice time, such as a backup goalie with `toi` `"00:00"` (D-024). If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". A player on no current roster (sent to the AHL or G League, released, retired) has no current team, so he gets no such row. (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
 - **States:** loading skeleton; empty ("No games on this day", or "None of your players played on Fri, Oct 10" with a jump to the previous game day); error with retry; offline shows the last cached data with a banner.
 - **Pull to refresh.** Tapping a game opens the Game page; tapping a player opens the Player page (both slice 5).
 
@@ -150,7 +150,7 @@ Request budget (rough): ~100 scoreboard polls, ~60 box scores, ~65 roster calls,
 In this app, **nationality means sporting nationality: the national team a player represents** — or, for a player who hasn't represented one yet, the team he would be expected to represent. It is not citizenship: a player can hold several passports but represents one national team.
 
 - **One value per player:** an ISO 3166-1 alpha-3 code, or unknown (`null`), stored with its source: `birth` or `override`.
-- **Default: birth country.** Neither source has a nationality field, and for most players the birth country is right. The NHL gives an alpha-3 code directly. ESPN gives a country name ("Cameroon"; US-born players show "USA"), mapped to alpha-3 with an alias table (ESPN spellings; England, Scotland, Wales → GBR). An unknown name maps to `null` with a warning — never a guess.
+- **Default: birth country.** v1 uses no source nationality field (the NHL stats API's `nationalityCode` and ESPN's `citizenship` exist; D-025), and for most players the birth country is right. The NHL gives an alpha-3 code directly. ESPN gives a country name ("Cameroon"; US-born players show "USA"), mapped to alpha-3 with an alias table (ESPN spellings; England, Scotland, Wales → GBR). An unknown name maps to `null` with a warning — never a guess.
 - **Overrides** correct the default for players who represent a country other than their birth country. They live in `apps/server/data/nationality-overrides.json`, keyed by public player ID and reviewed in git; the roster job applies them, and an override replaces the birth-country default. Each entry also records the player's name, so the job can warn when an override's player isn't in the database (not in the league yet, or a typo) or the stored name doesn't match.
 
 Initial overrides:
@@ -188,7 +188,7 @@ Postgres everywhere (PGlite locally and in tests). Drizzle schema in `apps/serve
 | `player_external_ids` | `player_id`, `source`, `external_id` | Lets a later backup source map onto the same player |
 | `games` | `id`, `public_id`, `league`, `season` ("2026-27"), `season_type` (PRE/REG/POST), `game_date`, `start_time_utc`, `status`, `home_team_id`, `away_team_id`, scores, `period_scores` (jsonb), `ended_in` (REG/OT/SO), `final_at`, `boxscore_fetched_at`, `corrected_at`, `source`, `external_id` | `status` ∈ SCHEDULED, LIVE, FINAL, POSTPONED, CANCELLED |
 | `stat_lines` | `game_id`, `player_id`, `team_id`, `kind`, `played`, `dnp_reason`, `starter`, `stats` (jsonb), `updated_at` | PK (`game_id`, `player_id`); `kind` ∈ `hockey_skater`, `hockey_goalie`, `basketball_player`; `stats` validated by a zod schema per kind |
-| `season_stats` | `player_id`, `season`, `season_type`, `kind`, `basis` (`totals`/`per_game`), `stats` (jsonb), `fetched_at` | NHL gives totals; ESPN's overview gives per-game averages — stored as given |
+| `season_stats` | `player_id`, `season`, `season_type`, `kind`, `basis` (`totals`/`per_game`), `stats` (jsonb), `fetched_at` | NHL gives totals; ESPN's bulk `statistics/byathlete` gives per-game averages and totals (`docs/sources/espn-nba.md` Q5) — stored as given |
 | `job_runs` | `id`, `job`, `args`, `started_at`, `finished_at`, `status`, `counts`, `error` | Observability |
 
 **Stat payloads** (zod schemas in `packages/shared`):
@@ -204,18 +204,20 @@ Why common columns plus typed JSON: new sports and positions add a `kind` and a 
 
 ## 9. Data sources (tested live 2026-10-02)
 
+S01 verified the endpoints, field paths and quirks in `docs/sources/nhl.md` and `docs/sources/espn-nba.md`; where they differ from this section, they win.
+
 **NHL — official but undocumented, keyless.** Base `https://api-web.nhle.com/v1`.
 - Player `/player/{id}/landing`: `birthCountry` (alpha-3), position, current team, `featuredStats`, `last5Games`, `seasonTotals` (career, including national-team entries).
-- Games: `/score/{date}`, `/schedule/{date}`, `/gamecenter/{gameId}/boxscore`.
+- Games: `/score/{date}`, `/schedule/{date}`, `/gamecenter/{gameId}/boxscore`; period scores from `/gamecenter/{gameId}/right-rail`.
 - Rosters: `/roster/{teamAbbrev}/current`.
 - Bulk season stats: `https://api.nhle.com/stats/rest/en/skater/summary?cayenneExp=seasonId=20262027` (paginated; goalie equivalent).
 - Community docs: https://github.com/Zmalski/NHL-API-Reference
 
 **NBA — ESPN, unofficial, keyless.**
-- Scoreboard: `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD` (verify `dates` in S01).
+- Scoreboard: `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD`.
 - Summary + box score: `.../nba/summary?event={eventId}`; `boxscore.players[].statistics[]` has `labels` [MIN, PTS, FG, 3PT, FT, REB, AST, TO, STL, BLK, OREB, DREB, PF, +/-], per-athlete `stats` arrays, `didNotPlay` and `starter` flags. Map by **label**, never by position in the array.
 - Athlete: `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/{id}` (`birthPlace.country` is a name).
-- Season stats: `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/{id}/overview` (splits "Regular Season" and "Career", per-game averages).
+- Season stats: bulk `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete` (per-game averages and totals, ~12 pages a season); per athlete `.../athletes/{id}/overview` (splits "Regular Season" and "Career", per-game averages).
 - Example: Kristaps Porziņģis = 3102531. Community docs: https://github.com/pseudo-r/Public-ESPN-API
 - ESPN also covers the NHL (`/sports/hockey/nhl/...`) — a possible backup source later.
 

@@ -1,0 +1,9 @@
+{
+  "source": "espn-nba",
+  "endpoint": "scoreboard",
+  "id": "2026-10-04",
+  "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20261004",
+  "fetchedAt": "2026-10-03T00:14:11.971Z",
+  "status": 200,
+  "bytes": 15257
+}

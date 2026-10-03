@@ -1,0 +1,9 @@
+{
+  "source": "nhl",
+  "endpoint": "roster",
+  "id": "PIT",
+  "url": "https://api-web.nhle.com/v1/roster/PIT/current",
+  "fetchedAt": "2026-10-03T00:13:38.998Z",
+  "status": 200,
+  "bytes": 10877
+}

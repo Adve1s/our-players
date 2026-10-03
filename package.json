@@ -1,0 +1,33 @@
+{
+  "name": "our-players",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "dev:server": "pnpm --filter @our-players/server dev",
+    "dev:mobile": "pnpm --filter @our-players/mobile start",
+    "job": "node scripts/not-yet.mjs job S04a",
+    "recap": "node scripts/not-yet.mjs recap S04a",
+    "inspect": "node scripts/not-yet.mjs inspect S03",
+    "fixtures:record": "pnpm --filter @our-players/server fixtures:record",
+    "db:generate": "node scripts/not-yet.mjs db:generate S02b",
+    "db:migrate": "node scripts/not-yet.mjs db:migrate S02b",
+    "db:reset": "node scripts/not-yet.mjs db:reset S02b",
+    "screenshots": "node scripts/not-yet.mjs screenshots S08",
+    "spike": "pnpm --filter @our-players/server spike"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^22.20.5",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

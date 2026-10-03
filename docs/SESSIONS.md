@@ -260,7 +260,7 @@ After I approve: red/green for the repositories and the recomputation. Prove eac
 **Goal:** NHL raw JSON → normalized model, proven against every recorded fixture.
 
 **In scope**
-- `apps/server/src/sources/nhl/`: URL builders and fetchers (polite client injected), raw zod schemas (only fields we use, unknown fields allowed), and **pure mappers**: schedule/score → games (status, period scores, OT/SO, season, season type, `gameDate`); boxscore → stat lines (skaters vs goalies by box-score section, TOI → seconds, save % as 0–1, decision) plus team/player stubs; roster → players (birth country, position group); landing → player enrichment; skater/goalie summary → season stats (totals).
+- `apps/server/src/sources/nhl/`: fetchers (polite client injected) reusing the URL builders in `endpoints.ts`, raw zod schemas (only fields we use, unknown fields allowed), and **pure mappers**: schedule/score → games (status — `FINAL` and `OFF` are both final, OT/SO, season, season type, `gameDate`); `gamecenter-right-rail` → period scores (the box score has none; `docs/sources/nhl.md` Q4); boxscore → stat lines (skaters vs goalies by box-score section, TOI → seconds, save % as 0–1, decision with `"O"` → OTL) plus team/player stubs; roster → players (birth country, position group); landing → player enrichment; skater/goalie summary → season stats (totals).
 - `packages/shared/src/countries.ts`: alpha-3 validation; scaffold for the ESPN name → code alias map.
 - `pnpm inspect nhl <endpoint> <fixture-id>` prints the normalized result.
 

@@ -67,6 +67,16 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.mjs\""
           }
         ]
+      },
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/cloud-install.mjs\"",
+            "timeout": 600
+          }
+        ]
       }
     ],
     "PostToolUse": [

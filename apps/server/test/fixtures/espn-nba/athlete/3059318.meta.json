@@ -1,0 +1,9 @@
+{
+  "source": "espn-nba",
+  "endpoint": "athlete",
+  "id": "3059318",
+  "url": "https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/3059318",
+  "fetchedAt": "2026-10-03T00:14:01.251Z",
+  "status": 200,
+  "bytes": 5887
+}
