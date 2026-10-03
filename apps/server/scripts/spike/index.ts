@@ -2,7 +2,7 @@
 // Replaced by `pnpm recap` in S04a.
 import { parseArgs } from 'node:util';
 import { loadConfig } from '../../src/config';
-import { createUpstreamClient } from '../../src/http/upstream';
+import { upstreamClient } from '../../src/http/upstream';
 import { nbaLines } from './nba';
 import { nhlLines } from './nhl';
 
@@ -12,7 +12,7 @@ if (!values.date || !/^\d{4}-\d{2}-\d{2}$/.test(values.date)) {
   process.exit(2);
 }
 
-const client = createUpstreamClient(loadConfig(process.env));
+const client = upstreamClient(loadConfig(process.env));
 const started = performance.now();
 // The two leagues live on different hosts, so they can run side by side within the per-host limit.
 const [nhl, nba] = await Promise.all([

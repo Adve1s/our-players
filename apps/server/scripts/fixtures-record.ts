@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { loadConfig } from '../src/config';
 import { fixtureSources, recordFixture } from '../src/fixtures/record';
-import { createUpstreamClient } from '../src/http/upstream';
+import { upstreamClient } from '../src/http/upstream';
 
 const FIXTURES_ROOT = fileURLToPath(new URL('../test/fixtures', import.meta.url));
 
@@ -23,7 +23,7 @@ if (!source || !endpoint || !id || positionals.length > 3) {
   process.exit(2);
 }
 
-const client = createUpstreamClient(loadConfig(process.env));
+const client = upstreamClient(loadConfig(process.env));
 try {
   const { path, meta } = await recordFixture({
     source,

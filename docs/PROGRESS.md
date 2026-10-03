@@ -9,7 +9,7 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 - **How to try it:** `pnpm verify`; `pnpm spike --date 2026-03-10` (live APIs, about 1 minute); `pnpm fixtures:record nhl score 2026-03-10` refuses because the file exists (add `--as try` to record a copy, then delete it); read `docs/sources/nhl.md` and `docs/sources/espn-nba.md`.
 - **Next session:** R0 — Slice 0 review (`/slice-review 0`, fresh session, same branch), then review fixes and merging PR #2.
 - **Notes for the next session:**
-  - Every upstream call goes through `createUpstreamClient(config)` (`apps/server/src/http/upstream.ts`). Endpoint URL builders live in `src/sources/<source>/endpoints.ts`, which the S03/S05 adapters should reuse.
+  - Every upstream call goes through `upstreamClient(config)` (`apps/server/src/http/upstream.ts`). Endpoint URL builders live in `src/sources/<source>/endpoints.ts`, which the S03/S05 adapters should reuse.
   - Fixtures are pretty-printed re-serializations; `.meta.json` `bytes` is the raw size. Biome ignores `test/fixtures`.
   - Source findings that shape S02a–S05: NHL period scores come from `gamecenter/{id}/right-rail` (not the box score); NHL OT/SO loss decision is `"O"`; preseason finals are `FINAL`, not `OFF`; ESPN has no past-season rosters; ESPN bulk season stats via `statistics/byathlete` (12 requests a season, map by `names`); ESPN DNP = `didNotPlay` only (`reason` also appears on players who played).
   - Decisions this session: D-024 (DNP rows include NHL `toi "00:00"`), D-025 (nationality stays birth country + override).
