@@ -24,7 +24,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `pnpm job <name> [--league nhl|nba] [--date YYYY-MM-DD] [--from --to]` — run one ingestion job now (S04a+)
 - `pnpm recap --date YYYY-MM-DD [--countries LVA]` — terminal morning recap from the DB (S04a+)
 - `pnpm inspect <source> <endpoint> <fixture-id>` — print the normalized result of a fixture (S03+)
-- `pnpm fixtures:record <source> <endpoint> <id-or-date> [--as <name>]` — record a raw upstream response (S01+); `--as` saves it under another file name
+- `pnpm fixtures:record <source> <endpoint> <id-or-date> [--as <name>] [--force]` — record a raw upstream response (S01+); `--as` saves it under another file name; `--force` overwrites
 - `pnpm db:generate` (new migration after schema change) · `pnpm db:migrate` · `pnpm db:reset` (local only)
 - `pnpm screenshots` — capture the web build's key screens to `apps/mobile/.screenshots/` (S08+)
 

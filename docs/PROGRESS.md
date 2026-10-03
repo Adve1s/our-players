@@ -14,7 +14,7 @@ Read this first in every session. **Current state** is rewritten at each `/hando
   - Source findings that shape S02a–S05: NHL period scores come from `gamecenter/{id}/right-rail` (not the box score); NHL OT/SO loss decision is `"O"`; preseason finals are `FINAL`, not `OFF`; ESPN has no past-season rosters; ESPN bulk season stats via `statistics/byathlete` (12 requests a season, map by `names`); ESPN DNP = `didNotPlay` only (`reason` also appears on players who played).
   - Decisions this session: D-024 (DNP rows include NHL `toi "00:00"`), D-025 (nationality stays birth country + override).
   - Merzļikins now plays for TOR; the CBJ fixtures are from before the move.
-  - The cloud-install hook (D-023) still hasn't run in a real cloud session.
+  - The cloud-install hook (S00) still hasn't run in a real cloud session.
 
 ## Known issues
 - (none)

@@ -188,7 +188,7 @@ Postgres everywhere (PGlite locally and in tests). Drizzle schema in `apps/serve
 | `player_external_ids` | `player_id`, `source`, `external_id` | Lets a later backup source map onto the same player |
 | `games` | `id`, `public_id`, `league`, `season` ("2026-27"), `season_type` (PRE/REG/POST), `game_date`, `start_time_utc`, `status`, `home_team_id`, `away_team_id`, scores, `period_scores` (jsonb), `ended_in` (REG/OT/SO), `final_at`, `boxscore_fetched_at`, `corrected_at`, `source`, `external_id` | `status` ∈ SCHEDULED, LIVE, FINAL, POSTPONED, CANCELLED |
 | `stat_lines` | `game_id`, `player_id`, `team_id`, `kind`, `played`, `dnp_reason`, `starter`, `stats` (jsonb), `updated_at` | PK (`game_id`, `player_id`); `kind` ∈ `hockey_skater`, `hockey_goalie`, `basketball_player`; `stats` validated by a zod schema per kind |
-| `season_stats` | `player_id`, `season`, `season_type`, `kind`, `basis` (`totals`/`per_game`), `stats` (jsonb), `fetched_at` | NHL gives totals; ESPN's overview gives per-game averages — stored as given |
+| `season_stats` | `player_id`, `season`, `season_type`, `kind`, `basis` (`totals`/`per_game`), `stats` (jsonb), `fetched_at` | NHL gives totals; ESPN's bulk `statistics/byathlete` gives per-game averages and totals (`docs/sources/espn-nba.md` Q5) — stored as given |
 | `job_runs` | `id`, `job`, `args`, `started_at`, `finished_at`, `status`, `counts`, `error` | Observability |
 
 **Stat payloads** (zod schemas in `packages/shared`):
@@ -204,6 +204,8 @@ Why common columns plus typed JSON: new sports and positions add a `kind` and a 
 
 ## 9. Data sources (tested live 2026-10-02)
 
+S01 verified the endpoints, field paths and quirks in `docs/sources/nhl.md` and `docs/sources/espn-nba.md`; where they differ from this section, they win.
+
 **NHL — official but undocumented, keyless.** Base `https://api-web.nhle.com/v1`.
 - Player `/player/{id}/landing`: `birthCountry` (alpha-3), position, current team, `featuredStats`, `last5Games`, `seasonTotals` (career, including national-team entries).
 - Games: `/score/{date}`, `/schedule/{date}`, `/gamecenter/{gameId}/boxscore`.
@@ -212,7 +214,7 @@ Why common columns plus typed JSON: new sports and positions add a `kind` and a 
 - Community docs: https://github.com/Zmalski/NHL-API-Reference
 
 **NBA — ESPN, unofficial, keyless.**
-- Scoreboard: `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD` (verify `dates` in S01).
+- Scoreboard: `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD`.
 - Summary + box score: `.../nba/summary?event={eventId}`; `boxscore.players[].statistics[]` has `labels` [MIN, PTS, FG, 3PT, FT, REB, AST, TO, STL, BLK, OREB, DREB, PF, +/-], per-athlete `stats` arrays, `didNotPlay` and `starter` flags. Map by **label**, never by position in the array.
 - Athlete: `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/{id}` (`birthPlace.country` is a name).
 - Season stats: `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/{id}/overview` (splits "Regular Season" and "Career", per-game averages).

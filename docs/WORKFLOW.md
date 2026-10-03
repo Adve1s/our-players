@@ -80,7 +80,7 @@ A cloud session is a Claude Code session that runs on an Anthropic-managed VM ag
    sudo ufw allow proto tcp from 192.168.0.0/16 to any port 8081,3001
    ```
 6. **Start Claude Code** in the repo (`claude`) and accept the workspace trust prompt; the project's allow rules only take effect once you trust the folder.
-7. **Check the setup:** `/context` (CLAUDE.md loaded), `/hooks` (one SessionStart and one PostToolUse hook), `/skills` (handoff, slice-review, walkthrough), `/permissions`, and ask "which custom subagents are available?" (reviewer, test-writer). Path-scoped rules load only when Claude reads matching files, so check them later: while Claude works on an adapter (S03), `/memory` should list `.claude/rules/adapters.md`.
+7. **Check the setup:** `/context` (CLAUDE.md loaded), `/hooks` (two SessionStart hooks — session context and cloud install — and one PostToolUse hook), `/skills` (handoff, slice-review, walkthrough), `/permissions`, and ask "which custom subagents are available?" (reviewer, test-writer). Path-scoped rules load only when Claude reads matching files, so check them later: while Claude works on an adapter (S03), `/memory` should list `.claude/rules/adapters.md`.
 8. Terminal sessions start in plan mode here (`permissions.defaultMode` in `.claude/settings.json`). If you also use the VS Code extension, set `claudeCode.initialPermissionMode` to `plan` there — the extension doesn't read project settings for the starting mode.
 9. **Optional: a desktop notification when Claude needs you** — for example, the push prompt at the end of `/handoff` while you're in another window. Add this to your personal `~/.claude/settings.json` (not the project's):
    ```json
