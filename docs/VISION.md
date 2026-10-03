@@ -62,7 +62,7 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
 | Hockey goalie | SV/SA · SV% · GA · decision | `28/30 · .933 · 2 GA · W` |
 | Basketball | PTS · REB · AST · MIN, then shooting | `22 PTS · 8 REB · 3 AST · 31 MIN` / `FG 8-15 · 3PT 3-7 · FT 3-3` |
 
-- **Did-not-play rows:** if the box score lists a shown player as not playing (NBA DNP), show "DNP — reason". If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". A player on no current roster (sent to the AHL or G League, released, retired) has no current team, so he gets no such row. (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
+- **Did-not-play rows:** if the box score lists a shown player as not playing, show "DNP — reason" (or "DNP" when the source gives no reason). That covers NBA DNPs and NHL players who dressed but got no ice time, such as a backup goalie with `toi` `"00:00"` (D-024). If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". A player on no current roster (sent to the AHL or G League, released, retired) has no current team, so he gets no such row. (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
 - **States:** loading skeleton; empty ("No games on this day", or "None of your players played on Fri, Oct 10" with a jump to the previous game day); error with retry; offline shows the last cached data with a banner.
 - **Pull to refresh.** Tapping a game opens the Game page; tapping a player opens the Player page (both slice 5).
 
@@ -150,7 +150,7 @@ Request budget (rough): ~100 scoreboard polls, ~60 box scores, ~65 roster calls,
 In this app, **nationality means sporting nationality: the national team a player represents** — or, for a player who hasn't represented one yet, the team he would be expected to represent. It is not citizenship: a player can hold several passports but represents one national team.
 
 - **One value per player:** an ISO 3166-1 alpha-3 code, or unknown (`null`), stored with its source: `birth` or `override`.
-- **Default: birth country.** Neither source has a nationality field, and for most players the birth country is right. The NHL gives an alpha-3 code directly. ESPN gives a country name ("Cameroon"; US-born players show "USA"), mapped to alpha-3 with an alias table (ESPN spellings; England, Scotland, Wales → GBR). An unknown name maps to `null` with a warning — never a guess.
+- **Default: birth country.** v1 uses no source nationality field (the NHL stats API's `nationalityCode` and ESPN's `citizenship` exist; D-025), and for most players the birth country is right. The NHL gives an alpha-3 code directly. ESPN gives a country name ("Cameroon"; US-born players show "USA"), mapped to alpha-3 with an alias table (ESPN spellings; England, Scotland, Wales → GBR). An unknown name maps to `null` with a warning — never a guess.
 - **Overrides** correct the default for players who represent a country other than their birth country. They live in `apps/server/data/nationality-overrides.json`, keyed by public player ID and reviewed in git; the roster job applies them, and an override replaces the birth-country default. Each entry also records the player's name, so the job can warn when an override's player isn't in the database (not in the league yet, or a typo) or the stored name doesn't match.
 
 Initial overrides:
