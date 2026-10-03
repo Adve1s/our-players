@@ -178,12 +178,38 @@ describe('polite client', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('holds later requests to that host until an excessive Retry-After has passed', async () => {
+  it('fails later requests to that host fast while an excessive Retry-After holds it', async () => {
     const { client: c, calls } = client([
       { status: 429, headers: { 'Retry-After': '3600' } },
       { status: 200 },
     ]);
-    await settle(Promise.allSettled([c.get('https://a.example/1'), c.get('https://a.example/2')]));
+    let failedAt: number | undefined;
+    const [, second] = (await settle(
+      Promise.allSettled([
+        c.get('https://a.example/1'),
+        c.get('https://a.example/2').catch((error: unknown) => {
+          failedAt = Date.now() - T0;
+          throw error;
+        }),
+      ]),
+    )) as PromiseSettledResult<unknown>[];
+    expect(second?.status).toBe('rejected');
+    const reason = second?.status === 'rejected' ? second.reason : undefined;
+    expect(reason).toBeInstanceOf(UpstreamError);
+    expect(String(reason)).toMatch(/a\.example on hold until/);
+    expect(failedAt).toBe(0);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('sends to that host again once the hold has passed', async () => {
+    const { client: c, calls } = client([
+      { status: 429, headers: { 'Retry-After': '3600' } },
+      { status: 200 },
+    ]);
+    await settle(c.get('https://a.example/1'));
+    vi.setSystemTime(T0 + 3_600_000);
+    const response = await settle(c.get('https://a.example/2'));
+    expect(response).toMatchObject({ status: 200 });
     expect(calls.map((call) => call.at)).toEqual([0, 3_600_000]);
   });
 

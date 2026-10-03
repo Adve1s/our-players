@@ -128,6 +128,12 @@ export function createPoliteClient(options: PoliteClientOptions): PoliteClient {
   async function run(url: string, host: string, state: HostState): Promise<PoliteResponse> {
     let retryAt = 0;
     for (let attemptNo = 1; ; attemptNo++) {
+      // A hold longer than we'd ever wait comes from an excessive Retry-After: fail now rather
+      // than stall a job silently until it lifts.
+      if (state.nextAllowedAt - Date.now() > maxRetryAfterMs) {
+        const until = new Date(state.nextAllowedAt).toISOString();
+        throw new UpstreamError(`${url}: ${host} on hold until ${until}`, url, attemptNo - 1);
+      }
       const startAt = Math.max(state.nextAllowedAt, retryAt);
       await sleep(startAt - Date.now());
       state.nextAllowedAt = Date.now() + minIntervalMs;
