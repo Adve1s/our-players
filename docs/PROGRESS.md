@@ -3,17 +3,16 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** S01 — Data spike + fixtures (2026-10-03): polite HTTP client, fixture recorder, 33 recorded fixtures, throwaway spike, `docs/sources/` notes answering VISION §9.
-- **Branch / PR:** `slice-0-setup` → `main`, draft PR #2 "Slice 0: Setup + data spike" (S00 and S01 ticked).
-- **What works:** `pnpm verify` (45 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]`; `pnpm spike --date YYYY-MM-DD` prints Latvians' NHL and NBA lines (2026-03-10: Merzļikins, Girgensons, Balinskis, Šilovs DNP, Porziņģis), about 59 requests and 42 s; plus everything from S00 (`/health`, placeholder app).
-- **How to try it:** `pnpm verify`; `pnpm spike --date 2026-03-10` (live APIs, about 1 minute); `pnpm fixtures:record nhl score 2026-03-10` refuses because the file exists (add `--as try` to record a copy, then delete it); read `docs/sources/nhl.md` and `docs/sources/espn-nba.md`.
-- **Next session:** R0 — Slice 0 review (`/slice-review 0`, fresh session, same branch), then review fixes and merging PR #2.
+- **Last session:** R0 — Slice 0 review + fixes (2026-10-03): review in `docs/reviews/slice-0.md` (0 blockers, 0 majors, 3 minors, 3 nits), all accepted and fixed.
+- **Branch / PR:** `slice-0-setup` → `main`, PR #2 "Slice 0: Setup + data spike", ready for review; every checklist box ticked. The owner merges it once CI is green.
+- **What works:** `pnpm verify` (51 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]`; `pnpm spike --date YYYY-MM-DD` (live, Latvians' NHL + NBA lines); `/health`; placeholder app on web and Android.
+- **How to try it:** `pnpm verify`; `pnpm test polite` (the hold tests); `pnpm fixtures:record nhl score 2026-03-10` refuses because the file exists, without any request.
+- **Next session:** S02a — Domain model, selection rule, nationality. First merge PR #2, then `git switch main && git pull --ff-only`; S02a creates `slice-1-data-core` from `main`.
 - **Notes for the next session:**
-  - Every upstream call goes through `upstreamClient(config)` (`apps/server/src/http/upstream.ts`). Endpoint URL builders live in `src/sources/<source>/endpoints.ts`, which the S03/S05 adapters should reuse.
+  - Every upstream call goes through `upstreamClient(config)` (`apps/server/src/http/upstream.ts`), one shared client per process (D-027): inject it into jobs, don't call it inside them. Endpoint URL builders live in `src/sources/<source>/endpoints.ts`; S03/S05 adapters reuse them.
+  - A host held by an excessive `Retry-After` (> 120 s) now fails new requests at once with `UpstreamError` "… on hold until …" (D-027); jobs should record that as a failed run.
+  - SESSIONS §S03 and VISION §8/§9 now carry S01's findings (right-rail period scores, `"O"` → OTL, `FINAL`/`OFF` both final, ESPN `byathlete`); `docs/sources/*.md` win where they differ from VISION.
   - Fixtures are pretty-printed re-serializations; `.meta.json` `bytes` is the raw size. Biome ignores `test/fixtures`.
-  - Source findings that shape S02a–S05: NHL period scores come from `gamecenter/{id}/right-rail` (not the box score); NHL OT/SO loss decision is `"O"`; preseason finals are `FINAL`, not `OFF`; ESPN has no past-season rosters; ESPN bulk season stats via `statistics/byathlete` (12 requests a season, map by `names`); ESPN DNP = `didNotPlay` only (`reason` also appears on players who played).
-  - Decisions this session: D-024 (DNP rows include NHL `toi "00:00"`), D-025 (nationality stays birth country + override).
-  - Merzļikins now plays for TOR; the CBJ fixtures are from before the move.
   - The cloud-install hook (S00) still hasn't run in a real cloud session.
 
 ## Known issues
@@ -65,3 +64,11 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve; fixed 2 minors (excessive `Retry-After` now holds the host; body-stall timeout test) and 4 nits (doc counts, `Object.hasOwn` lookup, re-serialization note); left the spike's bare `JSON.parse` (throwaway; parked for adapters).
 - CI: see PR #2.
 - Follow-ups: 2026 NBA preseason fixture; IR / G League "Not in lineup" rule; ESPN athletes without an ID (S05). After handoff, the owner hit a spike crash on 2026-01-10 (ESPN athlete without `id`): fixed, fixture `summary/401810401` added. About 215 upstream requests used this session.
+
+### R0 — Slice 0 review + fixes — 2026-10-03 — PR #2 (`slice-0-setup`)
+- Changed: `docs/reviews/slice-0.md` (review + owner decisions); polite client fails fast while a host is on hold (F1); `upstreamClient()` shared per process (F2); URL-builder tests (F5); SESSIONS §S03, VISION §8/§9, WORKFLOW, CLAUDE.md `--force`, doc nits (F3, F4, F6).
+- Decisions: D-027 (host hold fails fast; one upstream client per process). D-022 stands (owner didn't answer Q1).
+- Read these: `apps/server/src/http/polite-client.ts` (hold check), `apps/server/src/http/upstream.ts`, `docs/reviews/slice-0.md`.
+- Reviewer: approve, no findings; took 3 nits (VISION §9 consistent with §8, literal `0` attempts, hold test checks no early send); left "first config wins" in `upstreamClient` as documented.
+- CI: see PR #2.
+- Follow-ups: merge PR #2; spike re-run skipped by the owner.
