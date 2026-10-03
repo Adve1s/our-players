@@ -83,6 +83,7 @@ async function latvianIds(client: PoliteClient, date: string): Promise<Set<numbe
 
 export async function nhlLines(client: PoliteClient, date: string): Promise<string[]> {
   const score = parse(scoreSchema, (await client.get(nhlEndpoints.score(date))).body, 'score');
+  if (score.games.length === 0) return [`NHL  no games on ${date}`];
   const started = score.games.filter((game) => !['FUT', 'PRE'].includes(game.gameState));
   if (started.length === 0) return [`NHL  no started games on ${date}`];
   const latvians = await latvianIds(client, date);

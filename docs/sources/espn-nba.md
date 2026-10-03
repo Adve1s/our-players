@@ -86,6 +86,7 @@ Where a summary's bytes go (`summary/401810798`, JSON length per top-level key):
 - The core athlete has a **`citizenship`** field: Towns `"Dominican Republic"`, Embiid `"Cameroon"`, Porziņģis `null`. It isn't sporting nationality (Embiid represents the USA), so it doesn't replace overrides. It could flag players whose birth country and citizenship differ, as override candidates for human review.
 
 ## Quirks
+- **A box-score athlete can lack `id` and `displayName`.** `summary/401810401` (DAL @ CHI, 2026-01-10) lists CHI's `{"athlete":{"links":[],"shortName":"Olbrich"},"didNotPlay":false,"reason":"COACH'S DECISION","stats":["--","0","0-0",…]}`. The player is probably not yet in ESPN's athlete database. Parse `athlete.id` as optional; a line without an ID can't be tied to a player (S05 decides: warn and skip). `MIN` `"--"` with all-zero stats and `didNotPlay: false` shows up here too.
 - Names have no diacritics: `"Kristaps Porzingis"`, `"Liepaja"`.
 - ESPN labels a season by its end year: `season.year` `2026` = 2025-26; the current roster says `{"year":2027,"displayName":"2026-27","type":1,"name":"Preseason"}`.
 - Team abbreviations differ from common usage: `"GS"`, `"SA"`, `"NY"`, `"NO"`, `"UTAH"`.

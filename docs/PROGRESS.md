@@ -3,7 +3,7 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** S01 — Data spike + fixtures (2026-10-03): polite HTTP client, fixture recorder, 32 recorded fixtures, throwaway spike, `docs/sources/` notes answering VISION §9.
+- **Last session:** S01 — Data spike + fixtures (2026-10-03): polite HTTP client, fixture recorder, 33 recorded fixtures, throwaway spike, `docs/sources/` notes answering VISION §9.
 - **Branch / PR:** `slice-0-setup` → `main`, draft PR #2 "Slice 0: Setup + data spike" (S00 and S01 ticked).
 - **What works:** `pnpm verify` (45 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]`; `pnpm spike --date YYYY-MM-DD` prints Latvians' NHL and NBA lines (2026-03-10: Merzļikins, Girgensons, Balinskis, Šilovs DNP, Porziņģis), about 59 requests and 42 s; plus everything from S00 (`/health`, placeholder app).
 - **How to try it:** `pnpm verify`; `pnpm spike --date 2026-03-10` (live APIs, about 1 minute); `pnpm fixtures:record nhl score 2026-03-10` refuses because the file exists (add `--as try` to record a copy, then delete it); read `docs/sources/nhl.md` and `docs/sources/espn-nba.md`.
@@ -26,6 +26,7 @@ Ideas that came up but are out of scope for now.
 - Add a 2026 NBA preseason `summary` fixture with `--as` once a game is final (the S01 one is from Oct 2025).
 - Recorder `--drop-keys` if a fixture ever exceeds ~1 MB (pruning proposal in `docs/sources/espn-nba.md` Q8).
 - S04a/S06: decide "Not in lineup" behavior for injured-reserve players (NHL `/roster/current` probably lists them, unverified) and G League / two-way players (ESPN roster has no marker). Record a known IR player's roster in S04a to settle the NHL side.
+- S05: ESPN box scores can list an athlete without `id`/`displayName` (only `shortName`; `summary/401810401`). VISION §6.1 says "never drop a stat line", but a line without an ID can't be tied to a player. Decide: warn and skip (likely), or a name-keyed stub. Also `MIN "--"` with `didNotPlay: false` — played or DNP?
 - S03/S05 adapters: wrap `JSON.parse` so a non-JSON body (HTML block page) fails with source + endpoint named; the S01 spike doesn't.
 
 ## Session log
@@ -63,4 +64,4 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Read these: `apps/server/src/http/polite-client.ts`, `apps/server/src/fixtures/record.ts`, `docs/sources/nhl.md`, `docs/sources/espn-nba.md`, `apps/server/scripts/spike/nhl.ts`.
 - Reviewer: approve; fixed 2 minors (excessive `Retry-After` now holds the host; body-stall timeout test) and 4 nits (doc counts, `Object.hasOwn` lookup, re-serialization note); left the spike's bare `JSON.parse` (throwaway; parked for adapters).
 - CI: see PR #2.
-- Follow-ups: 2026 NBA preseason fixture; IR / G League "Not in lineup" rule; about 155 upstream requests used this session.
+- Follow-ups: 2026 NBA preseason fixture; IR / G League "Not in lineup" rule; ESPN athletes without an ID (S05). After handoff, the owner hit a spike crash on 2026-01-10 (ESPN athlete without `id`): fixed, fixture `summary/401810401` added. About 215 upstream requests used this session.

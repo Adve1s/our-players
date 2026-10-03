@@ -56,9 +56,11 @@ const summarySchema = z.object({
             labels: z.array(z.string()),
             athletes: z.array(
               z.object({
+                // ESPN sometimes lists a player with only `shortName` (summary/401810401: "Olbrich").
                 athlete: z.object({
-                  id: z.string(),
-                  displayName: z.string(),
+                  id: z.string().optional(),
+                  displayName: z.string().optional(),
+                  shortName: z.string().optional(),
                   position: z.object({ abbreviation: z.string() }).optional(),
                 }),
                 didNotPlay: z.boolean().optional(),
@@ -104,6 +106,7 @@ export async function nbaLines(client: PoliteClient, date: string): Promise<stri
     (await client.get(espnNbaEndpoints.scoreboard(date))).body,
     'scoreboard',
   );
+  if (scoreboard.events.length === 0) return [`NBA  no games on ${date}`];
   const started = scoreboard.events.filter((event) => event.status.type.state !== 'pre');
   if (started.length === 0) return [`NBA  no started games on ${date}`];
   const latvians = await latvianIds(client);
@@ -122,8 +125,14 @@ export async function nbaLines(client: PoliteClient, date: string): Promise<stri
     for (const team of summary.boxscore.players) {
       for (const block of team.statistics) {
         for (const a of block.athletes) {
+          if (a.athlete.id === undefined) {
+            console.warn(
+              `espn-nba summary ${event.id}: skipped ${team.team.abbreviation} athlete without an ID (${a.athlete.shortName ?? 'no name'})`,
+            );
+            continue;
+          }
           if (!latvians.has(a.athlete.id)) continue;
-          const who = `${a.athlete.displayName} (${team.team.abbreviation}, ${a.athlete.position?.abbreviation ?? '?'})`;
+          const who = `${a.athlete.displayName ?? a.athlete.shortName} (${team.team.abbreviation}, ${a.athlete.position?.abbreviation ?? '?'})`;
           if (a.didNotPlay || a.stats.length === 0) {
             lines.push(`NBA  ${header}  ${who}  DNP — ${a.reason ?? 'no reason given'}`);
             continue;
