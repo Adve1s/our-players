@@ -68,6 +68,31 @@ describe('resolveFixtureUrl', () => {
       '3102531',
       'https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/3102531',
     ],
+    [
+      'espn-nba',
+      'roster',
+      '9-2026',
+      'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/9/roster?season=2026',
+    ],
+    // The next three are copied from the recorded .meta.json files.
+    [
+      'espn-nba',
+      'stats-byathlete',
+      '2026-2',
+      'https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=false&page=1&limit=50&sort=offensive.avgPoints%3Adesc&season=2026&seasontype=2',
+    ],
+    [
+      'nhl',
+      'skater-summary',
+      '20252026',
+      'https://api.nhle.com/stats/rest/en/skater/summary?isAggregate=false&isGame=false&sort=%5B%7B%22property%22%3A%22points%22%2C%22direction%22%3A%22DESC%22%7D%2C%7B%22property%22%3A%22playerId%22%2C%22direction%22%3A%22ASC%22%7D%5D&start=0&limit=100&cayenneExp=seasonId%3D20252026+and+gameTypeId%3D2',
+    ],
+    [
+      'nhl',
+      'goalie-summary',
+      '20252026',
+      'https://api.nhle.com/stats/rest/en/goalie/summary?isAggregate=false&isGame=false&sort=%5B%7B%22property%22%3A%22wins%22%2C%22direction%22%3A%22DESC%22%7D%2C%7B%22property%22%3A%22playerId%22%2C%22direction%22%3A%22ASC%22%7D%5D&start=0&limit=100&cayenneExp=seasonId%3D20252026+and+gameTypeId%3D2',
+    ],
   ])('%s %s %s', (source, endpoint, id, url) => {
     expect(resolveFixtureUrl(source, endpoint, id)).toBe(url);
   });
