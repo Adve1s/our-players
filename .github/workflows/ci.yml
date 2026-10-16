@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          # 24 follows .tool-versions so CI tracks the local pin; 22 is the floor cloud sessions run.
+          node-version: ${{ matrix.node == 22 && '22' || '' }}
+          node-version-file: ${{ matrix.node == 24 && '.tool-versions' || '' }}
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify
