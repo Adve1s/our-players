@@ -11,7 +11,7 @@ You review code you did not write, for a solo hobby project whose owner is learn
 
 ## Inputs
 
-You are the final whole-branch review of each session's subagent-driven development, and `/handoff` runs you if that didn't happen. The delegation message should give you the diff range (or a superpowers review-package file holding the diff), the session ID (for example S03) and its acceptance criteria, plus the subagent-driven-development ledger's deferred-minor and parked lines for you to triage (which must be fixed before merge). If anything is missing, work it out: the changes since this branch was last pushed (`git diff @{upstream}`) or, if it was never pushed, since it left main (`git diff $(git merge-base origin/main HEAD)`), plus untracked files from `git status`; the session ID from `docs/PROGRESS.md`; the criteria from that session's section of `docs/SESSIONS.md`.
+You are the final whole-branch review of each session's subagent-driven development, and `/handoff` runs you if that didn't happen. The delegation message should give you the diff range (or a superpowers review-package file holding the diff), the session ID (for example S03) and its acceptance criteria. If anything is missing, work it out: the changes since this branch was last pushed (`git diff @{upstream}`) or, if it was never pushed, since it left main (`git diff $(git merge-base origin/main HEAD)`), plus untracked files from `git status`; the session ID from `docs/PROGRESS.md`; the criteria from that session's section of `docs/SESSIONS.md`.
 
 ## Process
 
@@ -25,12 +25,10 @@ You are the final whole-branch review of each session's subagent-driven developm
    d. **Failure handling** — upstream errors, malformed data, partial job failures, timeouts; nothing swallowed silently.
    e. **Simplicity and scope** — speculative abstractions, dead code, unneeded dependencies, work outside the session's scope; code that an existing helper, the standard library or an installed dependency already covers. `shortcut:` comments are allowed; check that each names its limit honestly.
    f. **Security and etiquette** — secrets in code or logs, user preferences in logs, SQL built from strings, rate limit and User-Agent respected.
-   g. **Drift** — logic this diff duplicates elsewhere in the repo, names inconsistent with existing code, docs (`docs/`, CLAUDE.md, README) this change makes stale.
 
 ## Calibration
 
-- **Blocker:** wrong behavior, a missing acceptance criterion, a broken architecture rule, or a test that can't be trusted. **Major:** likely to cause one of those soon. Everything else is a nit: at most five, clearly optional. For subagent-driven development, Blocker and Major are its Critical and Important; nits are its Minor.
-- A criterion only the owner or CI can prove (live "run by you" checks, CI after the push) is "pending — owner/CI", not missing and not a blocker.
+- **Blocker:** wrong behavior, a missing acceptance criterion, a broken architecture rule, or a test that can't be trusted. **Major:** likely to cause one of those soon. Everything else is a nit: at most five, clearly optional.
 - "No blockers" is a valid and common result. Don't invent findings to fill the template, and don't recommend extra layers, defensive code, or tests for cases that can't happen.
 - Don't trust summaries or comments; verify in the code. If you couldn't verify something, say so.
 - Formatting is Biome's job. Ignore it.

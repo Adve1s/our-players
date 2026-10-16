@@ -27,11 +27,11 @@
       "Bash(gh pr create *)",
       "Bash(gh pr edit *)",
       "Bash(gh pr comment *)",
+      "Bash(gh pr review *)",
       "Bash(gh pr ready *)",
       "Bash(gh run list *)",
       "Bash(gh run view *)",
-      "Bash(gh api repos/*/pulls/*/reviews *)",
-      "Bash(gh api repos/*/pulls/*/comments)"
+      "Bash(gh api repos/*/pulls/*/reviews *)"
     ],
     "deny": [
       "Bash(git push --force*)",

@@ -59,9 +59,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 ## Workflow (superpowers)
 These rules configure the superpowers skills; where a skill says otherwise, this section wins.
 - Each session follows its section in `docs/SESSIONS.md`: scope, out-of-scope list and acceptance criteria are the contract.
-- Flow: `superpowers:brainstorming` with that section as input → `superpowers:writing-plans` → `superpowers:subagent-driven-development` → I run `/handoff`. The section is already a reviewed spec: ask only about real gaps (no opener question or playback chunks) and always write the short design doc. No code before I approve the design and the plan.
-- Plan tasks marked `[controller]` run in this session, not in a helper agent (live upstream calls); their task review still runs. A task marked `[owner]` is a stop: give me exact steps, wait for my result, then continue. These extend subagent-driven-development's stop list.
-- Before subagent-driven-development deletes its workspace, append its "Rulings I made" list to the end of the plan file, so the rulings are committed.
+- Flow: `superpowers:brainstorming` with that section as input → `superpowers:writing-plans` → `superpowers:subagent-driven-development` → I run `/handoff`. The section is already a reviewed spec: ask only about real gaps and keep the design doc short. No code before I approve the design and the plan.
 - Specs and plans: `docs/superpowers/specs/` and `docs/superpowers/plans/`, named `YYYY-MM-DD-<session-id>-<slug>.md`, committed with the session.
 - Helper agents: dispatch every superpowers subagent (implementers, reviewers, fix rounds) with `model: opus`. Dispatch the final whole-branch review to the project `reviewer` agent.
 - No git worktrees: the session branch is the isolated workspace. Never use `superpowers:finishing-a-development-branch` and never merge locally — the session ends with `/handoff`.
@@ -77,7 +75,7 @@ These rules configure the superpowers skills; where a skill says otherwise, this
 
 ## Gotchas
 - I develop on Arch Linux (Omarchy); CI runs on Ubuntu. Scripts must work on both — no macOS-only commands or flags (`open`, `pbcopy`, `sed -i ''`).
-- Cloud sessions (`CLAUDE_CODE_REMOTE=true`) start without `node_modules`; a SessionStart hook installs them (from S00 on — before that, run `pnpm install` first). They run Node 22 (code must work on Node 22 and 24), and can't reach the NHL/ESPN APIs — tests don't need them — or context7: read the installed package's types and README under `node_modules` instead, and say so.
+- Cloud sessions (`CLAUDE_CODE_REMOTE=true`) start without `node_modules`; a SessionStart hook installs them (from S00 on — before that, run `pnpm install` first). They run Node 22 (code must work on Node 22 and 24), and can't reach the NHL/ESPN APIs — tests don't need them.
 - Expo + pnpm: keep `nodeLinker: hoisted` in `pnpm-workspace.yaml`; some React Native libraries break with isolated installs.
 - NHL `birthCountry` is already alpha-3. ESPN `birthPlace.country` is a name ("Cameroon"; US-born players show "USA") — map it in `packages/shared/src/countries.ts` (ESPN spellings as aliases; England/Scotland/Wales → GBR). Unknown → `null` plus a warning, never a guess.
 - NHL season IDs look like `20262027`; ESPN labels a season by its end year (`2027`). Store `"2026-27"`.
