@@ -4,7 +4,7 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 
 ## Current state
 - **Last session:** Plugin workflow (2026-10-16): the kit now runs on superpowers + ponytail + context7 + typescript-lsp; one branch and PR per session, reviewed by the built-in `/code-review` (DECISIONS.md D-022–D-025).
-- **Branch / PR:** `plan-change` → `main` (docs and config only, no CI yet).
+- **Branch / PR:** `plan-change` → `main`, PR #3 (docs and config only, no CI yet).
 - **What works:** nothing runs yet; the repo holds the docs, `.claude/` config (with the project plugins) and `apps/server/data/nationality-overrides.json`. `origin/slice-0-setup` keeps an earlier attempt at S00–R0 under the old workflow as a backup — don't merge or modify it.
 - **How to try it:** `/plugin` shows four plugins enabled; read `docs/WORKFLOW.md` (TL;DR, Plugins) and `docs/SESSIONS.md` → "How to run a session".
 - **Next session:** S00 — Bootstrap. Claude creates branch `s00-bootstrap` from `main`; its `/handoff` opens the PR and runs `/code-review`.
