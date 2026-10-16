@@ -1,0 +1,31 @@
+{
+  "name": "our-players",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "dev:server": "pnpm --filter @our-players/server dev",
+    "dev:mobile": "pnpm --filter @our-players/mobile start",
+    "fixtures:record": "echo 'pnpm fixtures:record arrives in session S01' >&2; exit 1",
+    "inspect": "echo 'pnpm inspect arrives in session S03' >&2; exit 1",
+    "job": "echo 'pnpm job arrives in session S04a' >&2; exit 1",
+    "recap": "echo 'pnpm recap arrives in session S04a' >&2; exit 1",
+    "db:generate": "echo 'pnpm db:generate arrives in session S02b' >&2; exit 1",
+    "db:migrate": "echo 'pnpm db:migrate arrives in session S02b' >&2; exit 1",
+    "db:reset": "echo 'pnpm db:reset arrives in session S02b' >&2; exit 1",
+    "screenshots": "echo 'pnpm screenshots arrives in session S08' >&2; exit 1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
+}
