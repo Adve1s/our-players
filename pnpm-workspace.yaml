@@ -3,3 +3,7 @@ packages:
   - packages/*
 
 nodeLinker: hoisted
+
+# esbuild (via tsx) verifies its platform binary in a postinstall script.
+allowBuilds:
+  esbuild: true
