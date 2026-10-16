@@ -3,25 +3,25 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** Review fixes for PR #3 (2026-10-17): 9 of 10 `/code-review` findings fixed (docs and `.claude/` config), 1 rejected with a reply on the PR. The kit runs on superpowers + ponytail + context7 (project) and typescript-lsp (user), one branch and PR per session (D-022–D-025).
-- **Branch / PR:** `plan-change` → `main`, PR #3 (docs and config only, no CI yet).
-- **What works:** nothing runs yet; the repo holds the docs, `.claude/` config (with the project plugins, ponytail pinned to `v5.3.1`) and `apps/server/data/nationality-overrides.json`. `origin/slice-0-setup` keeps an earlier attempt at S00–R0 under the old workflow as a backup — don't merge or modify it.
-- **How to try it:** `/plugin` shows the three project plugins (superpowers, context7, ponytail) plus typescript-lsp from your user settings; read `docs/WORKFLOW.md` (TL;DR, Plugins) and `docs/SESSIONS.md` → "How to run a session".
-- **Next session:** S00 — Bootstrap. Claude creates branch `s00-bootstrap` from `main`; its `/handoff` opens the PR and runs `/code-review`.
+- **Last session:** S00 — Bootstrap (2026-10-17): pnpm monorepo (`packages/shared`, `apps/server`, `apps/mobile`), every CLAUDE.md command exists, `pnpm verify` green locally on Node 24 and 22, CI workflow added. First session with Opus helper agents (4 tasks, 6 task reviews, 1 final review).
+- **Branch / PR:** `s00-bootstrap` → `main` (PR opened by this handoff).
+- **What works:** `pnpm verify` (typecheck + Biome + Vitest, 12 tests); `pnpm dev:server` serves `GET /health` → `{"ok":true}` on :3001; `pnpm dev:mobile` shows the placeholder ("Our Players", "Season 2026-27" from `packages/shared`) on web and in Expo Go (SDK 58); the later-session commands print which session adds them and exit 1. `origin/slice-0-setup` stays an untouched backup.
+- **How to try it:** `mise install && corepack enable && pnpm install`, then `pnpm verify`; `pnpm dev:server` + `curl localhost:3001/health`; `pnpm dev:mobile` → `w` for web or scan the QR with Expo Go (SDK 58 — if Play Store's Expo Go is older, install it from https://expo.dev/go).
+- **Next session:** S01 — Data spike + fixtures, branch `s01-data-spike`.
 - **Notes for the next session:**
-  - Before S00, the owner protects `main` (WORKFLOW.md setup step 4, first part) if it isn't already, and sets effort per the Overview (`/effort medium` for S00).
-  - Your own machine registered the ponytail marketplace without a tag; re-add it as `DietrichGebert/ponytail@v5.3.1` (WORKFLOW setup step 6) so a manual update can't follow its `main`.
-  - S00 is the first session with Opus helper agents: check `/usage` afterwards (D-025). Note any superpowers helper scripts that prompt repeatedly as candidate allow rules.
-  - During plan execution Claude stops only for superpowers' four stops, a red-phase test or fixture that looks wrong, or a test-writer spec question (BLOCKED); everything else is a ruling listed in the PR briefing. Your in-session steps come after the final review.
-  - Untested until S00: whether the controller routes a *test-writer* task to the test-writer agent (and follows its new report contract), and whether the reviewer agent's Critical/Important/Minor output feeds superpowers' final fix wave cleanly.
-  - Untested until the first cloud session: the ponytail `ref` pin on a fresh install, and the cloud mode dropdown (start in Accept edits, switch to Auto before approving the plan).
-
+  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` (its `shortcut:` comment) and confirm `pnpm install --frozen-lockfile` still passes — S01 can do it as a one-commit chore.
+  - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); a brand-new release fails the install until it ages.
+  - After mise installs a different Node, run `corepack enable && mise reshim` once, or pnpm fails with "No version is set for shim: pnpm".
+  - Expo SDK 58 uses `apps/mobile/src/app/` for routes (`.claude/rules/mobile.md` updated).
+  - Still untested: the test-writer routing (S00 had no test-writer task — first one is S02a) and the cloud install hook (first cloud session).
 ## Known issues
-- (none)
+- `pnpm-workspace.yaml` exempts 9 Expo SDK 58 packages from pnpm's 1-day release-age check until 2026-10-17 20:00 UTC; delete the block after that.
 
 ## Parking lot
 Ideas that came up but are out of scope for now.
-- (none)
+- `apps/mobile/app.json` keeps the template's `web.output: "server"`; S14 (home-screen web app) likely wants `"static"`.
+- `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
+- Cloud install hook: prefix `cd "$CLAUDE_PROJECT_DIR" &&` if a cloud session ever starts outside the repo root.
 
 ## Session log
 <!--
@@ -67,3 +67,11 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve; 0 Critical/Important; fixed 3 of 4 minors (missing stub → NEEDS_CONTEXT; follow-up red commit after a spec answer; tag in setup step 6), left 1 (the `gh api` wildcard also matches spaces — guardrail, not a boundary).
 - CI: none yet (no package.json before S00).
 - Follow-ups: re-add the ponytail marketplace with `@v5.3.1` locally; confirm the cloud dropdown and the pin on the first cloud session.
+
+### S00 — Bootstrap — 2026-10-17 — PR into `main` (`s00-bootstrap`)
+- Changed: root tooling (`.tool-versions` Node 24.22.0, pnpm 12.14.0 via `packageManager`, TS ~6.0.3, Biome 2.5.15, Vitest 5), `packages/shared` (`seasonLabel`), `apps/server` (Hono `/health`, `loadConfig`), `apps/mobile` (Expo SDK 58 default template reset and trimmed), `.github/workflows/ci.yml` (`verify (22)`/`verify (24)`), cloud SessionStart install hook, README.
+- Decisions: D-026 (toolchain pins), D-027 (Expo template trimmed; TS follows Expo).
+- Read these: docs/superpowers/specs/2026-10-17-s00-bootstrap.md, package.json, pnpm-workspace.yaml, apps/server/src/config.ts, apps/mobile/src/app/index.tsx, .github/workflows/ci.yml.
+- Reviewer: approve; 0 Critical/Important; 5 minors left (3 parked in the parking lot). Task 3 needed 2 fix rounds over pnpm's release-age exemptions (kept, dated).
+- CI: first run on this PR.
+- Follow-ups: delete the release-age exemptions after 2026-10-17 20:00 UTC; add `verify (22)`/`verify (24)` as required checks; check `/usage`; watch the cloud install hook on the first cloud session.
