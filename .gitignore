@@ -28,3 +28,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# superpowers working files (SDD ledgers, brainstorm mockups)
+.superpowers/

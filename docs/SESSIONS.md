@@ -6,56 +6,47 @@ How the agents fit in, and why: `docs/WORKFLOW.md`.
 
 ## How to run a session
 
-1. Start `claude` in the repo root. The first prompt of each slice has Claude create the slice branch from the latest `main`; later prompts continue on it. Sessions start in plan mode (set in `.claude/settings.json`).
-2. Set the effort the Overview gives, every session: `/effort medium` or `/effort high`. A level typed after `/effort` is also saved as your default, so skipping this step means inheriting the last session's level. Optional: `/rename S03 nhl adapter` so `claude --resume` finds it later.
-3. Paste the session's prompt.
-4. Read the plan. Push back, or press `Ctrl+G` to edit it. Approve with **"Yes, and use auto mode"** (or **"manually approve edits"** while you're still learning how Claude works).
-5. Watch the first few minutes; press `Esc` to interrupt the moment it heads somewhere wrong.
-6. When Claude says the work is ready: run **`/handoff`**. It verifies, has the reviewer subagent check the session's changes, updates `PROGRESS.md` and `DECISIONS.md`, commits and pushes (approve the push prompt), opens or updates the slice's draft PR, posts its briefing there, and reports CI — including which files are worth reading.
-7. Read those files, in your editor or in the PR's **Files changed** tab. Ask questions, or run `/walkthrough <area>` for a guided tour.
-8. Exit. The next session starts fresh; `PROGRESS.md`, git and the PR carry the state.
+1. Start `claude` in the repo root on an up-to-date `main` (`git switch main && git pull --ff-only`). Sessions start in default mode (set in `.claude/settings.json`).
+2. Set the effort the Overview gives: `/effort medium` or `/effort high`. A level typed after `/effort` is also saved as your default, so skipping this step means inheriting the last session's level. Optional: `/rename S03 nhl adapter` so `claude --resume` finds it later.
+3. Paste the session's prompt. Claude creates the session branch (the Overview's Branch column) and runs the tests.
+4. **Design** (`superpowers:brainstorming`). Answer its questions about gaps in the section and approve the short design doc it writes to `docs/superpowers/specs/`. Push back here — it's the cheapest moment to change direction.
+5. **Plan** (`superpowers:writing-plans`). Read the task list in `docs/superpowers/plans/`: tasks map to the acceptance criteria, stay in scope, name any new dependency, and (where the prompt asks for one) the test-writer task comes right after the stubs. Press `Shift+Tab` until the mode reads **auto**, *then* reply with your approval — execution starts on that reply.
+6. **Build** (`superpowers:subagent-driven-development`). Opus helper agents implement and review each task without pausing. Claude stops only for destructive, security-sensitive or outside-the-branch actions, a broken plan, a red-phase test or fixture that looks wrong, or a spec question from the test-writer; everything else becomes a ruling it lists at the end. Press `Esc` the moment it heads somewhere wrong. Your steps (the "You:" line and criteria marked "run by you") never go in the plan: after the final review, Claude walks you through the in-session ones one at a time and waits for each result; steps timed later (after `/handoff`, after merging, in parallel) land in the briefing's Next.
+7. When Claude says the work is ready: run **`/handoff`**. It updates `PROGRESS.md` and `DECISIONS.md`, commits and pushes (approve the push prompt), opens the session's PR, posts the briefing, runs `/code-review` (findings land as inline PR comments) and reports CI.
+8. Read the briefing's files and the review comments on the PR. If you accept any finding, run the "Review fixes" template on the same branch, then `/handoff` again. When CI is green, merge with **Create a merge commit**, then `git switch main && git pull --ff-only`.
+9. Exit. The next session starts fresh; `PROGRESS.md`, git and the PRs carry the state.
 
-**In the cloud** (sessions marked "either" in the Overview): start the session at claude.ai/code — pick the repo, the slice branch (`main` for a slice's first session), **Plan** mode — or with `claude --cloud "<prompt>"` from the repo, and paste the same prompt. Set effort with `/effort <level>` as the first message. The session switches to the slice branch (creating it for a slice's first session), so `/handoff` pushes and updates the slice PR exactly as it does locally (DECISIONS.md D-020). Live checks ("run by you") stay local: `git pull` the slice branch first, or bring the whole session to your terminal with `claude --teleport`. Details: WORKFLOW.md → Cloud sessions.
+**In the cloud** (sessions marked "either" in the Overview): start the session at claude.ai/code — pick the repo, branch `main`, **Accept edits** mode (the cloud dropdown has no Default) — or with `claude --cloud "<prompt>"` from `main`, and paste the same prompt. Set effort with `/effort <level>` as the first message. At step 5, switch the dropdown to **Auto** before you reply with your approval. The session creates the session branch itself, so `/handoff` works exactly as it does locally. Live checks ("run by you") stay local: `git fetch && git switch <branch>` first, or, once the plan has finished, bring the whole session to your terminal with `claude --teleport`. Details: WORKFLOW.md → Cloud sessions.
 
-**Sizing.** A session is one reviewable change, usually a few hundred to ~1,500 changed lines. Opus 5.5 has a 1M-token window, so `/context` will rarely look full; use an absolute budget instead: if the session passes **~200K tokens** of context before the work is done, stop at a green checkpoint, run `/handoff`, and continue in a new session with the "Resume" template at the bottom. A clean restart beats a long, compacted session.
-
-**Slice ends.** After the slice's last session, start a fresh session on the slice branch and run `/slice-review <n>`. It writes `docs/reviews/slice-<n>.md`, posts it to the PR as a review with inline comments, and marks the PR ready. Read it on GitHub, then run the "Review fixes" template with your decision for each finding, then `/handoff`. When CI is green, merge the PR on GitHub with **Create a merge commit**, then update your local copy: `git switch main && git pull --ff-only`.
+**Sizing.** A session is one reviewable change, usually a few hundred to ~1,500 changed lines. Opus 5.5 has a 1M-token window, so `/context` will rarely look full; use an absolute budget instead: if the session passes **~200K tokens** of context before the work is done, stop at a task boundary (the superpowers ledger shows `Task N: complete`), optionally `git push`, and exit — don't run `/handoff` until the plan is done. Continue in a new session on the same machine with the "Resume" template at the bottom; the ledger under `.superpowers/sdd/` is gitignored and stays on the machine that ran the plan (`claude --teleport` brings the branch and the conversation, not the ledger), so a cloud session always finishes its plan, through the final review and its "Rulings I made" list, before you teleport it. A clean restart beats a long, compacted session.
 
 ## Overview
 
-All sessions run on **Opus 5.5**, the Pro default. **Effort** is what to set with `/effort` at the start of every session (Opus 5.5 defaults to medium, but a typed level becomes your default); `/slice-review` and the reviewer subagent run at high automatically. **Where**: *local* needs your machine (phone, mise, consoles, secrets, or live upstream calls); *either* also runs well as a cloud session.
+All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to set with `/effort` at the start of every session (Opus 5.5 defaults to medium, but a typed level becomes your default); the reviewer agent runs at high automatically. **Where**: *local* needs your machine (phone, mise, consoles, secrets, or live upstream calls); *either* also runs well as a cloud session. Every session is one branch and one pull request into `main`.
 
 | ID | Session | Branch | Size | Effort | Where | You can try afterwards |
 |---|---|---|---|---|---|---|
-| K0 | Kit review (docs only) | `kit-review` | S | high | either | A plan reviewed by a fresh pair of eyes; the PR flow tried once |
-| S00 | Bootstrap | `slice-0-setup` | M | medium | local | App placeholder on phone + web; `/health`; CI on the PR |
-| S01 | Data spike + fixtures | `slice-0-setup` | M | medium | local | `pnpm spike --date …` prints Latvians' lines |
-| R0 | Slice 0 review + fixes | `slice-0-setup` | S+S | high | either | Slice 0 merged |
-| S02a | Domain model, selection rule, nationality | `slice-1-data-core` | M | high | either | Selection-rule and nationality tests |
-| S02b | Database schema + repositories | `slice-1-data-core` | M | high | either | Local DB; idempotency tests |
-| S03 | NHL adapter | `slice-1-data-core` | M | medium | either | `pnpm inspect nhl boxscore …` |
-| S04a | Jobs + recap CLI | `slice-1-data-core` | M | high | either | `pnpm recap` — terminal morning recap (NHL) |
-| S04b | Season stats, corrections, scheduler | `slice-1-data-core` | M | high | either | The dev server schedules its own runs |
-| R1 | Slice 1 review + fixes | `slice-1-data-core` | S+S | high | either | Slice 1 merged |
-| S05 | ESPN NBA adapter + jobs | `slice-2-nba` | L | high | either | `pnpm recap` with NHL + NBA |
-| R2 | Slice 2 review + fixes | `slice-2-nba` | S+S | high | either | Slice 2 merged |
-| S06 | API: days, games, meta | `slice-3-read-api` | M | high | either | `curl …/v1/days/<date>?countries=LVA` |
-| S07 | API: players, search, countries | `slice-3-read-api` | M | medium | either | Search and player detail over HTTP |
-| R3 | Slice 3 review + fixes | `slice-3-read-api` | S+S | high | either | Slice 3 merged |
-| S08 | App shell, settings, screenshots | `slice-4-app-v1` | M | medium | local | Settings on phone; `pnpm screenshots` |
-| S09 | Main page | `slice-4-app-v1` | L | high | local | **The morning recap app** |
-| R4 | Slice 4 review + fixes | `slice-4-app-v1` | S+S | high | either | Slice 4 merged |
-| S10 | Deploy backend | `slice-6a-ship` | L | medium | local | Public API with a running scheduler and a staleness alert |
-| S11 | Android build + Play closed test | `slice-6a-ship` | M | medium | local | Friends install it; **14-day clock starts** |
-| R6a | Slice 6a review + fixes | `slice-6a-ship` | S+S | high | either | Slice 6a merged |
-| S12 | Search, favorites, hidden | `slice-5-players-games` | M | medium | local | Star/hide players |
-| S13 | Player page + game page | `slice-5-players-games` | M | medium | local | Full v1 feature set |
-| R5 | Slice 5 review + fixes | `slice-5-players-games` | S+S | high | either | Slice 5 merged |
-| S14 | Web build as a home-screen app | `slice-6b-web-launch` | M | medium | local | iPhone friends use it |
-| S15 | Production access + runbook | `slice-6b-web-launch` | S | medium | local | Public on Google Play |
-| R6b | Final review + fixes | `slice-6b-web-launch` | S+S | high | either | v1 done |
+| K0 | Kit review (docs only) — done | `kit-review` | S | high | either | A plan reviewed by a fresh pair of eyes; the PR flow tried once |
+| S00 | Bootstrap | `s00-bootstrap` | M | medium | local | App placeholder on phone + web; `/health`; CI on the PR |
+| S01 | Data spike + fixtures | `s01-data-spike` | M | medium | local | `pnpm spike --date …` prints Latvians' lines |
+| S02a | Domain model, selection rule, nationality | `s02a-domain-model` | M | high | either | Selection-rule and nationality tests |
+| S02b | Database schema + repositories | `s02b-database` | M | high | either | Local DB; idempotency tests |
+| S03 | NHL adapter | `s03-nhl-adapter` | M | medium | either | `pnpm inspect nhl boxscore …` |
+| S04a | Jobs + recap CLI | `s04a-jobs-recap` | M | high | either | `pnpm recap` — terminal morning recap (NHL) |
+| S04b | Season stats, corrections, scheduler | `s04b-scheduler` | M | high | either | The dev server schedules its own runs |
+| S05 | ESPN NBA adapter + jobs | `s05-nba` | L | high | either | `pnpm recap` with NHL + NBA |
+| S06 | API: days, games, meta | `s06-api-days` | M | high | either | `curl …/v1/days/<date>?countries=LVA` |
+| S07 | API: players, search, countries | `s07-api-players` | M | medium | either | Search and player detail over HTTP |
+| S08 | App shell, settings, screenshots | `s08-app-shell` | M | medium | local | Settings on phone; `pnpm screenshots` |
+| S09 | Main page | `s09-main-page` | L | high | local | **The morning recap app** |
+| S10 | Deploy backend | `s10-deploy` | L | medium | local | Public API with a running scheduler and a staleness alert |
+| S11 | Android build + Play closed test | `s11-android` | M | medium | local | Friends install it; **14-day clock starts** |
+| S12 | Search, favorites, hidden | `s12-favorites` | M | medium | local | Star/hide players |
+| S13 | Player page + game page | `s13-player-game` | M | medium | local | Full v1 feature set |
+| S14 | Web build as a home-screen app | `s14-web` | M | medium | local | iPhone friends use it |
+| S15 | Production access + runbook | `s15-launch` | S | medium | local | Public on Google Play |
 
-Every slice is one pull request; its review rows run on the slice's branch. Slices 6a/6b split the brief's slice 6 so the Play closed test starts before slice 5 (DECISIONS.md D-014).
+Slices group the sessions on the roadmap; they no longer map to a branch or PR. Slices 6a/6b split the brief's slice 6 so the Play closed test starts before slice 5 (DECISIONS.md D-014). Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
 
 **Size** is a rough guess at your attention per session: S under 1 h, M 1–2 h, L 2–3 h. An L session may need a second sitting — use the "Resume" template.
 
@@ -63,46 +54,17 @@ Every slice is one pull request; its review rows run on the slice's branch. Slic
 
 ## Before you start
 
-### K0 — Kit review
+### K0 — Kit review (done)
 
-**Goal:** an independent check of these docs and the Claude Code setup before any code exists, by a session that never saw how they were written. It also tries the branch → PR → merge flow once, on docs only.
-
-**In scope:** read every file in the repo; find contradictions between files, gaps (things a session will need that no doc defines), instructions Claude could misread, over-engineering for a solo hobby project, sessions that are too big or badly ordered, acceptance criteria that can't be checked, and Claude Code configuration that doesn't match current Claude Code; apply the findings you accept.
-
-**Out of scope:** app code; changing product decisions without asking.
-
-**Acceptance criteria**
-1. The review names every file it read.
-2. Findings come as a table with severity and a concrete suggested edit each; "no blockers" is a valid result.
-3. Accepted edits applied, rejected ones untouched, deferred ones in the PROGRESS.md parking lot.
-4. Merged into `main` through a PR.
-
-**You:** read VISION.md yourself first. You're the product owner, so you're the best judge of which findings matter.
-
-```text
-Session K0 — Kit review. First create branch `kit-review` from the latest `main` (in a cloud session too).
-
-You haven't seen how these docs were written. Review them as a skeptical senior engineer before any code exists. Read every file in the repo: CLAUDE.md, everything in docs/ and .claude/ (settings, hooks, agents, skills, rules), .gitattributes and apps/server/data/nationality-overrides.json. Where a file relies on a Claude Code feature (skill or agent frontmatter, hooks, permission rules, plan or auto mode, cloud sessions), check it against the current docs at code.claude.com/docs instead of trusting it.
-
-Stay in plan mode and don't change files yet. Present your findings as the plan, in a table: ID, severity (blocker / major / minor), file and section, issue, suggested edit. Look for:
-- contradictions between files, and things a session will need that no doc defines;
-- instructions Claude could misread, or that two people would read differently;
-- over-engineering for a solo hobby project, and missing basics;
-- session sizing and order, and acceptance criteria that can't be checked;
-- Claude Code configuration that doesn't match current behavior;
-- product risks in VISION.md that the plan doesn't address.
-Skip style nits; "no blockers" is a fine outcome.
-
-I'll reply with a decision for each finding. Then apply the accepted ones, put deferred ones in the PROGRESS.md parking lot, and tell me it's ready for /handoff.
-```
+Done on 2026-10-03 (PR #1): an independent review of these docs and the Claude Code setup before any code existed; 20 findings applied. After the switch to the plugin workflow, use the "Docs review" template at the bottom for the next independent pass over the docs.
 
 ---
 
-## Slice 0 — Setup + data spike (`slice-0-setup`)
+## Slice 0 — Setup + data spike
 
 ### S00 — Bootstrap
 
-**Goal:** a working monorepo skeleton where every command in `CLAUDE.md` exists, the app runs on web and Android, and the quality gate (`pnpm verify`) runs locally and in CI on the slice's pull request.
+**Goal:** a working monorepo skeleton where every command in `CLAUDE.md` exists, the app runs on web and Android, and the quality gate (`pnpm verify`) runs locally and in CI on the session's pull request.
 
 **In scope**
 - pnpm workspace (`apps/server`, `apps/mobile`, `packages/shared`), `nodeLinker: hoisted`. The `apps/server/data/` folder already exists with the overrides file — keep it.
@@ -126,25 +88,25 @@ I'll reply with a decision for each finding. Then apply the accepted ones, put d
 5. Every command in `CLAUDE.md` exists; not-yet-implemented ones name their session.
 6. Editing a `.ts` file through Claude gets it formatted by the hook (show a before/after).
 7. `app.json` carries the app identity from VISION §11.
-8. After `/handoff` pushes, the draft PR's `verify (22)` and `verify (24)` checks pass (the handoff reports it).
+8. After `/handoff` pushes, the PR's `verify (22)` and `verify (24)` checks pass (the handoff reports it).
 
-**You:** run the phone check: allow Metro and the dev API through Omarchy's firewall (WORKFLOW.md → One-time setup, step 5), then scan the QR code with Expo Go and confirm the placeholder renders. After the first green CI run, add the required `verify` checks to `main`'s protection (step 4, second part).
+**You:** run the phone check: allow Metro and the dev API through Omarchy's firewall (WORKFLOW.md → One-time setup, step 5), then scan the QR code with Expo Go and confirm the placeholder renders. After the first green CI run, add the required `verify` checks to `main`'s protection (step 4, second part). After this first helper-agent session, check `/usage` (WORKFLOW.md §9).
 
 ```text
-Session S00 — Bootstrap (slice 0). Create branch `slice-0-setup` from the latest `main`.
+Session S00 — Bootstrap (slice 0). Create branch `s00-bootstrap` from the latest `main`.
 
 Read CLAUDE.md, docs/PROGRESS.md, docs/SESSIONS.md §S00 (scope, out-of-scope and acceptance criteria are the contract for this session) and docs/DECISIONS.md. The repo currently holds only docs, .claude/ config and apps/server/data/nationality-overrides.json. I develop on Arch Linux (Omarchy) and install Node with mise; `origin` points to my GitHub repo.
 
-In plan mode, propose:
+Brainstorm with §S00 as the spec. The design must cover:
 - the workspace layout and the root package.json scripts — every command listed in CLAUDE.md must exist;
 - the exact dependencies per package, one line of justification each (I approve the list once; don't add others without asking);
 - how the Node and pnpm versions are pinned so mise, corepack and GitHub Actions all use the same ones (cloud sessions run Node 22, so the code must work there too);
 - the Expo setup: current stable SDK via create-expo-app, default template with example screens removed, pnpm nodeLinker hoisted, app identity from VISION §11;
 - shared TypeScript, Biome and Vitest config, and the CI workflow;
 - how apps/server and apps/mobile consume packages/shared as TypeScript source.
-Ask me whatever needs deciding.
+Ask me whatever needs deciding. Look up current Expo, Hono, Vitest and Biome setup with context7.
 
-After I approve: build it, keeping code minimal — this session is plumbing, not features. Prove each acceptance criterion with command output. When `pnpm verify` is green, tell me it's ready for /handoff.
+Then plan and build it, keeping code minimal — this session is plumbing, not features. This is the first session with helper agents: if superpowers' helper scripts trigger repeated permission prompts, list them for me as candidate allow rules instead of adding them. Prove each acceptance criterion with command output. When `pnpm verify` is green, tell me it's ready for /handoff.
 ```
 
 ### S01 — Data spike + fixtures
@@ -170,26 +132,23 @@ After I approve: build it, keeping code minimal — this session is plumbing, no
 4. Both source docs answer all eight questions with evidence (endpoint, field path, example value).
 5. `pnpm verify` green.
 
-**You:** spot-check two or three spike numbers against nhl.com / espn.com; skim `docs/sources/`. Then run R0.
+**You:** spot-check two or three spike numbers against nhl.com / espn.com; skim `docs/sources/`. The fixture JSON is collapsed in the PR's diff view; the reviewer agent checks that each fixture came from the recorder (its `.meta.json` and `git log`).
 
 ```text
-Session S01 — Data spike + fixtures (slice 0, branch `slice-0-setup`).
+Session S01 — Data spike + fixtures (slice 0). Create branch `s01-data-spike` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S01 (the contract) and docs/VISION.md §6–§9. First run the tests.
 
 This session talks to the live NHL and ESPN APIs. Be polite: every request goes through the polite client (at most 1 request/s per host), and keep the whole session's requests in the low hundreds.
 
-In plan mode, propose: the polite client's API and how you'll test it without network; the recorder's file layout; how the spike finds Latvian players cheaply (check which endpoints carry birth country before assuming); the concrete games and dates you'll record for each fixture item (look them up); and how you'll answer each of the eight questions in VISION §9.
+Brainstorm with §S01 as the spec. The design must cover: the polite client's API and how you'll test it without network; the recorder's file layout; how the spike finds Latvian players cheaply (check which endpoints carry birth country before assuming); the concrete games and dates you'll record for each fixture item (look them up); and how you'll answer each of the eight questions in VISION §9.
 
-After I approve: red/green for the polite client, then the recorder, fixtures, spike and the two docs/sources files. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
+Then plan and build: red/green for the polite client, then the recorder, fixtures, spike and the two docs/sources files. Recording and the spike call live APIs and may run in helper agents: the plan's Global Constraints set the request budget (low hundreds in total), each implementer report states the polite client's request count, and you keep a running total in the ledger. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
 ```
-
-### R0 — Slice 0 review
-Fresh session on `slice-0-setup`: `/slice-review 0`. It's a light review: plumbing, CI, the polite client, the recorder and the source notes. The fixture JSON is collapsed in the PR's diff view; the review only checks that each fixture came from the recorder. Then **Review fixes** with your decisions → `/handoff` → merge the PR.
 
 ---
 
-## Slice 1 — Data core (`slice-1-data-core`)
+## Slice 1 — Data core
 
 ### S02a — Domain model, selection rule, nationality
 
@@ -207,18 +166,16 @@ Fresh session on `slice-0-setup`: `/slice-review 0`. It's a light review: plumbi
 3. The stat payload schemas accept a valid payload of each kind and reject invalid ones with a clear error.
 4. `pnpm verify` green.
 
-**You (optional, recommended):** write `isShown` yourself. Tell Claude at plan approval: "I'll implement isShown." It writes the stub and has the test-writer produce the tests, then waits; you make them green; Claude reviews your code.
-
 ```text
-Session S02a — Domain model, selection rule, nationality (slice 1). Create branch `slice-1-data-core` from the latest `main`.
+Session S02a — Domain model, selection rule, nationality (slice 1). Create branch `s02a-domain-model` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S02a (the contract), docs/VISION.md §3, §7 and §8, docs/DECISIONS.md D-009, D-010 and D-012, and docs/sources/*.md. First run the tests.
 
-In plan mode, propose: the shared domain types and zod schemas (show them); how overrides are loaded and validated; the resolver's signature; and the exact list of test cases for the selection rule and nationality resolution.
+Brainstorm with §S02a as the spec. The design must cover: the shared domain types and zod schemas (show them); how overrides are loaded and validated; the resolver's signature; and the exact list of test cases for the selection rule and nationality resolution.
 
-After I approve, red/green:
+Then plan and build, red/green, in this task order:
 1. Create stubs for isShown and the nationality resolver: real signatures, bodies throw "not implemented".
-2. Use the test-writer subagent to write their tests from VISION §3 and §7 only. Run them and confirm they fail on "not implemented". Commit: `test: selection rule and nationality spec`.
+2. The test-writer agent writes their tests from VISION §3 and §7 only. Run them and confirm they fail on "not implemented". Commit: `test: selection rule and nationality spec`.
 3. Implement until green without changing those tests — if one looks wrong, stop and tell me.
 4. Then the stat payload schemas and the overrides loader, with tests.
 
@@ -246,13 +203,13 @@ Prove each acceptance criterion with output, then tell me it's ready for /handof
 5. `pnpm verify` green.
 
 ```text
-Session S02b — Database schema and repositories (slice 1, branch `slice-1-data-core`).
+Session S02b — Database schema and repositories (slice 1). Create branch `s02b-database` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S02b (the contract), docs/VISION.md §7 and §8, docs/DECISIONS.md D-004, D-005, D-010 and D-012, and the shared domain types from S02a. First run the tests.
 
-In plan mode, propose: the Drizzle schema — tables, keys, indexes — mapped to VISION §8; how the dev, test and prod DB clients differ; the repository functions and their natural keys; how nationality recomputation applies the resolver and reports override warnings; and the test list mapped to the acceptance criteria.
+Brainstorm with §S02b as the spec. The design must cover: the Drizzle schema — tables, keys, indexes — mapped to VISION §8; how the dev, test and prod DB clients differ; the repository functions and their natural keys; how nationality recomputation applies the resolver and reports override warnings; and the test list mapped to the acceptance criteria.
 
-After I approve: red/green for the repositories and the recomputation. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
+Then plan and build: red/green for the repositories and the recomputation. Check Drizzle and PGlite APIs with context7. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
 ```
 
 ### S03 — NHL adapter
@@ -275,15 +232,15 @@ After I approve: red/green for the repositories and the recomputation. Prove eac
 6. `pnpm verify` green.
 
 ```text
-Session S03 — NHL adapter (slice 1, branch `slice-1-data-core`).
+Session S03 — NHL adapter (slice 1). Create branch `s03-nhl-adapter` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S03 (the contract), docs/VISION.md §6.2, §8 and §9, and docs/sources/nhl.md. First run the tests.
 
-In plan mode, propose: the adapter's module layout (fetch layer vs pure mappers), the raw zod schemas (only fields we use), each mapper's signature and output, the status / season / OT mapping tables, and the list of fixture-based test cases (which fixture, which values).
+Brainstorm with §S03 as the spec. The design must cover: the adapter's module layout (fetch layer vs pure mappers), the raw zod schemas (only fields we use), each mapper's signature and output, the status / season / OT mapping tables, and the list of fixture-based test cases (which fixture, which values).
 
-After I approve, red/green:
+Then plan and build, red/green, in this task order:
 1. Create mapper stubs that throw "not implemented".
-2. Use the test-writer subagent to write the mapper tests from the fixtures and VISION, with expected values read from the raw JSON by hand. Confirm they fail for the right reason. Commit `test: NHL mapper spec from fixtures`.
+2. The test-writer agent writes the mapper tests from the fixtures and VISION, with expected values read from the raw JSON by hand. Confirm they fail for the right reason. Commit `test: NHL mapper spec from fixtures`.
 3. Implement mappers and fetchers until green without changing those tests.
 4. Add `pnpm inspect`.
 
@@ -311,13 +268,13 @@ Prove each acceptance criterion with output, then tell me it's ready for /handof
 6. `pnpm verify` green.
 
 ```text
-Session S04a — Ingestion jobs + recap CLI (slice 1, branch `slice-1-data-core`).
+Session S04a — Ingestion jobs + recap CLI (slice 1). Create branch `s04a-jobs-recap` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S04a (the contract), and docs/VISION.md §6, §7 and §8. First run the tests.
 
-In plan mode, propose: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
+Brainstorm with §S04a as the spec. The design must cover: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
 
-After I approve: red/green for job behavior (you write these tests; no test-writer needed). Prove each criterion with output. For criterion 4, give me the exact commands and wait for my result before calling it done. Then tell me it's ready for /handoff.
+Then plan and build: red/green for job behavior (the implementers write these tests; no test-writer needed). Prove each criterion with output. For criterion 4, give me the exact commands and wait for my result before calling it done. Then tell me it's ready for /handoff.
 ```
 
 ### S04b — Season stats, corrections, scheduler
@@ -340,23 +297,21 @@ After I approve: red/green for job behavior (you write these tests; no test-writ
 5. Live, run by you: `pnpm job season-stats --league nhl` logs its request count, and `SCHEDULER_ENABLED=1 pnpm dev:server` logs the decisions of its first ticks.
 6. `pnpm verify` green.
 
+**You:** after merging, run `/walkthrough the ingestion pipeline from a scheduled tick to stat_lines rows` — it's the heart of the backend.
+
 ```text
-Session S04b — Season stats, corrections, scheduler (slice 1, branch `slice-1-data-core`).
+Session S04b — Season stats, corrections, scheduler (slice 1). Create branch `s04b-scheduler` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S04b (the contract), docs/VISION.md §6 and §8, and the job runner and jobs from S04a. First run the tests.
 
-In plan mode, propose: the season-stats job and how the current season is derived; how corrections fit into results; the scheduler's pure "what should run now?" function and its test cases; the game-day helpers; and the live commands I'll run at the end.
+Brainstorm with §S04b as the spec. The design must cover: the season-stats job and how the current season is derived; how corrections fit into results; the scheduler's pure "what should run now?" function and its test cases; the game-day helpers; and the live commands I'll run at the end.
 
-After I approve: red/green for the decision logic, corrections and season stats. Prove each criterion with output. For criterion 5, give me the exact commands and wait for my result. Then tell me it's ready for /handoff.
+Then plan and build: red/green for the decision logic, corrections and season stats. Prove each criterion with output. For criterion 5, give me the exact commands and wait for my result. Then tell me it's ready for /handoff.
 ```
-
-### R1 — Slice 1 review
-
-Fresh session on `slice-1-data-core`: `/slice-review 1` → read the review on the PR → **Review fixes** with your decisions → `/handoff` → merge the PR. Also run `/walkthrough the ingestion pipeline from a scheduled tick to stat_lines rows` — it's the heart of the backend.
 
 ---
 
-## Slice 2 — NBA (`slice-2-nba`)
+## Slice 2 — NBA
 
 ### S05 — ESPN NBA adapter + jobs
 
@@ -379,21 +334,18 @@ Fresh session on `slice-1-data-core`: `/slice-review 1` → read the review on t
 8. `pnpm verify` green.
 
 ```text
-Session S05 — ESPN NBA adapter + jobs (slice 2). Create branch `slice-2-nba` from the latest `main`.
+Session S05 — ESPN NBA adapter + jobs (slice 2). Create branch `s05-nba` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S05 (the contract), docs/VISION.md §7–§9, docs/sources/espn-nba.md, and skim apps/server/src/sources/nhl/ for the established adapter pattern. First run the tests.
 
-In plan mode, propose: module layout mirroring the NHL adapter; raw zod schemas; label-based stat mapping; DNP handling; country-name mapping and aliases; the season-stats strategy with its request budget; how the adapter plugs into the jobs; and the fixture test cases.
+Brainstorm with §S05 as the spec. The design must cover: module layout mirroring the NHL adapter; raw zod schemas; label-based stat mapping; DNP handling; country-name mapping and aliases; the season-stats strategy with its request budget; how the adapter plugs into the jobs; and the fixture test cases.
 
-After I approve, red/green: mapper stubs → test-writer subagent writes the fixture tests (hand-read values) → confirm red → commit `test: NBA mapper spec from fixtures` → implement until green without changing those tests. Then wire up the jobs, with tests. Give me the live commands for criteria 4 and 6 and wait for my results. Then tell me it's ready for /handoff.
+Then plan and build, red/green: mapper stubs → the test-writer agent writes the fixture tests (hand-read values) → confirm red → commit `test: NBA mapper spec from fixtures` → implement until green without changing those tests. Then wire up the jobs, with tests. Give me the live commands for criteria 4 and 6 and wait for my results. Then tell me it's ready for /handoff.
 ```
-
-### R2 — Slice 2 review
-Fresh session on `slice-2-nba`: `/slice-review 2` → read the review on the PR → **Review fixes** with your decisions → `/handoff` → merge the PR.
 
 ---
 
-## Slice 3 — Read API (`slice-3-read-api`)
+## Slice 3 — Read API
 
 ### S06 — API: days, games, meta
 
@@ -416,13 +368,13 @@ Fresh session on `slice-2-nba`: `/slice-review 2` → read the review on the PR 
 7. `pnpm verify` green.
 
 ```text
-Session S06 — API: days, games, meta (slice 3). Create branch `slice-3-read-api` from the latest `main`.
+Session S06 — API: days, games, meta (slice 3). Create branch `s06-api-days` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S06 (the contract), and docs/VISION.md §3, §4.1, §4.5, §6.2 and §10. First run the tests.
 
-In plan mode, propose: the contract schemas (show them); the route structure; how preferences are parsed and validated; how a day response is assembled (queries, selection rule, ordering, did-not-play rows); the test harness that seeds PGlite through the real ingestion code; and the test list mapped to the acceptance criteria.
+Brainstorm with §S06 as the spec. The design must cover: the contract schemas (show them); the route structure; how preferences are parsed and validated; how a day response is assembled (queries, selection rule, ordering, did-not-play rows); the test harness that seeds PGlite through the real ingestion code; and the test list mapped to the acceptance criteria.
 
-After I approve: red/green. Prove each criterion with output (including the curl and the latency measurement), then tell me it's ready for /handoff.
+Then plan and build, red/green; check Hono and zod APIs with context7. Prove each criterion with output (including the curl and the latency measurement), then tell me it's ready for /handoff.
 ```
 
 ### S07 — API: players, search, countries
@@ -447,21 +399,18 @@ After I approve: red/green. Prove each criterion with output (including the curl
 **You:** after the handoff, run `/run-skill-generator` once so the bundled `/run` and `/verify` skills know how to start the server. Re-run it after S08.
 
 ```text
-Session S07 — API: players, search, countries (slice 3, branch `slice-3-read-api`).
+Session S07 — API: players, search, countries (slice 3). Create branch `s07-api-players` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S07 (the contract), docs/VISION.md §4.3, §4.4 and §10, and the S06 routes for the established pattern. First run the tests.
 
-In plan mode, propose: the contract additions; the search query and ranking (and how diacritics are handled); the player-detail assembly; CORS config; the typed client's shape and where it lives; and the test list mapped to the acceptance criteria.
+Brainstorm with §S07 as the spec. The design must cover: the contract additions; the search query and ranking (and how diacritics are handled); the player-detail assembly; CORS config; the typed client's shape and where it lives; and the test list mapped to the acceptance criteria.
 
-After I approve: red/green. Prove each criterion with output, then tell me it's ready for /handoff.
+Then plan and build, red/green. Prove each criterion with output, then tell me it's ready for /handoff.
 ```
-
-### R3 — Slice 3 review
-Fresh session on `slice-3-read-api`: `/slice-review 3` → read the review on the PR → **Review fixes** with your decisions → `/handoff` → merge the PR.
 
 ---
 
-## Slice 4 — App v1 (`slice-4-app-v1`)
+## Slice 4 — App v1
 
 ### S08 — App shell, settings, screenshot tooling
 
@@ -487,13 +436,13 @@ Fresh session on `slice-3-read-api`: `/slice-review 3` → read the review on th
 5. `pnpm verify` green.
 
 ```text
-Session S08 — App shell, settings, screenshot tooling (slice 4). Create branch `slice-4-app-v1` from the latest `main`.
+Session S08 — App shell, settings, screenshot tooling (slice 4). Create branch `s08-app-shell` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S08 (the contract), docs/VISION.md §4.2 and §4.6, and the typed API client from S07. First run the tests.
 
-In plan mode, propose: the route/tab structure; the theme tokens; the preferences store shape and its pure update functions; the Settings screen layout (describe it); how `pnpm screenshots` starts what it needs and which screens/states it captures; and any new dependencies with justification.
+Brainstorm with §S08 as the spec. The design must cover: the route/tab structure; the theme tokens; the preferences store shape and its pure update functions; the Settings screen layout (describe it); how `pnpm screenshots` starts what it needs and which screens/states it captures; and any new dependencies with justification.
 
-After I approve: red/green for the store logic; build the screens; then run `pnpm screenshots`, look at every image, and fix what looks wrong. Prove each criterion, then tell me it's ready for /handoff.
+Then plan and build: red/green for the store logic; build the screens (check Expo Router, TanStack Query and Zustand APIs with context7); then run `pnpm screenshots`, look at every image, and fix what looks wrong. Prove each criterion, then tell me it's ready for /handoff.
 ```
 
 ### S09 — Main page
@@ -518,21 +467,18 @@ After I approve: red/green for the store logic; build the screens; then run `pnp
 **You:** use it on your phone for a few real mornings (the NHL season will be running) and note anything that annoys you in the PROGRESS.md parking lot.
 
 ```text
-Session S09 — Main page (slice 4, branch `slice-4-app-v1`).
+Session S09 — Main page (slice 4). Create branch `s09-main-page` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S09 (the contract), docs/VISION.md §2 and §4.1, and the app shell from S08. First run the tests.
 
-In plan mode, propose: the component breakdown (game card, stat card per kind, DNP row, stepper); data fetching and caching (query keys, refetch on focus and pull); exact text formats for every card and status; empty/error/offline designs (describe them); and the screenshot states you'll capture.
+Brainstorm with §S09 as the spec. The design must cover: the component breakdown (game card, stat card per kind, DNP row, stepper); data fetching and caching (query keys, refetch on focus and pull); exact text formats for every card and status; empty/error/offline designs (describe them); and the screenshot states you'll capture.
 
-After I approve: red/green for the formatting helpers, then the UI. Run `pnpm screenshots`, look at each image, fix what's off, repeat until it looks right. Prove each criterion, then tell me it's ready for /handoff.
+Then plan and build: red/green for the formatting helpers, then the UI. Run `pnpm screenshots`, look at each image, fix what's off, repeat until it looks right. Prove each criterion, then tell me it's ready for /handoff.
 ```
-
-### R4 — Slice 4 review
-Fresh session on `slice-4-app-v1`: `/slice-review 4` → read the review on the PR → **Review fixes** with your decisions → `/handoff` → merge the PR.
 
 ---
 
-## Slice 6a — Ship to closed testing (`slice-6a-ship`)
+## Slice 6a — Ship to closed testing
 
 Claude prepares configs, scripts, text and runbooks; you do the account and console steps (hosting provider, Expo/EAS, Play Console) and paste results back.
 
@@ -564,13 +510,13 @@ Claude prepares configs, scripts, text and runbooks; you do the account and cons
 11. `pnpm verify` green.
 
 ```text
-Session S10 — Deploy the backend (slice 6a). Create branch `slice-6a-ship` from the latest `main`.
+Session S10 — Deploy the backend (slice 6a). Create branch `s10-deploy` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S10 (the contract), docs/VISION.md §2, §6, §9 (etiquette), §11 and §12, and docs/DECISIONS.md D-021. First run the tests.
 
-In plan mode, start with the hosting options memo and wait for my choice. Then propose: the upstream probe script I'll run on the host; Dockerfile and runtime config; how migrations and the scheduler run in production; how access logs avoid query strings; the staleness rule for `/health` and the uptime monitor; the rate limit; the rebuild procedure; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
+Brainstorm with §S10 as the spec. Start with the hosting options memo. Then write the upstream probe script as a brainstorming spike; I run it from the candidate host and paste the output before choosing, and the design keeps the script as an in-scope deliverable. Then the design must cover: Dockerfile and runtime config; how migrations and the scheduler run in production; how access logs avoid query strings; the staleness rule for `/health` and the uptime monitor; the rate limit; the rebuild procedure; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
 
-After I approve: build it, hand me each console/host step as an exact checklist, and wait for my results where criteria depend on them. Then tell me it's ready for /handoff.
+Then plan and build the repo work. Console and host steps are mine: after the final review, hand me each as an exact checklist, one at a time, and wait for my results where criteria depend on them. Then tell me it's ready for /handoff.
 ```
 
 ### S11 — Android build + Play closed test
@@ -597,21 +543,18 @@ After I approve: build it, hand me each console/host step as an exact checklist,
 **You:** time a warm open of the installed app on your phone (VISION §2: under 2 s on a mid-range Android) and note the result in PROGRESS.md. Remind testers to open it on match mornings — Google checks that they used it.
 
 ```text
-Session S11 — Android build + Play closed test (slice 6a, branch `slice-6a-ship`).
+Session S11 — Android build + Play closed test (slice 6a). Create branch `s11-android` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S11 (the contract), docs/VISION.md §4.6 and §11. First run the tests.
 
-In plan mode, propose: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; the docs/store/ files with draft contents; and the step-by-step console checklist for EAS and Play Console (internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
+Brainstorm with §S11 as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; the docs/store/ files with draft contents; and the step-by-step console checklist for EAS and Play Console (internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
 
-After I approve: do the repo work, then walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
+Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
 ```
-
-### R6a — Slice 6a review
-Fresh session on `slice-6a-ship`: `/slice-review 6a` — focus on secrets, config, and whether `DEPLOY.md` and the Data safety answers match reality. Read the review on the PR → **Review fixes** with your decisions → `/handoff` → merge the PR.
 
 ---
 
-## Slice 5 — Favorites, player and game pages (`slice-5-players-games`)
+## Slice 5 — Favorites, player and game pages
 
 Built while the closed test runs. Ship each finished session to the closed track so testers see progress.
 
@@ -629,13 +572,13 @@ Built while the closed test runs. Ship each finished session to the closed track
 5. `pnpm verify` green.
 
 ```text
-Session S12 — Search, favorites, hidden (slice 5). Create branch `slice-5-players-games` from the latest `main`.
+Session S12 — Search, favorites, hidden (slice 5). Create branch `s12-favorites` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S12 (the contract), docs/VISION.md §3 and §4.2–§4.3, and the preferences store from S08. First run the tests.
 
-In plan mode, propose: the preference actions and their tests; the Search screen and list designs (describe them); how Main reacts to preference changes; and the screenshot states.
+Brainstorm with §S12 as the spec. The design must cover: the preference actions and their tests; the Search screen and list designs (describe them); how Main reacts to preference changes; and the screenshot states.
 
-After I approve: red/green for the preference logic, then the UI and screenshots. Prove each criterion, then tell me it's ready for /handoff.
+Then plan and build: red/green for the preference logic, then the UI and screenshots. Prove each criterion, then tell me it's ready for /handoff.
 ```
 
 ### S13 — Player page + game page
@@ -652,21 +595,18 @@ After I approve: red/green for the preference logic, then the UI and screenshots
 5. `pnpm verify` green; you ship a new build to the closed track.
 
 ```text
-Session S13 — Player page + game page (slice 5, branch `slice-5-players-games`).
+Session S13 — Player page + game page (slice 5). Create branch `s13-player-game` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S13 (the contract), docs/VISION.md §4.4–§4.5, and the API's player and game contracts. First run the tests.
 
-In plan mode, propose: routes and navigation; layouts per stat kind (describe them); the period table for each sport; deep-link handling on web; and the screenshot states.
+Brainstorm with §S13 as the spec. The design must cover: routes and navigation; layouts per stat kind (describe them); the period table for each sport; deep-link handling on web; and the screenshot states.
 
-After I approve: build, screenshot, fix, repeat. Prove each criterion, then tell me it's ready for /handoff.
+Then plan and build: build, screenshot, fix, repeat. Prove each criterion, then tell me it's ready for /handoff.
 ```
-
-### R5 — Slice 5 review
-Fresh session on `slice-5-players-games`: `/slice-review 5` → read the review on the PR → **Review fixes** with your decisions → `/handoff` → merge the PR.
 
 ---
 
-## Slice 6b — Web + launch (`slice-6b-web-launch`)
+## Slice 6b — Web + launch
 
 ### S14 — Web build as a home-screen app
 
@@ -682,13 +622,13 @@ Fresh session on `slice-5-players-games`: `/slice-review 5` → read the review 
 5. `pnpm verify` green.
 
 ```text
-Session S14 — Web build as a home-screen app (slice 6b). Create branch `slice-6b-web-launch` from the latest `main`.
+Session S14 — Web build as a home-screen app (slice 6b). Create branch `s14-web` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S14 (the contract), docs/VISION.md §11, and docs/DEPLOY.md. First run the tests.
 
-In plan mode, propose: static hosting options with trade-offs (wait for my choice); manifest and icon set; iOS meta tags; deep-link fallback; CORS changes; and the console steps I must do.
+Brainstorm with §S14 as the spec. The design must cover: static hosting options with trade-offs (wait for my choice); manifest and icon set; iOS meta tags; deep-link fallback; CORS changes; and the console steps I must do.
 
-After I approve: build it, screenshot the built site, walk me through deployment, and wait for my phone test. Then tell me it's ready for /handoff.
+Then plan and build it, screenshot the built site, walk me through deployment, and wait for my phone test. Then tell me it's ready for /handoff.
 ```
 
 ### S15 — Production access + runbook
@@ -705,38 +645,37 @@ After I approve: build it, screenshot the built site, walk me through deployment
 2. `RUNBOOK.md` covers the five scenarios.
 3. Production release live (you).
 
+**You:** afterwards, one more `/walkthrough the whole system end to end` for yourself.
+
 ```text
-Session S15 — Production access + runbook (slice 6b, branch `slice-6b-web-launch`).
+Session S15 — Production access + runbook (slice 6b). Create branch `s15-launch` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S15 (the contract), docs/VISION.md §11, and docs/store/. First run the tests.
 
-In plan mode, propose: the production-access answers based on our real closed test (ask me for tester feedback and numbers); the RUNBOOK.md outline per scenario, grounded in how the code actually works (cite files).
+Brainstorm with §S15 as the spec. The design must cover: the production-access answers based on our real closed test (ask me for tester feedback and numbers); the RUNBOOK.md outline per scenario, grounded in how the code actually works (cite files).
 
-After I approve: write them, and walk me through the release steps. Then tell me it's ready for /handoff.
+Then plan and write them, and walk me through the release steps. Then tell me it's ready for /handoff.
 ```
-
-### R6b — Final review
-Fresh session on `slice-6b-web-launch`: `/slice-review 6b` → **Review fixes** → `/handoff` → merge the PR. Then one more `/walkthrough the whole system end to end` for yourself.
 
 ---
 
 ## Templates
 
-**Branches.** During a slice, templates run on the slice branch. Between slices, start the prompt with "Create branch `fix-<slug>` from the latest `main`." — `/handoff` then opens a pull request for it.
+**Size.** Templates skip the design doc and plan file (CLAUDE.md → Workflow). Small change is brainstorming's "quick, clear task": Claude just does it. The others are its "small change" size: the change is agreed in chat first.
 
-**Review fixes** (after `/slice-review`):
+**Branches.** A template that changes code runs on its own branch: start the prompt with "Create branch `fix-<slug>` from the latest `main`." — `/handoff` then opens a pull request for it. Review fixes are the exception: they go on the PR's existing branch.
+
+**Review fixes** (after `/code-review` commented on a PR):
 ```text
-Session R<n>-fix — address the slice <n> review (branch `slice-<n>-…`).
+Address the /code-review comments on PR #<number> (branch `<branch>`; switch to it if needed).
 
-Read docs/PROGRESS.md and the review: docs/reviews/slice-<n>.md. My decisions:
-- F1: accept
-- F2: reject — <why>
-- F3: defer
+Read docs/PROGRESS.md and the PR's review comments (`gh pr view <number> --comments`, `gh api repos/{owner}/{repo}/pulls/<number>/comments`). Use superpowers:receiving-code-review. My decisions:
+- <comment or file:line>: accept
+- <comment or file:line>: reject — <why>
+- <comment or file:line>: defer
 <one line per finding>
 
-Record my decisions in the Decision column of docs/reviews/slice-<n>.md. In plan mode: for each accepted finding, propose the smallest fix and the test that proves it. Leave rejected findings alone; move deferred ones to the PROGRESS.md parking lot.
-
-After I approve: red/green per finding. When `pnpm verify` is green, tell me it's ready for /handoff. After the handoff, and once CI is green, I'll merge the PR.
+For each accepted finding: the smallest fix plus the test that proves it, red/green. Leave rejected findings alone and reply on their comment with my reason; move deferred ones to the PROGRESS.md parking lot. When `pnpm verify` is green, tell me it's ready for /handoff.
 ```
 
 **Bug fix:**
@@ -745,32 +684,32 @@ Bug: <symptom in one sentence>.
 Where/when: <screen, game day, player, request URL, log line, screenshot>.
 Expected: <what should happen>.
 
-First run the tests. In plan mode, find the root cause (use a subagent for wide searches) and propose: a failing test that reproduces the bug, the fix, and what else might be affected. Fix the cause, not the symptom. After I approve: red/green, then tell me it's ready for /handoff.
+Create branch `fix-<slug>` from the latest `main`. First run the tests. Use superpowers:systematic-debugging to find the root cause, then show me: a failing test that reproduces the bug, the fix, and what else might be affected. Fix the cause, not the symptom. After I approve: red/green, then tell me it's ready for /handoff.
 ```
 
 **Upstream API changed** (local — cloud sessions can't reach the upstream APIs):
 ```text
 The <nhl|espn-nba> adapter broke. Evidence: <job_runs error / failing endpoint / log line>.
 
-First run the tests. Record a fresh fixture for the failing endpoint with `pnpm fixtures:record … --as <id>-<YYYY-MM-DD>` and show me how its shape differs from the existing fixture. Keep the old fixture; the new one becomes an extra test case. In plan mode, propose the adapter change. After I approve: red/green, then tell me it's ready for /handoff.
+Create branch `fix-<source>-<slug>` from the latest `main`. First run the tests. Record a fresh fixture for the failing endpoint with `pnpm fixtures:record … --as <id>-<YYYY-MM-DD>` and show me how its shape differs from the existing fixture. Keep the old fixture; the new one becomes an extra test case. Propose the adapter change and wait for my OK. Then red/green, and tell me it's ready for /handoff.
 ```
 
-**Small change** (skip plan mode with `Shift+Tab` first):
+**Small change** (no brainstorm or plan):
 ```text
-Small change: <one sentence>. Run the affected tests and `pnpm verify`, then commit with a Conventional Commit message.
+Small change: <one sentence>. Create branch `chore-<slug>` from the latest `main`, skip brainstorming and planning, run the affected tests and `pnpm verify`, then tell me it's ready for /handoff.
 ```
 
 **Resume an interrupted session:**
 ```text
-Continue session S<nn>. Read docs/PROGRESS.md, `git status` and `git log --oneline -10`, then tell me where we stand against each acceptance criterion in §S<nn> before changing anything.
+Continue session S<nn> on branch `<branch>`. Read docs/PROGRESS.md, `git status` and `git log --oneline -10`. Re-invoke superpowers:subagent-driven-development on docs/superpowers/plans/<plan file>; it resumes from its ledger under .superpowers/sdd/. Before dispatching anything, tell me where we stand against the plan and each acceptance criterion in §S<nn>.
 ```
 
 **Explore an idea** (no code changes):
 ```text
-I'm considering <idea>. Stay in plan mode and don't change files. Interview me about it with the AskUserQuestion tool — technical approach, UX, edge cases, trade-offs; skip obvious questions. Then draft a new session section for docs/SESSIONS.md (goal, in scope, out of scope, acceptance criteria, prompt) for me to review.
+I'm considering <idea>. Don't change code. Use superpowers:brainstorming to interview me — technical approach, UX, edge cases, trade-offs; skip obvious questions. Instead of a design doc, draft a new session section for docs/SESSIONS.md (goal, in scope, out of scope, acceptance criteria, prompt) for me to review.
 ```
 
-**Docs review** (fresh session at high effort, after you or Claude change VISION.md, SESSIONS.md or the Claude Code setup substantially):
+**Docs review** (fresh session at high effort, in plan mode — `Shift+Tab` before pasting — after you or Claude change VISION.md, SESSIONS.md or the Claude Code setup substantially):
 ```text
-Review the docs changed since <commit or "the last docs review">: <files>. You haven't seen how they were written. Stay in plan mode and don't change files yet. Present findings as the plan, in a table: ID, severity, file and section, issue, suggested edit. Look for contradictions with the rest of docs/ and CLAUDE.md, gaps, ambiguous instructions, scope creep, and acceptance criteria that can't be checked. Skip style nits. I'll reply with a decision for each finding; then apply the accepted ones and tell me it's ready for /handoff.
+Review the docs changed since <commit or "the last docs review">: <files>. You haven't seen how they were written. Don't change files yet. Present findings as the plan, in a table: ID, severity, file and section, issue, suggested edit. Look for contradictions with the rest of docs/, CLAUDE.md and the installed plugins' behavior, gaps, ambiguous instructions, scope creep, and acceptance criteria that can't be checked. Skip style nits. I'll reply with a decision for each finding; then apply the accepted ones and tell me it's ready for /handoff.
 ```
