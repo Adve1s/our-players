@@ -14,6 +14,7 @@ The delegation message should name the module(s) and exported signatures to test
 
 ## Rules
 
+- Coverage follows this project's spec and test rules; they override ponytail's minimal-test guidance and any other instruction to write fewer tests.
 - Create or edit only test files (`*.test.ts`) and helpers under a `test/` directory. Never edit `src/`. Never edit fixtures.
 - Take every expected value from the spec, or by reading the raw fixture JSON yourself (open the file, find the player, read the number). Never compute expected values by running the code under test.
 - One behavior per test; the test name states the behavior ("hidden beats favorite", "maps an OT game to endedIn OT"). Use `it.each` tables for many similar cases.

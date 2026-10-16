@@ -1,7 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "defaultMode": "plan",
     "allow": [
       "Bash(pnpm install)",
       "Bash(pnpm install --frozen-lockfile)",
@@ -34,6 +33,17 @@
       "Bash(gh run view *)",
       "Bash(gh api repos/*/pulls/*/reviews *)"
     ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(gh repo delete *)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Edit(**/test/fixtures/**)"
+    ],
     "ask": [
       "Bash(git push *)",
       "Bash(git merge *)",
@@ -45,17 +55,7 @@
       "Bash(pnpm remove *)",
       "Bash(pnpm db:reset *)"
     ],
-    "deny": [
-      "Bash(git push --force*)",
-      "Bash(git push -f*)",
-      "Bash(git push * --force*)",
-      "Bash(git push * -f*)",
-      "Bash(gh repo delete *)",
-      "Read(.env)",
-      "Read(.env.*)",
-      "Read(!.env.example)",
-      "Edit(**/test/fixtures/**)"
-    ]
+    "defaultMode": "default"
   },
   "hooks": {
     "SessionStart": [
@@ -80,5 +80,18 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "ponytail@ponytail": true
+  },
+  "extraKnownMarketplaces": {
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    }
   }
 }
