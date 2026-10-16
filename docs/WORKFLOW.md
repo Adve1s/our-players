@@ -24,7 +24,7 @@ Not used: git worktrees, agent teams, parallel sessions. Sessions depend on each
 | Plugin | Scope | What it's for | Notes |
 |---|---|---|---|
 | **superpowers** (`claude-plugins-official`) | project | The workflow above, plus `test-driven-development`, `systematic-debugging`, `verification-before-completion` and `receiving-code-review` | A SessionStart hook loads its rules. CLAUDE.md overrides its skills, and the Workflow section there configures it: spec/plan paths, Opus for every helper agent, no worktrees, `/handoff` instead of `finishing-a-development-branch` (which offers a local merge into `main`). Working files go to `.superpowers/` (gitignored). Optional: `SUPERPOWERS_DISABLE_TELEMETRY=1` turns off the brainstorming visual companion's logo request. |
-| **ponytail** (third-party marketplace `DietrichGebert/ponytail`) | project | Keeps generated code small: reuse first, standard library first, no speculative abstractions, `shortcut:` comments for known limits | Level `full` (the default). Avoid `ultra`: it challenges the request, but here the acceptance criteria are the contract. Hooks on SessionStart (rules + a small codebase map), SubagentStart (rules in **every** helper agent) and each prompt. CLAUDE.md says the project's test rules beat its "one small test" guidance. Writes local files only (`~/.claude/.ponytail-active`, `~/.config/ponytail/`); the webhook stays empty. `/ponytail-debt` lists the `shortcut:` comments. |
+| **ponytail** (third-party marketplace `DietrichGebert/ponytail`) | project | Keeps generated code small: reuse first, standard library first, no speculative abstractions, `shortcut:` comments for known limits | Level `full` (the default). Avoid `ultra`: it challenges the request, but here the acceptance criteria are the contract. Hooks on SessionStart (rules + a small codebase map), SubagentStart (rules in **every** helper agent) and each prompt. CLAUDE.md says the project's test rules beat its "one small test" guidance. Writes local files only (`~/.claude/.ponytail-active`, `~/.config/ponytail/`); the webhook stays empty. Pinned to tag `v5.3.1` (`ref` in `extraKnownMarketplaces`) because its hooks run in every session; bump the tag on purpose after reading what changed. `/ponytail-debt` lists the `shortcut:` comments. |
 | **context7** (`claude-plugins-official`) | project | Current docs for Expo, Expo Router, Drizzle, Hono, zod, TanStack Query, Vitest, Biome | Hosted MCP server with two tools, loaded on demand, so the context cost is small. Anonymous by default; set `CONTEXT7_API_KEY` for higher limits. Nothing for the unofficial NHL/ESPN APIs — that's `docs/sources/`. |
 | **typescript-lsp** (`claude-plugins-official`) | user | Type errors and go-to-definition right after each edit, cheaper than re-running `tsc` | Needs `typescript-language-server` on `PATH` (`sudo pacman -S typescript-language-server`). Does nothing until S00 creates TypeScript. Diagnostics are hints; `pnpm verify` stays the gate. |
 
@@ -56,7 +56,8 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 - **Usage:** cloud sessions share your plan's limits with local ones. If your account shows a cloud-session credit, check `/usage` after the first cloud session before relying on it.
 - **What fits:** sessions marked *either* in the SESSIONS.md Overview — the backend sessions S02a–S07. Keep S00, S01, the app sessions and the shipping sessions local (machine setup, phone, live upstream calls, consoles).
 - **Branch:** it starts on `claude/…` but can push any branch, so it creates `s<nn>-<slug>` from `origin/main` (CLAUDE.md says so). `/handoff` then works as it does locally.
-- **Mode:** pick **Default** in the mode dropdown; switch to Auto after approving the plan.
+- **Mode:** pick **Accept edits** in the mode dropdown (there is no Default); switch it to **Auto** *before* you reply with your plan approval, because execution starts on that reply.
+- **Resume:** the SDD ledger is gitignored and stays on the VM, so let the plan finish in the cloud before you `claude --teleport` the session (SESSIONS.md → Sizing).
 - **What it reads:** CLAUDE.md, `.claude/settings.json` (permissions, hooks, project plugins), skills, agents, rules. Not your `~/.claude`, so no typescript-lsp.
 - **Its machine:** Ubuntu, Node 22, pnpm, `gh`; `node_modules` installed fresh by a SessionStart hook (from S00). Network is limited to package registries and GitHub: the NHL/ESPN APIs and context7 are unreachable. Live checks ("run by you") stay on your machine.
 
@@ -74,13 +75,13 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
    /plugin install superpowers@claude-plugins-official
    /plugin install context7@claude-plugins-official
    /plugin install typescript-lsp@claude-plugins-official   (user scope)
-   /plugin marketplace add DietrichGebert/ponytail
+   /plugin marketplace add DietrichGebert/ponytail@v5.3.1
    /plugin install ponytail@ponytail
    ```
    On a fresh clone the project plugins are already listed in `.claude/settings.json`; Claude Code should offer to install them when you trust the folder (otherwise run the commands above).
 7. **Start Claude Code** in the repo and accept the trust prompt (project allow rules apply only after that).
-8. **Check the setup:** `/plugin` (four enabled), `/skills` (handoff, walkthrough, the superpowers and ponytail skills), `/hooks` (the kit's SessionStart and PostToolUse hooks plus the plugins'), `/mcp` (context7 connected), `/permissions`, and "which custom subagents are available?" (reviewer, test-writer).
-9. Sessions start in **default** mode (`permissions.defaultMode`): edits ask until you approve the plan, then `Shift+Tab` to auto. In the VS Code extension, set `claudeCode.initialPermissionMode` to `default`.
+8. **Check the setup:** `/plugin` (superpowers, context7 and ponytail from the project, plus typescript-lsp from your user settings; a fresh clone or cloud session shows only the three project ones), `/skills` (handoff, walkthrough, the superpowers and ponytail skills), `/hooks` (the kit's SessionStart and PostToolUse hooks plus the plugins'), `/mcp` (context7 connected), `/permissions`, and "which custom subagents are available?" (reviewer, test-writer).
+9. Sessions start in **default** mode (`permissions.defaultMode`): edits ask until you `Shift+Tab` to auto, right before you approve the plan. In the VS Code extension, set `claudeCode.initialPermissionMode` to `default`.
 10. **Optional:** a desktop notification when Claude needs you — a `Notification` hook running `notify-send` in `~/.claude/settings.json`; a status line showing context tokens (`/statusline …`). Both are already set up on your machine.
 11. Personal preferences go in `.claude/settings.local.json` and `CLAUDE.local.md` — both gitignored.
 
@@ -101,15 +102,9 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 
 ## The session loop
 
-1. **Orient.** Start `claude` on an up-to-date `main`. The SessionStart hooks inject the repo state and the plugin rules. Set effort per the Overview (`/effort medium` or `/effort high`; a typed level is saved as your default).
-2. **Paste the session's prompt.** Claude creates the session branch, runs the tests, and starts brainstorming.
-3. **Design.** It asks about the gaps the SESSIONS.md section leaves, one question at a time, then writes a short design doc. Push back here — this is the cheapest moment to change direction.
-4. **Plan.** It writes the task list. Check that tasks map to the acceptance criteria, stay inside the scope, name any new dependency (you approve each), and put the test-writer task right after the stubs where the prompt says so. Switch to auto mode, then approve: execution starts on your reply.
-5. **Build.** Helper agents implement and review task by task. Superpowers only stops for destructive, security-sensitive or outside-the-branch actions, or a plan that doesn't work; CLAUDE.md adds one stop, a red-phase test or fixture that looks wrong. Everything else is a ruling, listed at the end and in the PR briefing. Interrupt with `Esc` if it drifts. **After two failed corrections, stop:** `/clear` and restart with a better prompt.
-6. **Verify.** Claude shows evidence for each acceptance criterion; `pnpm verify` is green. Your steps (live checks marked "run by you", console steps) happen here, one at a time, after the final review.
-7. **`/handoff`.** You approve the push; the PR gets the briefing and the `/code-review` comments; CI runs.
-8. **Review and merge.** Read the briefing's "Read these" files and the inline comments. Fixes → "Review fixes" template → `/handoff`. Merge when CI is green.
-9. **Learn.** `/walkthrough <area>` for anything you didn't follow; `/btw <question>` for side questions.
+The steps live in one place, SESSIONS.md → "How to run a session"; the TL;DR above summarizes them. Two habits on top:
+- **After two failed corrections, stop:** `/clear` and restart with a better prompt.
+- **Learn:** `/walkthrough <area>` for anything you didn't follow; `/btw <question>` for side questions.
 
 ## The practices behind this setup
 
@@ -129,7 +124,7 @@ Each practice comes from Anthropic's Claude Code guidance or engineering write-u
 
 ### 4. Independent review
 - A fresh context reviews better than the author; agree success criteria before the work. → acceptance criteria as the contract; a task review per task; the `reviewer` agent over the branch; `/code-review` on the PR.
-- Calibrate reviewers: chasing every finding leads to over-engineering. → blockers only for correctness, requirements, architecture rules and test trustworthiness; style is Biome's job; ponytail pushes back on bloat; you decide every PR finding.
+- Calibrate reviewers: chasing every finding leads to over-engineering. → the reviewer agent's Critical/Important/Minor scale (only Critical and Important get fixed; correctness, requirements, architecture rules and test trustworthiness); style is Biome's job; ponytail pushes back on bloat; you decide every PR finding.
 - Watch for test gaming: weakened assertions, skipped tests, mocks of the unit under test, edited fixtures. → CLAUDE.md, the fixture deny rule, the reviewer's checklist.
 
 ### 5. Guardrails: advisory vs enforced

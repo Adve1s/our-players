@@ -3,16 +3,18 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** Plugin workflow + docs review (2026-10-16): the kit runs on superpowers + ponytail + context7 + typescript-lsp, with one branch and PR per session reviewed by the built-in `/code-review` (DECISIONS.md D-022–D-025). A fresh-session docs review then aligned the docs with how superpowers actually runs plans (no pauses; rulings; ledger-based resume).
+- **Last session:** Review fixes for PR #3 (2026-10-17): 9 of 10 `/code-review` findings fixed (docs and `.claude/` config), 1 rejected with a reply on the PR. The kit runs on superpowers + ponytail + context7 (project) and typescript-lsp (user), one branch and PR per session (D-022–D-025).
 - **Branch / PR:** `plan-change` → `main`, PR #3 (docs and config only, no CI yet).
-- **What works:** nothing runs yet; the repo holds the docs, `.claude/` config (with the project plugins) and `apps/server/data/nationality-overrides.json`. `origin/slice-0-setup` keeps an earlier attempt at S00–R0 under the old workflow as a backup — don't merge or modify it.
-- **How to try it:** `/plugin` shows four plugins enabled; read `docs/WORKFLOW.md` (TL;DR, Plugins) and `docs/SESSIONS.md` → "How to run a session".
+- **What works:** nothing runs yet; the repo holds the docs, `.claude/` config (with the project plugins, ponytail pinned to `v5.3.1`) and `apps/server/data/nationality-overrides.json`. `origin/slice-0-setup` keeps an earlier attempt at S00–R0 under the old workflow as a backup — don't merge or modify it.
+- **How to try it:** `/plugin` shows the three project plugins (superpowers, context7, ponytail) plus typescript-lsp from your user settings; read `docs/WORKFLOW.md` (TL;DR, Plugins) and `docs/SESSIONS.md` → "How to run a session".
 - **Next session:** S00 — Bootstrap. Claude creates branch `s00-bootstrap` from `main`; its `/handoff` opens the PR and runs `/code-review`.
 - **Notes for the next session:**
   - Before S00, the owner protects `main` (WORKFLOW.md setup step 4, first part) if it isn't already, and sets effort per the Overview (`/effort medium` for S00).
+  - Your own machine registered the ponytail marketplace without a tag; re-add it as `DietrichGebert/ponytail@v5.3.1` (WORKFLOW setup step 6) so a manual update can't follow its `main`.
   - S00 is the first session with Opus helper agents: check `/usage` afterwards (D-025). Note any superpowers helper scripts that prompt repeatedly as candidate allow rules.
-  - During plan execution Claude stops only for superpowers' four stops plus a red-phase test or fixture that looks wrong; everything else is a ruling listed in the PR briefing. Your in-session steps come after the final review.
-  - Untested until S00: whether the controller routes a *test-writer* task to the test-writer agent, and whether the reviewer agent's new Critical/Important/Minor output feeds superpowers' final fix wave cleanly.
+  - During plan execution Claude stops only for superpowers' four stops, a red-phase test or fixture that looks wrong, or a test-writer spec question (BLOCKED); everything else is a ruling listed in the PR briefing. Your in-session steps come after the final review.
+  - Untested until S00: whether the controller routes a *test-writer* task to the test-writer agent (and follows its new report contract), and whether the reviewer agent's Critical/Important/Minor output feeds superpowers' final fix wave cleanly.
+  - Untested until the first cloud session: the ponytail `ref` pin on a fresh install, and the cloud mode dropdown (start in Accept edits, switch to Auto before approving the plan).
 
 ## Known issues
 - (none)
@@ -57,3 +59,11 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve-with-fixes; fixed 4 Important (S02a red tests left failing — resolved by dropping the owner exercise; handoff review without a session ID; an unused PR-review write rule; owner steps timed after the handoff) and 2 minors.
 - CI: none yet (no package.json before S00).
 - Follow-ups: watch S00 for test-writer routing and the reviewer → SDD fix-wave hand-off.
+
+### Review fixes for PR #3 — 2026-10-17 — PR #3 (`plan-change`)
+- Changed: SESSIONS.md and WORKFLOW.md (a cloud session finishes its plan before teleport — the ledger stays on the VM; cloud starts in Accept edits, Auto before approving the plan; plugin check is 3 project + 1 user; the duplicated session loop now points to SESSIONS.md), test-writer agent (SDD brief/report/commit contract; spec questions → BLOCKED), CLAUDE.md (that BLOCKED is a stop), reviewer agent (fallback range = whole branch), settings (ponytail pinned to `v5.3.1`; `gh api` rules for posting PR comments and replies).
+- Decisions: D-023 amended in place (ponytail pin); D-022 amended (new stop).
+- Rejected: the `.env.example` deny-rule finding — `!` negation works in deny lists (tested: `.env.example` readable, `.env.local` denied).
+- Reviewer: approve; 0 Critical/Important; fixed 3 of 4 minors (missing stub → NEEDS_CONTEXT; follow-up red commit after a spec answer; tag in setup step 6), left 1 (the `gh api` wildcard also matches spaces — guardrail, not a boundary).
+- CI: none yet (no package.json before S00).
+- Follow-ups: re-add the ponytail marketplace with `@v5.3.1` locally; confirm the cloud dropdown and the pin on the first cloud session.

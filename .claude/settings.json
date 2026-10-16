@@ -29,7 +29,9 @@
       "Bash(gh pr comment *)",
       "Bash(gh run list *)",
       "Bash(gh run view *)",
-      "Bash(gh api repos/*/pulls/*/comments)"
+      "Bash(gh api repos/*/pulls/*/comments)",
+      "Bash(gh api repos/*/pulls/*/comments *)",
+      "Bash(gh api repos/*/pulls/*/comments/*/replies *)"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -88,7 +90,8 @@
     "ponytail": {
       "source": {
         "source": "github",
-        "repo": "DietrichGebert/ponytail"
+        "repo": "DietrichGebert/ponytail",
+        "ref": "v5.3.1"
       }
     }
   }
