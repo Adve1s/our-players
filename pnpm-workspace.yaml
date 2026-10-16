@@ -8,9 +8,8 @@ nodeLinker: hoisted
 allowBuilds:
   esbuild: true
 
-# Written by pnpm install: these Expo SDK 58 releases were under pnpm's default one-day
-# minimumReleaseAge when apps/mobile was added (2026-10-17).
-# shortcut: pinned exemptions, drop them on the next dependency update.
+# Expo SDK 58 packages published 2026-10-16 are younger than pnpm's 1-day minimumReleaseAge;
+# shortcut: exact-version exemptions, inert after 2026-10-17 20:00 UTC — delete this block then.
 minimumReleaseAgeExclude:
   - '@expo/cli@58.1.11'
   - '@expo/schema-utils@58.0.2'
