@@ -9,10 +9,11 @@ The **superpowers** plugin drives every session: brainstorm the design, write a 
 | Step | Runs as | Your part |
 |---|---|---|
 | **Design** | `superpowers:brainstorming` in your session, with the SESSIONS.md section as input → `docs/superpowers/specs/…` | Answer its questions; approve the design |
-| **Plan** | `superpowers:writing-plans` → `docs/superpowers/plans/…`: small tasks, each with its test cycle and commit | Approve the plan; switch to auto mode (`Shift+Tab`) |
+| **Plan** | `superpowers:writing-plans` → `docs/superpowers/plans/…`: small tasks, each with its test cycle and commit | Switch to auto mode (`Shift+Tab`), then approve the plan |
 | **Build** | `superpowers:subagent-driven-development`: a fresh Opus implementer per task, then a task review (spec + quality), up to five fix rounds | Watch or walk away; `Esc` if it drifts |
-| **Red tests for contract code** | the project `test-writer` agent, as the plan's first task — only for the selection rule, nationality and the two adapters | — |
-| **Final review** | the project `reviewer` agent (acceptance criteria, architecture rules, test trustworthiness) over the whole branch | — |
+| **Red tests for contract code** | the project `test-writer` agent, as the task right after the stubs — only for the selection rule, nationality and the two adapters | — |
+| **Final review** | the project `reviewer` agent (acceptance criteria, architecture rules, test trustworthiness, the ledger's deferred findings) over the whole branch; one fix wave follows | — |
+| **Your steps** | after the final review, Claude walks you through the session's in-session "You:" and "run by you" steps one at a time; later ones go in the briefing's Next | Run each; paste results |
 | **Handoff** | `/handoff`: PROGRESS/DECISIONS, commit, push, PR, briefing, `/code-review high --comment`, CI | Approve the push |
 | **PR review** | the built-in `/code-review` posts findings as inline PR comments | Decide accept / reject / defer per comment; run "Review fixes" if needed; merge |
 
@@ -103,9 +104,9 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 1. **Orient.** Start `claude` on an up-to-date `main`. The SessionStart hooks inject the repo state and the plugin rules. Set effort per the Overview (`/effort medium` or `/effort high`; a typed level is saved as your default).
 2. **Paste the session's prompt.** Claude creates the session branch, runs the tests, and starts brainstorming.
 3. **Design.** It asks about the gaps the SESSIONS.md section leaves, one question at a time, then writes a short design doc. Push back here — this is the cheapest moment to change direction.
-4. **Plan.** It writes the task list. Check that tasks map to the acceptance criteria, stay inside the scope, name any new dependency (you approve each), and put the test-writer first where the prompt says so. Approve, then switch to auto mode.
-5. **Build.** Helper agents implement and review task by task. Superpowers only stops for destructive, security-sensitive or outside-the-branch actions, or a plan that doesn't work; it lists its rulings at the end. Interrupt with `Esc` if it drifts. **After two failed corrections, stop:** `/clear` and restart with a better prompt.
-6. **Verify.** Claude shows evidence for each acceptance criterion; `pnpm verify` is green. Live checks marked "run by you" happen here.
+4. **Plan.** It writes the task list. Check that tasks map to the acceptance criteria, stay inside the scope, name any new dependency (you approve each), and put the test-writer task right after the stubs where the prompt says so. Switch to auto mode, then approve: execution starts on your reply.
+5. **Build.** Helper agents implement and review task by task. Superpowers only stops for destructive, security-sensitive or outside-the-branch actions, or a plan that doesn't work; CLAUDE.md adds one stop, a red-phase test or fixture that looks wrong. Everything else is a ruling, listed at the end and in the PR briefing. Interrupt with `Esc` if it drifts. **After two failed corrections, stop:** `/clear` and restart with a better prompt.
+6. **Verify.** Claude shows evidence for each acceptance criterion; `pnpm verify` is green. Your steps (live checks marked "run by you", console steps) happen here, one at a time, after the final review.
 7. **`/handoff`.** You approve the push; the PR gets the briefing and the `/code-review` comments; CI runs.
 8. **Review and merge.** Read the briefing's "Read these" files and the inline comments. Fixes → "Review fixes" template → `/handoff`. Merge when CI is green.
 9. **Learn.** `/walkthrough <area>` for anything you didn't follow; `/btw <question>` for side questions.
@@ -115,7 +116,7 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 Each practice comes from Anthropic's Claude Code guidance or engineering write-ups, or from well-known practitioners; the arrow shows where it lives in this kit.
 
 ### 1. Context is the scarce resource
-- Performance degrades as the context fills ("context rot"); the goal is "the smallest possible set of high-signal tokens". A 1M window raises the ceiling but doesn't change that. → One session per unit of work; stop at a green checkpoint around 200K tokens. Helper agents keep implementation detail out of your session's context.
+- Performance degrades as the context fills ("context rot"); the goal is "the smallest possible set of high-signal tokens". A 1M window raises the ceiling but doesn't change that. → One session per unit of work; stop at a task boundary around 200K tokens. Helper agents keep implementation detail out of your session's context.
 - Keep CLAUDE.md short and point to detail ("progressive disclosure"). → CLAUDE.md ~85 lines; VISION/SESSIONS/sources on demand; `.claude/rules/` per path; context7 tools load on demand.
 
 ### 2. Explore → plan → code → commit
@@ -138,7 +139,7 @@ Each practice comes from Anthropic's Claude Code guidance or engineering write-u
 
 ### 6. Memory lives in the repo
 - A progress file, a feature list and git history let each fresh session orient itself. → PROGRESS.md, SESSIONS.md, DECISIONS.md, the spec and plan files, the SessionStart hook, `/handoff`.
-- Prefer a fresh session with a structured handoff over a long, compacted one. → the sizing rule; the "Resume" template picks up from the plan's checkboxes.
+- Prefer a fresh session with a structured handoff over a long, compacted one. → the sizing rule; the "Resume" template re-invokes subagent-driven development, which picks up from its ledger.
 
 ### 7. Steering and tools
 - Correct early (`Esc`), be specific, park out-of-scope ideas. → CLAUDE.md, the PROGRESS.md parking lot.
@@ -146,7 +147,7 @@ Each practice comes from Anthropic's Claude Code guidance or engineering write-u
 
 ### 8. Learning while delegating
 - Read the briefing's files; `/walkthrough` for code you didn't write; the `/code-review` comments are a running code-review lesson.
-- Write some logic yourself where the tests already exist: `isShown` in S02a; later, country mapping, game-day math, the scheduler's decision function.
+- Optional practice after a session merges: rewrite a pure function against its existing tests (`isShown`, country mapping, game-day math, the scheduler's decision function) on a `chore-` branch with the "Small change" template.
 
 ### 9. Models, effort and usage on Pro
 - **Model: Opus 5.5** for your session and for every helper agent (CLAUDE.md overrides superpowers' default of cheaper models for mechanical tasks). The project agents use `model: inherit`. Fable 5.1 bills usage credits on Pro; not needed.
