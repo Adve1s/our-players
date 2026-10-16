@@ -5,7 +5,8 @@ paths:
 
 # Mobile app rules
 
-- Routes live in `apps/mobile/app/` (Expo Router); components in `src/components/`, API hooks in `src/api/`, preferences in `src/state/`, pure helpers in `src/lib/` (tested with Vitest).
+- Routes live in `apps/mobile/src/app/` (Expo Router); components in `src/components/`, API hooks in `src/api/`, preferences in `src/state/`, pure helpers in `src/lib/` (tested with Vitest).
+- Route files under `src/app/` use `export default` (Expo Router requires it), an exception to CLAUDE.md's named exports like tool config files (`vitest.config.ts`).
 - Server data only through TanStack Query hooks whose query keys include the preferences; components never call `fetch` directly.
 - Change preferences only through the store's pure update functions; the persisted object keeps its `version`.
 - Every screen handles loading, empty, error and offline states.

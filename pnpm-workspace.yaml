@@ -1,0 +1,22 @@
+packages:
+  - apps/*
+  - packages/*
+
+nodeLinker: hoisted
+
+# esbuild (via tsx) verifies its platform binary in a postinstall script.
+allowBuilds:
+  esbuild: true
+
+# Expo SDK 58 packages published 2026-10-16 are younger than pnpm's 1-day minimumReleaseAge;
+# shortcut: exact-version exemptions, inert after 2026-10-17 20:00 UTC — delete this block then.
+minimumReleaseAgeExclude:
+  - '@expo/cli@58.1.11'
+  - '@expo/schema-utils@58.0.2'
+  - babel-preset-expo@58.0.17
+  - expo-glass-effect@58.0.4
+  - expo-modules-core@58.0.22
+  - expo-modules-jsi@58.0.15
+  - expo-router@58.0.23
+  - expo-splash-screen@58.0.10
+  - expo@58.0.14
