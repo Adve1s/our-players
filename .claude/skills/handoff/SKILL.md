@@ -3,7 +3,7 @@ name: handoff
 description: End-of-session ritual for this repo — verify, make sure the final review ran, update PROGRESS and DECISIONS, commit, push, open the session's pull request, brief the human, run /code-review on the PR and report CI. Run when a session's work is done.
 disable-model-invocation: true
 argument-hint: "[notes]"
-allowed-tools: Bash(pnpm verify) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git add *) Bash(git commit *) Bash(gh pr view *) Bash(gh pr create *) Bash(gh pr edit *) Bash(gh pr comment *) Bash(gh pr checks *)
+allowed-tools: Bash(pnpm verify) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git add *) Bash(git commit *) Bash(gh pr view *) Bash(gh pr create *) Bash(gh pr edit *) Bash(gh pr comment *) Bash(gh pr checks *) Bash(gh pr ready *)
 ---
 
 # Handoff
@@ -12,23 +12,27 @@ Do these steps in order. If a step fails, stop and report instead of improvising
 
 **Branch.** Any branch except `main` gets its own PR into `main` (normally `s<nn>-<slug>`). On `main`, or in a cloud session still on its own `claude/…` branch, stop and ask me which branch to use. In a cloud session (`CLAUDE_CODE_REMOTE` is `true`), GitHub calls go through a proxy: if a `gh` command is refused, use the built-in GitHub tools or the REST fallback the error names (`gh api repos/{owner}/{repo}/…`).
 
+**Non-session branches** (`fix-…`, `chore-…`, docs-only): the PR title is a short description and its body states the bug or change and its proof — no spec or plan links; the reviewer's criteria are the template's "Expected" (or the stated change). Docs-only branches skip steps 2 and 11: a "Docs review" session is their independent pass.
+
+**Checkpoint** (`/handoff checkpoint`, when a session stops at the ~200K budget before the plan is done): skip steps 2 and 11, and open the PR as a draft (`gh pr create --draft`). The session's last handoff runs `gh pr ready <number>`, then steps 2 and 11 as usual.
+
 Before S00 there's no `package.json`: skip the verify and CI steps.
 
 1. **Verify.** Run `pnpm verify`. If it fails, fix it within this session's scope or stop and report. Never weaken a test to get to green.
-2. **Final review.** If the `reviewer` agent already ran as the final whole-branch review of subagent-driven development on the current diff, use its report. Otherwise run it now on everything since the branch left `main` (`git diff $(git merge-base origin/main HEAD)`, plus untracked files from `git status`), with the session ID and the acceptance criteria from `docs/SESSIONS.md`. Fix every in-scope blocker and major finding; for any you leave, say why.
+2. **Final review.** If the `reviewer` agent ran as subagent-driven development's final whole-branch review and only its fix wave and scoped re-review came after, use its report. After a "Review fixes" pass, run it on the fixes only (`git diff @{upstream}`). Otherwise run it now on everything since the branch left `main` (`git diff $(git merge-base origin/main HEAD)`), plus untracked files from `git status` either way, with the session ID and the acceptance criteria from `docs/SESSIONS.md`. Fix every in-scope blocker and major finding; for any you leave, say why.
 3. **Re-verify** if anything changed.
 4. **`docs/PROGRESS.md`.** Rewrite "Current state": last session, branch and PR, what works now, how to try it (exact commands), next session, and anything the next session must know. Append one Session log entry of at most 12 lines. Update Known issues and Parking lot (include new `shortcut:` comments worth tracking).
 5. **`docs/DECISIONS.md`.** Append this session's decisions (next ID, date, decision, why, alternatives). Skip if there were none.
 6. **CLAUDE.md.** If you learned something *every* future session needs (a command, a gotcha), show me the exact edit and wait for my OK. Area-specific knowledge belongs in `docs/` or `.claude/rules/`. Keep CLAUDE.md short.
 7. **Commit** with Conventional Commit message(s), including the session's spec and plan under `docs/superpowers/`.
 8. **Push:** `git push -u origin HEAD` — I'll approve the prompt. If there's no `origin` remote, or `gh` isn't logged in on my machine, stop and tell me.
-9. **Pull request.** If `gh pr view` finds none, create it (`gh pr create --base main`, not a draft) titled `S<nn> — <session name>`, with the session goal and acceptance criteria from `docs/SESSIONS.md` as a checklist and links to the spec and plan. If it exists (review fixes), leave its body and continue.
+9. **Pull request.** If `gh pr view` finds none, create it (`gh pr create --base main`, not a draft except at a checkpoint) titled `S<nn> — <session name>`, with the session goal and acceptance criteria from `docs/SESSIONS.md` as a checklist and links to the spec and plan. If it exists (review fixes, or the session after a checkpoint), leave its body and continue.
 10. **Briefing.** Write it in exactly this shape, and post it as a comment headed `S<nn> — <session name>: handoff` (`gh pr comment --body-file -`):
     - **Done** — 3–6 bullets, user-visible changes first
     - **Decisions** — key choices and why
     - **Read these** — 3–7 files in reading order, one line each on why it matters (core logic over boilerplate)
     - **Try it** — exact commands to see it working
-    - **Review** — the final review's verdict, what was fixed, what was deliberately left; superpowers rulings worth knowing
+    - **Review** — the final review's verdict, what was fixed, what was deliberately left; the superpowers rulings worth knowing (the full list is at the end of the plan file)
     - **Shortcuts** — new `shortcut:` comments (file:line, one line each), or "none"
     - **Open questions / risks**
     - **Next** — the next session ID, and any change you suggest to its prompt in `docs/SESSIONS.md`

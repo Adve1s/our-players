@@ -10,15 +10,15 @@ How the agents fit in, and why: `docs/WORKFLOW.md`.
 2. Set the effort the Overview gives: `/effort medium` or `/effort high`. A level typed after `/effort` is also saved as your default, so skipping this step means inheriting the last session's level. Optional: `/rename S03 nhl adapter` so `claude --resume` finds it later.
 3. Paste the session's prompt. Claude creates the session branch (the Overview's Branch column) and runs the tests.
 4. **Design** (`superpowers:brainstorming`). Answer its questions about gaps in the section and approve the short design doc it writes to `docs/superpowers/specs/`. Push back here — it's the cheapest moment to change direction.
-5. **Plan** (`superpowers:writing-plans`). Read the task list in `docs/superpowers/plans/`: tasks map to the acceptance criteria, stay in scope, name any new dependency. Approve it, then press `Shift+Tab` until the mode reads **auto**.
-6. **Build** (`superpowers:subagent-driven-development`). Opus helper agents implement and review each task; Claude stops only for risky actions or a broken plan. Press `Esc` the moment it heads somewhere wrong. Live checks marked "run by you" come at the end: Claude gives you the commands and waits.
+5. **Plan** (`superpowers:writing-plans`). Read the task list in `docs/superpowers/plans/`: tasks map to the acceptance criteria, stay in scope, name any new dependency, and `[owner]` / `[controller]` tasks appear where the prompt asks for them. Press `Shift+Tab` until the mode reads **auto**, *then* type your approval — the build starts the moment you approve.
+6. **Build** (`superpowers:subagent-driven-development`). Opus helper agents implement and review each task; Claude stops only for risky actions, a broken plan, or an `[owner]` task (a step only you can do). Press `Esc` the moment it heads somewhere wrong. Live checks marked "run by you" come at the end: Claude gives you the commands and waits.
 7. When Claude says the work is ready: run **`/handoff`**. It updates `PROGRESS.md` and `DECISIONS.md`, commits and pushes (approve the push prompt), opens the session's PR, posts the briefing, runs `/code-review` (findings land as inline PR comments) and reports CI.
 8. Read the briefing's files and the review comments on the PR. If you accept any finding, run the "Review fixes" template on the same branch, then `/handoff` again. When CI is green, merge with **Create a merge commit**, then `git switch main && git pull --ff-only`.
 9. Exit. The next session starts fresh; `PROGRESS.md`, git and the PRs carry the state.
 
-**In the cloud** (sessions marked "either" in the Overview): start the session at claude.ai/code — pick the repo, branch `main`, **Default** mode — or with `claude --cloud "<prompt>"` from `main`, and paste the same prompt. Set effort with `/effort <level>` as the first message. The session creates the session branch itself, so `/handoff` works exactly as it does locally. Live checks ("run by you") stay local: `git fetch && git switch <branch>` first, or bring the whole session to your terminal with `claude --teleport`. Details: WORKFLOW.md → Cloud sessions.
+**In the cloud** (sessions marked "either" in the Overview): start the session at claude.ai/code — pick the repo, branch `main`, **Default** mode (if the dropdown doesn't offer it, **Accept edits**; brainstorming still blocks code until you approve) — or with `claude --cloud "<prompt>"` from `main`, and paste the same prompt. Set effort with `/effort <level>` as the first message. The session creates the session branch itself, so `/handoff` works exactly as it does locally. Live checks ("run by you") stay local: `git fetch && git switch <branch>` first, or bring the whole session to your terminal with `claude --teleport`. Details: WORKFLOW.md → Cloud sessions.
 
-**Sizing.** A session is one reviewable change, usually a few hundred to ~1,500 changed lines. Opus 5.5 has a 1M-token window, so `/context` will rarely look full; use an absolute budget instead: if the session passes **~200K tokens** of context before the work is done, stop at a green checkpoint, run `/handoff`, and continue in a new session with the "Resume" template at the bottom. A clean restart beats a long, compacted session.
+**Sizing.** A session is one reviewable change, usually a few hundred to ~1,500 changed lines. Opus 5.5 has a 1M-token window, so `/context` will rarely look full; use an absolute budget instead: if the session passes **~200K tokens** of context before the work is done, stop at a green checkpoint, run `/handoff checkpoint` (it pushes and opens a draft PR, without the final review or `/code-review`), and continue in a new session with the "Resume" template at the bottom; that session's `/handoff` marks the PR ready and runs both reviews. A clean restart beats a long, compacted session.
 
 ## Overview
 
@@ -46,7 +46,7 @@ All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to 
 | S14 | Web build as a home-screen app | `s14-web` | M | medium | local | iPhone friends use it |
 | S15 | Production access + runbook | `s15-launch` | S | medium | local | Public on Google Play |
 
-Slices group the sessions on the roadmap; they no longer map to a branch or PR. Slices 6a/6b split the brief's slice 6 so the Play closed test starts before slice 5 (DECISIONS.md D-014). Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
+Slices group the sessions on the roadmap; they no longer map to a branch or PR. Slices 6a/6b split the brief's slice 6 so the Play closed test starts before slice 5 (DECISIONS.md D-014). Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three). After a slice's last session is merged, run `/ponytail-audit` (read-only) on `main` and put what it finds in the PROGRESS.md parking lot — it catches drift across sessions that per-session reviews can't see.
 
 **Size** is a rough guess at your attention per session: S under 1 h, M 1–2 h, L 2–3 h. An L session may need a second sitting — use the "Resume" template.
 
@@ -132,7 +132,7 @@ Then plan and build it, keeping code minimal — this session is plumbing, not f
 4. Both source docs answer all eight questions with evidence (endpoint, field path, example value).
 5. `pnpm verify` green.
 
-**You:** spot-check two or three spike numbers against nhl.com / espn.com; skim `docs/sources/`. The fixture JSON is collapsed in the PR's diff view; `/code-review` only needs to check that each fixture came from the recorder.
+**You:** spot-check two or three spike numbers against nhl.com / espn.com; skim `docs/sources/`. The fixture JSON is collapsed in the PR's diff view. The reviewer agent checks that each fixture came from the recorder (with its `.meta.json`); if `/code-review` struggles with the fixture volume, the briefing says so.
 
 ```text
 Session S01 — Data spike + fixtures (slice 0). Create branch `s01-data-spike` from the latest `main`.
@@ -143,7 +143,7 @@ This session talks to the live NHL and ESPN APIs. Be polite: every request goes 
 
 Brainstorm with §S01 as the spec. The design must cover: the polite client's API and how you'll test it without network; the recorder's file layout; how the spike finds Latvian players cheaply (check which endpoints carry birth country before assuming); the concrete games and dates you'll record for each fixture item (look them up); and how you'll answer each of the eight questions in VISION §9.
 
-Then plan and build: red/green for the polite client, then the recorder, fixtures, spike and the two docs/sources files. Recording and the spike call live APIs: run those steps in this session, not in helper agents, so the request count stays visible. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
+Then plan and build: red/green for the polite client, then the recorder, fixtures, spike and the two docs/sources files. Recording and the spike call live APIs: mark those plan tasks `[controller]` so they run in this session, not in helper agents, and the request count stays visible. Prove each acceptance criterion with output, then tell me it's ready for /handoff.
 ```
 
 ---
@@ -166,7 +166,7 @@ Then plan and build: red/green for the polite client, then the recorder, fixture
 3. The stat payload schemas accept a valid payload of each kind and reject invalid ones with a clear error.
 4. `pnpm verify` green.
 
-**You (optional, recommended):** write `isShown` yourself. Tell Claude at plan approval: "I'll implement isShown." The plan then stops after the red commit; you make the tests green; Claude reviews your code and continues with the remaining tasks.
+**You (optional, recommended):** write `isShown` yourself. Tell Claude during brainstorming: "I'll implement isShown." The plan then makes "implement isShown" an `[owner]` task right after the red commit, so the build stops there; you make the tests green; Claude reviews your code and continues with the remaining tasks.
 
 ```text
 Session S02a — Domain model, selection rule, nationality (slice 1). Create branch `s02a-domain-model` from the latest `main`.
@@ -518,7 +518,7 @@ Read docs/PROGRESS.md, docs/SESSIONS.md §S10 (the contract), docs/VISION.md §2
 
 Brainstorm with §S10 as the spec. Start with the hosting options memo and wait for my choice. Then the design must cover: the upstream probe script I'll run on the host; Dockerfile and runtime config; how migrations and the scheduler run in production; how access logs avoid query strings; the staleness rule for `/health` and the uptime monitor; the rate limit; the rebuild procedure; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
 
-Then plan and build it. Console and host steps are mine: hand me each as an exact checklist, and wait for my results where criteria depend on them. Then tell me it's ready for /handoff.
+Then plan and build it. Console and host steps are mine: make them `[owner]` tasks in the plan, hand me each as an exact checklist, and wait for my results. Then tell me it's ready for /handoff.
 ```
 
 ### S11 — Android build + Play closed test
@@ -551,7 +551,7 @@ Read docs/PROGRESS.md, docs/SESSIONS.md §S11 (the contract), docs/VISION.md §4
 
 Brainstorm with §S11 as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; the docs/store/ files with draft contents; and the step-by-step console checklist for EAS and Play Console (internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
 
-Then plan and do the repo work, then walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
+Then plan and do the repo work; the console steps are `[owner]` tasks: walk me through them one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
 ```
 
 ---
@@ -630,7 +630,7 @@ Read docs/PROGRESS.md, docs/SESSIONS.md §S14 (the contract), docs/VISION.md §1
 
 Brainstorm with §S14 as the spec. The design must cover: static hosting options with trade-offs (wait for my choice); manifest and icon set; iOS meta tags; deep-link fallback; CORS changes; and the console steps I must do.
 
-Then plan and build it, screenshot the built site, walk me through deployment, and wait for my phone test. Then tell me it's ready for /handoff.
+Then plan and build it and screenshot the built site; deployment and my phone test are `[owner]` tasks: walk me through them and wait for my results. Then tell me it's ready for /handoff.
 ```
 
 ### S15 — Production access + runbook
@@ -656,7 +656,7 @@ Read docs/PROGRESS.md, docs/SESSIONS.md §S15 (the contract), docs/VISION.md §1
 
 Brainstorm with §S15 as the spec. The design must cover: the production-access answers based on our real closed test (ask me for tester feedback and numbers); the RUNBOOK.md outline per scenario, grounded in how the code actually works (cite files).
 
-Then plan and write them, and walk me through the release steps. Then tell me it's ready for /handoff.
+Then plan and write them; the release steps are `[owner]` tasks: walk me through them. Then tell me it's ready for /handoff.
 ```
 
 ---
@@ -701,7 +701,7 @@ Small change: <one sentence>. Create branch `chore-<slug>` from the latest `main
 
 **Resume an interrupted session:**
 ```text
-Continue session S<nn> on branch `<branch>`. Read docs/PROGRESS.md, the session's plan in docs/superpowers/plans/ (its checkboxes and the .superpowers/sdd/ ledger, if present), `git status` and `git log --oneline -10`. Tell me where we stand against the plan and each acceptance criterion in §S<nn> before changing anything, then continue with superpowers:subagent-driven-development.
+Continue session S<nn> on branch `<branch>`. Read docs/PROGRESS.md, the session's plan in docs/superpowers/plans/ (its checkboxes and the .superpowers/sdd/ ledger, if present), `git status` and `git log --oneline -10`. Tell me where we stand against the plan and each acceptance criterion in §S<nn> before changing anything, then continue with superpowers:subagent-driven-development. The PR is a draft from the checkpoint `/handoff`; this session's `/handoff` marks it ready.
 ```
 
 **Explore an idea** (no code changes):
@@ -711,5 +711,5 @@ I'm considering <idea>. Don't change code. Use superpowers:brainstorming to inte
 
 **Docs review** (fresh session at high effort, in plan mode — `Shift+Tab` before pasting — after you or Claude change VISION.md, SESSIONS.md or the Claude Code setup substantially):
 ```text
-Review the docs changed since <commit or "the last docs review">: <files>. You haven't seen how they were written. Don't change files yet. Present findings as the plan, in a table: ID, severity, file and section, issue, suggested edit. Look for contradictions with the rest of docs/, CLAUDE.md and the installed plugins' behavior, gaps, ambiguous instructions, scope creep, and acceptance criteria that can't be checked. Skip style nits. I'll reply with a decision for each finding; then apply the accepted ones and tell me it's ready for /handoff.
+Review the docs changed since <commit or "the last docs review">: <files>. You haven't seen how they were written. Don't change files yet. Present findings as the plan, in a table: ID, severity, file and section, issue, suggested edit. Look for contradictions with the rest of docs/, CLAUDE.md and the installed plugins' behavior, gaps, ambiguous instructions, scope creep, and acceptance criteria that can't be checked. Skip style nits. I'll reply with a decision for each finding; then apply the accepted ones, put deferred ones in the PROGRESS.md parking lot, and tell me it's ready for /handoff.
 ```

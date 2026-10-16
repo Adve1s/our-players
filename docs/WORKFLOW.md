@@ -9,9 +9,9 @@ The **superpowers** plugin drives every session: brainstorm the design, write a 
 | Step | Runs as | Your part |
 |---|---|---|
 | **Design** | `superpowers:brainstorming` in your session, with the SESSIONS.md section as input → `docs/superpowers/specs/…` | Answer its questions; approve the design |
-| **Plan** | `superpowers:writing-plans` → `docs/superpowers/plans/…`: small tasks, each with its test cycle and commit | Approve the plan; switch to auto mode (`Shift+Tab`) |
+| **Plan** | `superpowers:writing-plans` → `docs/superpowers/plans/…`: small tasks, each with its test cycle and commit | Switch to auto mode (`Shift+Tab`), then approve the plan |
 | **Build** | `superpowers:subagent-driven-development`: a fresh Opus implementer per task, then a task review (spec + quality), up to five fix rounds | Watch or walk away; `Esc` if it drifts |
-| **Red tests for contract code** | the project `test-writer` agent, as the plan's first task — only for the selection rule, nationality and the two adapters | — |
+| **Red tests for contract code** | the project `test-writer` agent, right after the stubs task — only for the selection rule, nationality and the two adapters | — |
 | **Final review** | the project `reviewer` agent (acceptance criteria, architecture rules, test trustworthiness) over the whole branch | — |
 | **Handoff** | `/handoff`: PROGRESS/DECISIONS, commit, push, PR, briefing, `/code-review high --comment`, CI | Approve the push |
 | **PR review** | the built-in `/code-review` posts findings as inline PR comments | Decide accept / reject / defer per comment; run "Review fixes" if needed; merge |
@@ -55,7 +55,7 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 - **Usage:** cloud sessions share your plan's limits with local ones. If your account shows a cloud-session credit, check `/usage` after the first cloud session before relying on it.
 - **What fits:** sessions marked *either* in the SESSIONS.md Overview — the backend sessions S02a–S07. Keep S00, S01, the app sessions and the shipping sessions local (machine setup, phone, live upstream calls, consoles).
 - **Branch:** it starts on `claude/…` but can push any branch, so it creates `s<nn>-<slug>` from `origin/main` (CLAUDE.md says so). `/handoff` then works as it does locally.
-- **Mode:** pick **Default** in the mode dropdown; switch to Auto after approving the plan.
+- **Mode:** pick **Default** in the mode dropdown, or **Accept edits** if Default isn't offered (brainstorming still blocks code until you approve); switch to Auto just before approving the plan.
 - **What it reads:** CLAUDE.md, `.claude/settings.json` (permissions, hooks, project plugins), skills, agents, rules. Not your `~/.claude`, so no typescript-lsp.
 - **Its machine:** Ubuntu, Node 22, pnpm, `gh`; `node_modules` installed fresh by a SessionStart hook (from S00). Network is limited to package registries and GitHub: the NHL/ESPN APIs and context7 are unreachable. Live checks ("run by you") stay on your machine.
 
@@ -103,8 +103,8 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 1. **Orient.** Start `claude` on an up-to-date `main`. The SessionStart hooks inject the repo state and the plugin rules. Set effort per the Overview (`/effort medium` or `/effort high`; a typed level is saved as your default).
 2. **Paste the session's prompt.** Claude creates the session branch, runs the tests, and starts brainstorming.
 3. **Design.** It asks about the gaps the SESSIONS.md section leaves, one question at a time, then writes a short design doc. Push back here — this is the cheapest moment to change direction.
-4. **Plan.** It writes the task list. Check that tasks map to the acceptance criteria, stay inside the scope, name any new dependency (you approve each), and put the test-writer first where the prompt says so. Approve, then switch to auto mode.
-5. **Build.** Helper agents implement and review task by task. Superpowers only stops for destructive, security-sensitive or outside-the-branch actions, or a plan that doesn't work; it lists its rulings at the end. Interrupt with `Esc` if it drifts. **After two failed corrections, stop:** `/clear` and restart with a better prompt.
+4. **Plan.** It writes the task list. Check that tasks map to the acceptance criteria, stay inside the scope, name any new dependency (you approve each), put the test-writer right after the stubs where the prompt says so, and mark `[owner]` / `[controller]` tasks where the prompt asks. Switch to auto mode, then approve — the build starts at once.
+5. **Build.** Helper agents implement and review task by task. Superpowers only stops for destructive, security-sensitive or outside-the-branch actions, a plan that doesn't work, or an `[owner]` task (CLAUDE.md); `[controller]` tasks (live API calls) run in your session instead of a helper agent. It lists its rulings at the end and appends them to the plan file. Interrupt with `Esc` if it drifts. **After two failed corrections, stop:** `/clear` and restart with a better prompt.
 6. **Verify.** Claude shows evidence for each acceptance criterion; `pnpm verify` is green. Live checks marked "run by you" happen here.
 7. **`/handoff`.** You approve the push; the PR gets the briefing and the `/code-review` comments; CI runs.
 8. **Review and merge.** Read the briefing's "Read these" files and the inline comments. Fixes → "Review fixes" template → `/handoff`. Merge when CI is green.
