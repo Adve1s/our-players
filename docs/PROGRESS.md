@@ -19,9 +19,10 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 
 ## Parking lot
 Ideas that came up but are out of scope for now.
-- `apps/mobile/app.json` keeps the template's `web.output: "server"`; S14 (home-screen web app) likely wants `"static"`.
+- `apps/mobile/app.json` keeps the template's `web.output: "server"`, which `expo export -p web` turns into a server bundle needing a Node host; S08 (screenshots from the web build) or S14 (static home-screen web app) should switch it to `"static"` (PR #4 review).
+- Mobile typecheck differs between a dev machine and CI: Expo's typed-route and asset types (`.expo/types`, `expo-env.d.ts`) are gitignored and only exist after `expo start`. Settle it in S08, when screens first use `Link href` or import assets — e.g. run `expo customize`/type generation before `tsc` in the mobile `typecheck` script (PR #4 review).
+- CI: cache the pnpm store (`corepack enable` before `actions/setup-node`, then `cache: pnpm`) once runs get slow; they take about 20 s now (PR #4 review).
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
-- Cloud install hook: prefix `cd "$CLAUDE_PROJECT_DIR" &&` if a cloud session ever starts outside the repo root.
 
 ## Session log
 <!--
