@@ -7,3 +7,17 @@ nodeLinker: hoisted
 # esbuild (via tsx) verifies its platform binary in a postinstall script.
 allowBuilds:
   esbuild: true
+
+# Written by pnpm install: these Expo SDK 58 releases were under pnpm's default one-day
+# minimumReleaseAge when apps/mobile was added (2026-10-17).
+# shortcut: pinned exemptions, drop them on the next dependency update.
+minimumReleaseAgeExclude:
+  - '@expo/cli@58.1.11'
+  - '@expo/schema-utils@58.0.2'
+  - babel-preset-expo@58.0.17
+  - expo-glass-effect@58.0.4
+  - expo-modules-core@58.0.22
+  - expo-modules-jsi@58.0.15
+  - expo-router@58.0.23
+  - expo-splash-screen@58.0.10
+  - expo@58.0.14
