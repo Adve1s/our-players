@@ -69,11 +69,12 @@
         ]
       },
       {
-        "matcher": "startup",
+        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then corepack enable && pnpm install --frozen-lockfile; fi"
+            "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then cd \"$CLAUDE_PROJECT_DIR\" && corepack enable && pnpm install --frozen-lockfile; fi >&2",
+            "timeout": 600
           }
         ]
       }
