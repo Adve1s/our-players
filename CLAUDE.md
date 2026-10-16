@@ -13,7 +13,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `apps/mobile` — Expo (React Native) app with Expo Router; Android + web from one codebase
 - `packages/shared` — domain types, zod schemas (stat lines, API contract), pure logic (selection rule, country codes, game-day math)
 - `.github/workflows/` — CI: `pnpm verify` on every pull request (S00)
-- `docs/` — VISION, SESSIONS, PROGRESS, DECISIONS, WORKFLOW, `sources/`, `reviews/`
+- `docs/` — VISION, SESSIONS, PROGRESS, DECISIONS, WORKFLOW, `sources/`, `superpowers/` (per-session specs and plans)
 
 ## Commands (repo root)
 - `pnpm install`
@@ -54,17 +54,24 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - API tests run on in-memory PGlite, seeded by running the real ingestion code over fixtures.
 - New logic is red/green: write the failing test, watch it fail for the right reason, then implement.
 - Never weaken, skip or delete a test to reach green, and never edit a fixture by hand. If a test or fixture looks wrong, stop and tell me.
+- These testing rules override ponytail's minimal-test guidance and any other instruction to write fewer tests.
 
-## Workflow
-- Each session follows its section in `docs/SESSIONS.md`: scope, out-of-scope list and acceptance criteria are the contract. Sessions start in plan mode; don't edit until I approve the plan.
-- One branch and one pull request per slice (`slice-<n>-<slug>` → `main`). `/handoff` commits, pushes and updates the PR; I merge once CI passes. Never merge, rebase, force-push or push to `main`.
-- Small Conventional Commits; `pnpm verify` green before each commit. The one exception is the red-phase `test:` commit a session prompt asks for: there the only failures may be the new tests failing on "not implemented". Use the `gh` CLI for GitHub (PRs, checks, comments).
-- In a cloud session, work on the slice branch the prompt names, not the session's own branch: `git switch` to it, or create it from `origin/main` for a slice's first session.
+## Workflow (superpowers)
+These rules configure the superpowers skills; where a skill says otherwise, this section wins.
+- Each session follows its section in `docs/SESSIONS.md`: scope, out-of-scope list and acceptance criteria are the contract.
+- Flow: `superpowers:brainstorming` with that section as input → `superpowers:writing-plans` → `superpowers:subagent-driven-development` → I run `/handoff`. The section is already a reviewed spec: ask only about real gaps and keep the design doc short. No code before I approve the design and the plan.
+- Specs and plans: `docs/superpowers/specs/` and `docs/superpowers/plans/`, named `YYYY-MM-DD-<session-id>-<slug>.md`, committed with the session.
+- Helper agents: dispatch every superpowers subagent (implementers, reviewers, fix rounds) with `model: opus`. Dispatch the final whole-branch review to the project `reviewer` agent.
+- No git worktrees: the session branch is the isolated workspace. Never use `superpowers:finishing-a-development-branch` and never merge locally — the session ends with `/handoff`.
+- One branch and one pull request per session: `s<nn>-<slug>` (e.g. `s02a-domain-model`) from the latest `main`, PR into `main`. `/handoff` commits, pushes, opens the PR and runs `/code-review` on it; I merge once CI passes. Never merge, rebase, force-push or push to `main`. In a cloud session, create that branch instead of working on `claude/…`.
+- Small Conventional Commits; `pnpm verify` green before each commit. The one exception is the red-phase `test:` commit a plan asks for: there the only failures may be the new tests failing on "not implemented". Use the `gh` CLI for GitHub (PRs, checks, comments).
+- Framework APIs (Expo, Expo Router, Drizzle, Hono, zod, TanStack Query, Vitest, Biome): look them up with context7 before writing code against them. NHL/ESPN knowledge lives in `docs/sources/`.
+- Ponytail runs at `full`: smallest change that meets the acceptance criteria. A known limit gets a `shortcut: <limit>, <when to upgrade>` comment. LSP diagnostics are hints; `pnpm verify` is the gate.
 - Stay in scope: put out-of-scope ideas in the PROGRESS.md parking lot instead of doing them.
 - If product behavior is unclear, ask. If the same approach fails twice, stop and explain instead of trying a third variant.
 - Show evidence, not assertions: paste the command and its output when claiming something works.
 - When the session's work is done and `pnpm verify` is green, say so — I'll run `/handoff`.
-- When compacting, keep: the session ID, the approved plan, files changed so far, and any failing test names.
+- When compacting, keep: the session ID, the plan file path, files changed so far, and any failing test names.
 
 ## Gotchas
 - I develop on Arch Linux (Omarchy); CI runs on Ubuntu. Scripts must work on both — no macOS-only commands or flags (`open`, `pbcopy`, `sed -i ''`).

@@ -1,196 +1,163 @@
 # Agent workflow
 
-How to build Our Players with Claude Code: which agents to use, how they're set up in this repo, how the work flows through GitHub, and the practices behind the setup. Session-by-session prompts are in `docs/SESSIONS.md`.
+How to build Our Players with Claude Code: the plugins, the agents, how a session flows from spec to merged pull request, and the practices behind the setup. Session-by-session prompts are in `docs/SESSIONS.md`.
 
-## TL;DR — the recommendation
+## TL;DR
 
-| Role | Runs as | When | Worth it? |
-|---|---|---|---|
-| **Builder** | your main Claude Code session | every session (one row of SESSIONS.md) | — |
-| **Reviewer** | read-only subagent (`.claude/agents/reviewer.md`) | **every** session, inside `/handoff`, before the commit | Yes — catches mistakes while the builder still has context to fix them |
-| **Slice reviewer** | a **fresh session** you start, running `/slice-review <n>` | once per slice, plus once for the docs themselves (K0); its review is posted to the pull request | Yes — the only truly independent check, and your pull-request review |
-| **Test-writer** | subagent (`.claude/agents/test-writer.md`) | only the red phase of contract code: selection rule, nationality, the two adapters | Yes, but narrowly — not as a standing third agent |
-| Agent teams, parallel worktrees, autonomous loops | — | — | Not now. Slices depend on each other and your review attention is the bottleneck; more agents mean more to review, not more done |
+The **superpowers** plugin drives every session: brainstorm the design, write a plan, execute it with fresh helper agents that each get a review, then `/handoff` opens a pull request that the built-in `/code-review` reviews inline. You approve the design and the plan, triage the review comments and merge.
 
-## Subagent or separate session?
-
-| | Subagent inside the builder's session | Fresh session you start |
+| Step | Runs as | Your part |
 |---|---|---|
-| Context | Its own window; sees CLAUDE.md plus the brief **the builder writes** | Nothing from the build; you give the brief (`/slice-review`) |
-| Independence | Partial — the builder chooses what to ask and can frame it | Full |
-| Your effort | None (part of `/handoff`) | Start it, read the review on GitHub, decide per finding |
-| Findings go to | The builder, who fixes them right away | A review file plus a PR review with inline comments; a fix session follows |
-| Best for | Per-session sanity check before committing | Slice gate, drift across sessions, your own learning |
+| **Design** | `superpowers:brainstorming` in your session, with the SESSIONS.md section as input → `docs/superpowers/specs/…` | Answer its questions; approve the design |
+| **Plan** | `superpowers:writing-plans` → `docs/superpowers/plans/…`: small tasks, each with its test cycle and commit | Approve the plan; switch to auto mode (`Shift+Tab`) |
+| **Build** | `superpowers:subagent-driven-development`: a fresh Opus implementer per task, then a task review (spec + quality), up to five fix rounds | Watch or walk away; `Esc` if it drifts |
+| **Red tests for contract code** | the project `test-writer` agent, as the plan's first task — only for the selection rule, nationality and the two adapters | — |
+| **Final review** | the project `reviewer` agent (acceptance criteria, architecture rules, test trustworthiness) over the whole branch | — |
+| **Handoff** | `/handoff`: PROGRESS/DECISIONS, commit, push, PR, briefing, `/code-review high --comment`, CI | Approve the push |
+| **PR review** | the built-in `/code-review` posts findings as inline PR comments | Decide accept / reject / defer per comment; run "Review fixes" if needed; merge |
 
-Use both, at different cadences. A subagent is a fresh context window with its own tools; that's enough to stop the builder grading its own homework session by session. A separate session removes the builder from the loop entirely, which is what you want before code reaches `main`.
+Not used: git worktrees, agent teams, parallel sessions. Sessions depend on each other and your review attention is the bottleneck.
 
-**Why only a narrow test-writer?** A separate test author pays off where tests *are* the spec — the selection rule — or encode an external contract — what the fixtures really say — because an author who already has an implementation in mind tends to write tests that confirm it. Everywhere else, red/green discipline in the builder plus the reviewer's test audit covers the risk at lower cost. The test-writer runs *before* the implementation exists, so it can't be biased by it.
+## Plugins
 
-## GitHub: one branch and one pull request per slice
+| Plugin | Scope | What it's for | Notes |
+|---|---|---|---|
+| **superpowers** (`claude-plugins-official`) | project | The workflow above, plus `test-driven-development`, `systematic-debugging`, `verification-before-completion` and `receiving-code-review` | A SessionStart hook loads its rules. CLAUDE.md overrides its skills, and the Workflow section there configures it: spec/plan paths, Opus for every helper agent, no worktrees, `/handoff` instead of `finishing-a-development-branch` (which offers a local merge into `main`). Working files go to `.superpowers/` (gitignored). Optional: `SUPERPOWERS_DISABLE_TELEMETRY=1` turns off the brainstorming visual companion's logo request. |
+| **ponytail** (third-party marketplace `DietrichGebert/ponytail`) | project | Keeps generated code small: reuse first, standard library first, no speculative abstractions, `shortcut:` comments for known limits | Level `full` (the default). Avoid `ultra`: it challenges the request, but here the acceptance criteria are the contract. Hooks on SessionStart (rules + a small codebase map), SubagentStart (rules in **every** helper agent) and each prompt. CLAUDE.md says the project's test rules beat its "one small test" guidance. Writes local files only (`~/.claude/.ponytail-active`, `~/.config/ponytail/`); the webhook stays empty. `/ponytail-debt` lists the `shortcut:` comments. |
+| **context7** (`claude-plugins-official`) | project | Current docs for Expo, Expo Router, Drizzle, Hono, zod, TanStack Query, Vitest, Biome | Hosted MCP server with two tools, loaded on demand, so the context cost is small. Anonymous by default; set `CONTEXT7_API_KEY` for higher limits. Nothing for the unofficial NHL/ESPN APIs — that's `docs/sources/`. |
+| **typescript-lsp** (`claude-plugins-official`) | user | Type errors and go-to-definition right after each edit, cheaper than re-running `tsc` | Needs `typescript-language-server` on `PATH` (`sudo pacman -S typescript-language-server`). Does nothing until S00 creates TypeScript. Diagnostics are hints; `pnpm verify` stays the gate. |
+
+**Not installed: the `code-review` plugin.** Claude Code already includes `/code-review`, the newer version of the same idea: it reviews a local diff or a PR at an effort level, `--comment` posts inline PR comments, `--fix` applies findings, and `ultra` runs a deep cloud review. The plugin skips draft PRs and would add a second command with the same name.
+
+**Project scope** means `.claude/settings.json` lists the plugin (`enabledPlugins`, and `extraKnownMarketplaces` for ponytail), so cloud sessions and fresh clones get the same setup. typescript-lsp is user scope because it needs a binary on your machine.
+
+## GitHub: one branch and one pull request per session
 
 | When | What happens | Who |
 |---|---|---|
-| A slice's first session | Claude creates `slice-<n>-<slug>` from the latest `main` | Claude |
-| Every `/handoff` | commit → push → draft PR created (first time) or its session checklist ticked → session briefing posted as a PR comment → CI result reported | Claude; you approve the push |
-| Slice end | a fresh session runs `/slice-review <n>`: review file committed, posted as a PR review with inline comments, PR marked ready for review | Claude, fresh context |
-| Triage | read the review on GitHub; decide accept / reject / defer per finding | You |
-| Fixes | the "Review fixes" template with your decisions, then `/handoff` | Claude |
+| Session start | Claude creates `s<nn>-<slug>` from the latest `main` | Claude |
+| `/handoff` | commit → push → PR into `main` → briefing comment → `/code-review high --comment` → CI result | Claude; you approve the push |
+| Triage | read the inline comments; accept / reject / defer each | You |
+| Fixes | the "Review fixes" template on the same branch, then `/handoff` (pushes to the same PR, no second `/code-review`) | Claude |
 | Merge | CI green → **Create a merge commit** on GitHub → `git switch main && git pull --ff-only` | You |
 
-- **The PR is the slice's record:** GitHub's diff view, CI status, every session's briefing as a timeline, and the review as inline comments. `.gitattributes` collapses recorded fixtures and the lockfile in the diff view.
-- **CI** (GitHub Actions, added in S00) runs `pnpm verify` on every push to the PR. Tests never touch the network, so CI needs no secrets.
-- **Merge commits, not squash:** `main` keeps each session's commits — including the red test commits that show the tests came first — while `git log --first-parent main` still reads as one entry per slice.
-- **Reviews are comments, not approvals:** GitHub doesn't let you approve or request changes on your own pull request, so the review is posted with event `COMMENT`. The merge button is your approval.
+- **The PR is the session's record:** diff, CI status, briefing, review comments, plus the spec and plan files in the diff. `.gitattributes` collapses recorded fixtures and the lockfile.
+- **Slices** stay as roadmap groups in SESSIONS.md; they no longer map to a branch or PR.
+- **CI** (GitHub Actions, added in S00) runs `pnpm verify` on Node 22 and 24 on every push to a PR. Tests never touch the network, so CI needs no secrets.
+- **Merge commits, not squash:** `main` keeps each task's commits, including the red test commits that show the tests came first, while `git log --first-parent main` reads as one entry per session.
 - **Claude never merges.** Pushes always ask for your approval; force pushes and repo deletion are denied; branch protection (setup step 4) is the real guard for `main`.
+- **Backup:** `origin/slice-0-setup` holds the earlier attempt at S00, S01 and R0 under the old workflow. It stays untouched and won't be merged.
 
 ## Cloud sessions
 
-A cloud session is a Claude Code session that runs on an Anthropic-managed VM against your GitHub repo instead of on your laptop. Start one at claude.ai/code, in the Claude mobile app, in the desktop app (choose **Cloud**), or from the terminal with `claude --cloud "<prompt>"`, which clones your current branch from GitHub (push first). Pull one back into your terminal, conversation and branch included, with `claude --teleport`.
+A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start one at claude.ai/code, in the Claude apps, or with `claude --cloud "<prompt>"` (clones your current branch — push first); pull one back with `claude --teleport`.
 
-**Usage.** The Claude Code docs say cloud sessions share your plan's usage limits with local sessions, and the cloud VM itself costs nothing extra. If your account shows a cloud-session credit (yours was quoted as $100 until November 5, 2026), it may cover cloud sessions first. That isn't documented, so check `/usage` after your first cloud session before relying on it.
+- **Usage:** cloud sessions share your plan's limits with local ones. If your account shows a cloud-session credit, check `/usage` after the first cloud session before relying on it.
+- **What fits:** sessions marked *either* in the SESSIONS.md Overview — the backend sessions S02a–S07. Keep S00, S01, the app sessions and the shipping sessions local (machine setup, phone, live upstream calls, consoles).
+- **Branch:** it starts on `claude/…` but can push any branch, so it creates `s<nn>-<slug>` from `origin/main` (CLAUDE.md says so). `/handoff` then works as it does locally.
+- **Mode:** pick **Default** in the mode dropdown; switch to Auto after approving the plan.
+- **What it reads:** CLAUDE.md, `.claude/settings.json` (permissions, hooks, project plugins), skills, agents, rules. Not your `~/.claude`, so no typescript-lsp.
+- **Its machine:** Ubuntu, Node 22, pnpm, `gh`; `node_modules` installed fresh by a SessionStart hook (from S00). Network is limited to package registries and GitHub: the NHL/ESPN APIs and context7 are unreachable. Live checks ("run by you") stay on your machine.
 
-**What fits the cloud in this project:** the sessions marked *either* in the SESSIONS.md Overview — K0, the backend sessions S02a–S07 and the slice reviews. They need only the repo, the recorded fixtures and the tests. Keep the *local* ones local: S00 and S01 (your machine's setup, the phone check, recording live API data from your home connection, since unofficial APIs may block cloud IPs), the app sessions (your phone), and the shipping sessions (consoles and secrets).
-
-**How a cloud session differs:**
-- **The slice branch, not its own.** A cloud session starts on a branch of its own (`claude/…`), but its GitHub proxy lets it push any branch. So it switches to the slice branch named in the prompt (CLAUDE.md says so), or creates it from `origin/main` for a slice's first session. From there `/handoff` and `/slice-review` work exactly as they do locally: push the slice branch, create or update the slice's draft PR, commit the review file (DECISIONS.md D-020). Since a cloud session could push `main` too, branch protection (setup step 4) matters from day one.
-- **Plan mode from the dropdown.** Pick **Plan** in the mode dropdown when you start (cloud sessions offer Accept edits, Plan and Auto) and approve the plan in the browser. Set effort with `/effort medium` or `/effort high`, as the Overview says, as the first message.
-- **What it reads:** your repo's CLAUDE.md, `.claude/settings.json` (permissions and hooks), skills, agents and rules — everything committed. Not your personal `~/.claude` settings.
-- **Its machine:** Ubuntu with Node 22, pnpm and `gh` preinstalled; `node_modules` is installed fresh each session. Network access is limited to package registries and GitHub by default, so the NHL/ESPN APIs are unreachable — the tests don't need them. Live checks ("run by you") stay on your machine: `git pull` the slice branch, or `claude --teleport` the session.
-
-**One-time setup:** at claude.ai/code, connect GitHub and install the Claude GitHub App on the repo (or run `/web-setup` in Claude Code to reuse your `gh` login). The **Default** environment it creates is fine as is.
+**One-time setup:** at claude.ai/code, connect GitHub and install the Claude GitHub App on the repo (or `/web-setup`).
 
 ## One-time setup
 
-1. **Tools (Omarchy).** Node through mise, as Omarchy does it: `mise use -g node@24`, then `corepack enable` so the repo's pinned pnpm version is used. Install the GitHub CLI if it's missing (`sudo pacman -S github-cli`) and log in with `gh auth login`. Then install Claude Code, and put Expo Go on your Android phone. Accounts needed later: Google Play Console (start in S08 — verification takes days), a hosting provider (S10), Expo (S11).
-2. **Repo.** Create it and add this kit:
-   ```bash
-   mkdir our-players && cd our-players
-   git init -b main
-   # unzip the kit here: CLAUDE.md, .gitignore, .gitattributes, apps/, docs/, .claude/
-   git add -A && git commit -m "chore: project docs and Claude Code setup"
-   gh repo create our-players --public --source=. --remote=origin --push
+1. **Tools (Omarchy).** `mise use -g node@24`, then `corepack enable`. `sudo pacman -S github-cli typescript-language-server`, then `gh auth login`. Install Claude Code; put Expo Go on your Android phone. Accounts needed later: Google Play Console (start in S08 — verification takes days), a hosting provider (S10), Expo (S11).
+2. **Repo.** Public GitHub repo with this kit on `main` (done). Public is the easy path: free branch protection, GitHub Pages and Actions minutes.
+3. **Repo settings** (Settings → General → Pull Requests): allow merge commits; turn on **Automatically delete head branches**.
+4. **Protect `main`** (Settings → Branches → rule for `main`): **Require a pull request before merging** with no required approvals, and **Do not allow bypassing the above settings** (otherwise admins — you, and Claude through your `gh` login — skip the rule). After S00's first CI run, add **Require status checks to pass** with `verify (22)` and `verify (24)`.
+5. **Firewall, for phone testing.** `sudo ufw allow proto tcp from 192.168.0.0/16 to any port 8081,3001` (adjust the range to your network).
+6. **Plugins.** In Claude Code, choosing **project** scope except where noted:
    ```
-   A **public** repo is the easy path. Branch protection and GitHub Pages (for the privacy policy) are free for public repos on GitHub Free, Actions minutes are free for public repos, and the API User-Agent can point to a page the API operators can open. A private repo needs GitHub Pro for branch protection; Pro is free for students through GitHub Education.
-3. **Repo settings** (GitHub → Settings → General): under Pull Requests, allow merge commits and turn on **Automatically delete head branches**.
-4. **Protect `main`, in two steps** (Settings → Branches → add a rule for `main`):
-   - *Now, before K0 merges:* **Require a pull request before merging** with no required approvals (you can't approve your own PR), and **Do not allow bypassing the above settings**. Without that last box, repository admins skip the rule — that's you, and Claude working through your `gh` login or a cloud session.
-   - *After S00's first CI run:* add **Require status checks to pass** with both checks, `verify (22)` and `verify (24)` (GitHub only lists a check once it has run).
-5. **Firewall, for testing on your phone.** Omarchy's firewall blocks incoming connections except SSH and LocalSend, so Expo Go can't reach Metro (8081) or the dev API (3001) on your computer. Allow both from your home network (adjust the range to yours):
-   ```bash
-   sudo ufw allow proto tcp from 192.168.0.0/16 to any port 8081,3001
+   /plugin install superpowers@claude-plugins-official
+   /plugin install context7@claude-plugins-official
+   /plugin install typescript-lsp@claude-plugins-official   (user scope)
+   /plugin marketplace add DietrichGebert/ponytail
+   /plugin install ponytail@ponytail
    ```
-6. **Start Claude Code** in the repo (`claude`) and accept the workspace trust prompt; the project's allow rules only take effect once you trust the folder.
-7. **Check the setup:** `/context` (CLAUDE.md loaded), `/hooks` (one SessionStart and one PostToolUse hook), `/skills` (handoff, slice-review, walkthrough), `/permissions`, and ask "which custom subagents are available?" (reviewer, test-writer). Path-scoped rules load only when Claude reads matching files, so check them later: while Claude works on an adapter (S03), `/memory` should list `.claude/rules/adapters.md`.
-8. Terminal sessions start in plan mode here (`permissions.defaultMode` in `.claude/settings.json`). If you also use the VS Code extension, set `claudeCode.initialPermissionMode` to `plan` there — the extension doesn't read project settings for the starting mode.
-9. **Optional: a desktop notification when Claude needs you** — for example, the push prompt at the end of `/handoff` while you're in another window. Add this to your personal `~/.claude/settings.json` (not the project's):
-   ```json
-   {
-     "hooks": {
-       "Notification": [
-         {
-           "matcher": "permission_prompt|idle_prompt",
-           "hooks": [{ "type": "command", "command": "notify-send 'Claude Code' 'Claude needs your attention'" }]
-         }
-       ]
-     }
-   }
-   ```
-10. **Optional, recommended: a status line that shows how full the context is.** Run `/statusline show the model, context tokens used and the git branch` once; Claude writes it to your personal settings. With 1M-token windows, the number of tokens used tells you more than a percentage.
+   On a fresh clone the project plugins are already listed in `.claude/settings.json`; Claude Code should offer to install them when you trust the folder (otherwise run the commands above).
+7. **Start Claude Code** in the repo and accept the trust prompt (project allow rules apply only after that).
+8. **Check the setup:** `/plugin` (four enabled), `/skills` (handoff, walkthrough, the superpowers and ponytail skills), `/hooks` (the kit's SessionStart and PostToolUse hooks plus the plugins'), `/mcp` (context7 connected), `/permissions`, and "which custom subagents are available?" (reviewer, test-writer).
+9. Sessions start in **default** mode (`permissions.defaultMode`): edits ask until you approve the plan, then `Shift+Tab` to auto. In the VS Code extension, set `claudeCode.initialPermissionMode` to `default`.
+10. **Optional:** a desktop notification when Claude needs you — a `Notification` hook running `notify-send` in `~/.claude/settings.json`; a status line showing context tokens (`/statusline …`). Both are already set up on your machine.
 11. Personal preferences go in `.claude/settings.local.json` and `CLAUDE.local.md` — both gitignored.
 
 ### What's in the kit
 
 | File | Purpose |
 |---|---|
-| `.claude/settings.json` | Plan mode by default; allow rules for routine commands and `gh pr …` commands; **ask** rules for pushes, merges, rebases, resets, merging or closing PRs, and dependency changes (these prompt even in auto mode); **deny** rules for force pushes, deleting the repo, reading `.env` files and editing fixtures; the two hooks |
-| `.claude/hooks/session-start.mjs` | At startup, after `/clear` and after compaction: prints branch, uncommitted changes, recent commits and PROGRESS.md "Current state" into Claude's context |
-| `.claude/hooks/format-file.mjs` | After every Edit/Write: formats that file with Biome (silent; skips fixtures; does nothing until Biome is installed in S00) |
-| `.claude/agents/reviewer.md` | Read-only reviewer: checks a diff against acceptance criteria, architecture rules and test trustworthiness; reports, never edits |
-| `.claude/agents/test-writer.md` | Writes failing tests from spec + fixtures before implementation; never touches `src/` |
-| `.claude/skills/handoff/` | `/handoff` — verify → reviewer → fix → PROGRESS/DECISIONS → commit → push → the slice PR (created on the first handoff) → briefing posted on it → CI result |
-| `.claude/skills/slice-review/` | `/slice-review <n>` — independent review of the slice's PR in a fresh session, at high effort → `docs/reviews/slice-<n>.md` + a PR review with inline comments |
+| `.claude/settings.json` | Default mode; allow rules for routine commands and `gh pr …`; **ask** rules for pushes, merges, rebases, resets, merging or closing PRs and dependency changes (these prompt even in auto mode); **deny** rules for force pushes, deleting the repo, reading `.env` files and editing fixtures; the two hooks; the project plugins |
+| `.claude/hooks/session-start.mjs` | At startup, after `/clear` and after compaction: branch, uncommitted changes, recent commits and PROGRESS.md "Current state" |
+| `.claude/hooks/format-file.mjs` | After every Edit/Write: formats the file with Biome (silent; skips fixtures; inactive until S00 installs Biome) |
+| `.claude/agents/reviewer.md` | Read-only final review: acceptance criteria, architecture rules, test trustworthiness; reports, never edits |
+| `.claude/agents/test-writer.md` | Writes failing tests from spec + fixtures before the implementation; never touches `src/` |
+| `.claude/skills/handoff/` | `/handoff` — verify → final review (if not already run) → PROGRESS/DECISIONS → commit → push → PR → briefing → `/code-review` → CI |
 | `.claude/skills/walkthrough/` | `/walkthrough <area>` — a linear, read-in-order tour of code for you to learn from |
-| `.claude/rules/*.md` | Path-scoped instructions that load only when Claude works on matching files: adapters, mobile code, tests |
+| `.claude/rules/*.md` | Path-scoped instructions that load when Claude works on matching files: adapters, mobile code, tests |
 | `.gitattributes` | Collapses recorded fixtures and the lockfile in PR diffs |
 | `apps/server/data/nationality-overrides.json` | The sporting-nationality overrides: Embiid → USA, Towns → DOM |
 
 ## The session loop
 
-1. **Orient.** The SessionStart hook injects branch, recent commits and the current state. Set the effort the SESSIONS.md Overview gives for the session, every time: `/effort medium` or `/effort high`. A level typed after `/effort` also becomes your default, so leaving it out means inheriting the last session's level. The prompt tells Claude to read PROGRESS.md and its SESSIONS.md section, and to *first run the tests*.
-2. **Plan** (plan mode, read-only). Claude explores, possibly via the built-in Explore/Plan subagents, and proposes a plan. Check that it names files and interfaces, maps tests to the acceptance criteria, stays inside the scope, justifies any new dependency, and asks instead of guessing. Push back, or `Ctrl+G` to edit the plan in your editor (Neovim on Omarchy).
-3. **Approve.** "Yes, and use auto mode" lets Claude work without routine prompts while a classifier screens risky actions; your ask rules still stop it before pushes, merges, resets and new dependencies. While you're learning, "Yes, manually approve edits" lets you watch every change.
-4. **Build.** Red/green: failing test → watch it fail → implement → green. Interrupt with `Esc` the moment it drifts. One correction is normal; **after two failed corrections, stop**: exit or `/clear`, then restart with a better prompt that includes what you learned.
-5. **Verify.** Claude shows evidence for each acceptance criterion and `pnpm verify` is green. For behavior you can run (CLI, API, app), you can also run the bundled `/verify` after `/run-skill-generator` has recorded how to start the project (S07).
-6. **`/handoff`.** Verify → reviewer subagent → fix blockers → re-verify → PROGRESS.md and DECISIONS.md → proposed CLAUDE.md edits (your OK) → commit → push (your OK) → PR → briefing → CI result.
-7. **Read and learn.** Read the 3–7 files the briefing lists, in your editor or the PR's **Files changed** tab. Ask "why is it built like this?". `/walkthrough <area>` for anything you didn't follow. `/btw <question>` for a side question that shouldn't enter the conversation history.
-8. **End.** Exit. The next task gets a fresh session.
-
-## The slice loop
-
-1. The slice's last session is handed off; its PR is still a draft.
-2. New terminal on the slice branch: `claude`, then `/slice-review <n>` (or a cloud session started from the slice branch). Approve the review it presents in plan mode; it commits the review file, posts it to the PR and marks the PR ready.
-3. Open the PR (`gh pr view --web`): the summary is in the conversation tab, findings sit inline in **Files changed**. Decide accept, reject or defer for each finding.
-4. Run the "Review fixes" template from SESSIONS.md with your decisions, then `/handoff`.
-5. When CI is green, merge on GitHub with **Create a merge commit**, then `git switch main && git pull --ff-only`. The next slice starts from there.
+1. **Orient.** Start `claude` on an up-to-date `main`. The SessionStart hooks inject the repo state and the plugin rules. Set effort per the Overview (`/effort medium` or `/effort high`; a typed level is saved as your default).
+2. **Paste the session's prompt.** Claude creates the session branch, runs the tests, and starts brainstorming.
+3. **Design.** It asks about the gaps the SESSIONS.md section leaves, one question at a time, then writes a short design doc. Push back here — this is the cheapest moment to change direction.
+4. **Plan.** It writes the task list. Check that tasks map to the acceptance criteria, stay inside the scope, name any new dependency (you approve each), and put the test-writer first where the prompt says so. Approve, then switch to auto mode.
+5. **Build.** Helper agents implement and review task by task. Superpowers only stops for destructive, security-sensitive or outside-the-branch actions, or a plan that doesn't work; it lists its rulings at the end. Interrupt with `Esc` if it drifts. **After two failed corrections, stop:** `/clear` and restart with a better prompt.
+6. **Verify.** Claude shows evidence for each acceptance criterion; `pnpm verify` is green. Live checks marked "run by you" happen here.
+7. **`/handoff`.** You approve the push; the PR gets the briefing and the `/code-review` comments; CI runs.
+8. **Review and merge.** Read the briefing's "Read these" files and the inline comments. Fixes → "Review fixes" template → `/handoff`. Merge when CI is green.
+9. **Learn.** `/walkthrough <area>` for anything you didn't follow; `/btw <question>` for side questions.
 
 ## The practices behind this setup
 
-Each practice below comes from Anthropic's Claude Code guidance or engineering write-ups, or from well-known practitioners; the arrow shows where it lives in this kit.
+Each practice comes from Anthropic's Claude Code guidance or engineering write-ups, or from well-known practitioners; the arrow shows where it lives in this kit.
 
 ### 1. Context is the scarce resource
-- Claude's context window fills quickly and performance degrades as it fills; Anthropic organizes its best-practice guide around managing it. Their context-engineering guidance puts it as finding "the smallest possible set of high-signal tokens" for the outcome: every token spends a limited attention budget ("context rot"). A 1M-token window raises the ceiling but doesn't change that. → One session per unit of work; exit or `/clear` between tasks; watch the token count; stop at a green checkpoint around 200K tokens rather than pushing through a crowded window.
-- Keep CLAUDE.md short and universally relevant, and point to detail instead of including it ("progressive disclosure"). Bloated instruction files get partially ignored; for each line ask "would removing this cause a mistake?". → CLAUDE.md is ~75 lines; VISION/SESSIONS/sources are read on demand; `.claude/rules/` files load only for matching paths. Run `/doctor` occasionally — it proposes cuts.
-- Push investigation and verbose output into subagents; they return summaries. → planning research, the reviewer, the test-writer.
+- Performance degrades as the context fills ("context rot"); the goal is "the smallest possible set of high-signal tokens". A 1M window raises the ceiling but doesn't change that. → One session per unit of work; stop at a green checkpoint around 200K tokens. Helper agents keep implementation detail out of your session's context.
+- Keep CLAUDE.md short and point to detail ("progressive disclosure"). → CLAUDE.md ~85 lines; VISION/SESSIONS/sources on demand; `.claude/rules/` per path; context7 tools load on demand.
 
 ### 2. Explore → plan → code → commit
-- Separate research and planning from implementation; skip the plan only when the diff fits in one sentence. → plan mode by default; the "Small change" template skips it.
-- The most useful specs are self-contained: they name the files and interfaces, say what's out of scope, and end with an end-to-end check. → every SESSIONS.md section.
-- For fuzzy features, have Claude interview you before writing a spec. → the "Explore an idea" template.
+- Separate design and planning from implementation. → brainstorming → writing-plans → execution, with your approval between each; the "Small change" template skips it.
+- Self-contained specs name files and interfaces, say what's out of scope and end with an end-to-end check. → every SESSIONS.md section, refined into a design doc per session.
 
 ### 3. Give Claude a way to verify its work
-- The highest-leverage habit: give Claude a check that returns pass/fail — tests, a build, a script, a screenshot — so it iterates until the check passes instead of stopping when the work merely *looks* done. → `pnpm verify` locally and in CI; fixture tests; `pnpm inspect` and `pnpm recap` for eyeballing data; `pnpm screenshots` so Claude can *see* the UI; bundled `/verify`.
-- "Use red/green TDD" and "First run the tests" (Simon Willison) are tiny prompts that carry a lot of discipline; a test only counts once it has been seen failing. → every session prompt, CLAUDE.md.
-- Ask for evidence, not assertions. → CLAUDE.md; acceptance criteria demand command output.
-- What must happen every time belongs in a deterministic gate, not a sentence. → the format hook, CI as a required check. Optional later: a Stop hook that runs `pnpm verify`, or `/goal` with a condition such as "pnpm verify passes", for longer unattended runs.
+- A check that returns pass/fail beats "looks done". → `pnpm verify` locally and in CI; fixture tests; `pnpm inspect`, `pnpm recap`, `pnpm screenshots`; superpowers' `verification-before-completion`; LSP diagnostics after each edit.
+- Red/green TDD: a test counts only once it has been seen failing. → superpowers' `test-driven-development`, CLAUDE.md, the test-writer's red commits.
 
 ### 4. Independent review
-- A fresh context reviews better because it isn't biased toward code it just wrote; Anthropic recommends a writer/reviewer split and a subagent review step before calling work done. Their long-running app harness found a separate evaluator, with success criteria agreed before each sprint, beat self-evaluation. → acceptance criteria = the agreed contract; reviewer subagent at every handoff; fresh-session slice review on the PR.
-- Calibrate the reviewer. One asked to find gaps will find some even in sound work, and chasing every finding leads to over-engineering. → the reviewer reports only correctness, requirements, architecture rules and test trustworthiness as blocking; style is Biome's job; you decide every slice finding.
-- Watch for test gaming: weakened assertions, skipped or deleted tests, mocks of the unit under test, edited fixtures. → CLAUDE.md rule, the fixture deny rule, the reviewer's checklist.
+- A fresh context reviews better than the author; agree success criteria before the work. → acceptance criteria as the contract; a task review per task; the `reviewer` agent over the branch; `/code-review` on the PR.
+- Calibrate reviewers: chasing every finding leads to over-engineering. → blockers only for correctness, requirements, architecture rules and test trustworthiness; style is Biome's job; ponytail pushes back on bloat; you decide every PR finding.
+- Watch for test gaming: weakened assertions, skipped tests, mocks of the unit under test, edited fixtures. → CLAUDE.md, the fixture deny rule, the reviewer's checklist.
 
 ### 5. Guardrails: advisory vs enforced
-- CLAUDE.md shapes what Claude tries; permission rules, modes and hooks are what Claude Code enforces. HumanLayer's rule of thumb: never send an LLM to do a linter's job. → Biome via hook; `.env` reads and fixture edits denied; pushes, merges, rebases, resets and new dependencies always ask.
-- Permission rules match command text, so they're guardrails, not a security boundary — `git push` written another way may slip past a rule. → branch protection on GitHub is what actually keeps `main` safe.
-- Auto mode (the default starting mode in current Claude Code) screens risky actions with a classifier and respects boundaries you state in conversation ("don't push") — but a stated boundary can be lost to compaction, so hard limits belong in deny/ask rules.
-- Git is the real undo. Checkpoints (`Esc Esc` / `/rewind`) only cover Claude's own file edits, not shell side effects. → a branch per slice, small commits, pushed after every session.
+- CLAUDE.md and skills shape what Claude tries; permission rules, modes and hooks are enforced. → Biome via hook; `.env` reads and fixture edits denied; pushes, merges, resets and new dependencies always ask, even in auto mode.
+- Permission rules match command text, so they're guardrails, not a security boundary. → branch protection keeps `main` safe.
+- Git is the real undo. → a branch per session, a commit per task, pushed at every handoff.
 
 ### 6. Memory lives in the repo
-- Anthropic's harness for long-running agents keeps a progress file, a structured feature list and git history so each fresh session can orient itself, works on one feature at a time, and leaves the repo committed and clean. → PROGRESS.md (state + log), SESSIONS.md (the feature list with acceptance criteria), DECISIONS.md, the PR timeline, the SessionStart hook, `/handoff`.
-- Prefer a fresh session with a structured handoff over a long, repeatedly compacted one; Anthropic found context resets plus handoff artifacts work better than compaction alone for long jobs. → the sizing rule and the "Resume" template.
-- Claude Code's auto memory is Claude's private notebook; project truth belongs in files you can review in git.
+- A progress file, a feature list and git history let each fresh session orient itself. → PROGRESS.md, SESSIONS.md, DECISIONS.md, the spec and plan files, the SessionStart hook, `/handoff`.
+- Prefer a fresh session with a structured handoff over a long, compacted one. → the sizing rule; the "Resume" template picks up from the plan's checkboxes.
 
-### 7. Steering
-- Correct early (`Esc`), be specific (reference files with `@`, point at existing patterns, name constraints), and park out-of-scope ideas instead of chasing them. → CLAUDE.md workflow rules, the PROGRESS.md parking lot.
-- Prefer CLI tools over adding MCP servers; tool definitions cost context. Anthropic recommends `gh` for GitHub specifically. → `/handoff` and `/slice-review` drive GitHub through `gh`.
+### 7. Steering and tools
+- Correct early (`Esc`), be specific, park out-of-scope ideas. → CLAUDE.md, the PROGRESS.md parking lot.
+- Tool definitions cost context; prefer CLIs where they exist. → `gh` for GitHub. The one MCP server, context7, earns its place because Expo and friends change faster than model training, and its two tools load on demand.
 
-### 8. Learning while delegating — your goal
-- After every session, read the files the briefing lists; use `/walkthrough` — Willison's "linear walkthrough" pattern — for code you didn't write.
-- Write some backend logic yourself where the tests already exist: `isShown` in S02a; later candidates are country mapping, game-day math and the scheduler's decision function. Claude then reviews *your* code.
-- Read the reviewer's findings, especially the inline ones on the PR; they're a running code-review lesson. Ask "why this design?" and capture the answer in DECISIONS.md.
+### 8. Learning while delegating
+- Read the briefing's files; `/walkthrough` for code you didn't write; the `/code-review` comments are a running code-review lesson.
+- Write some logic yourself where the tests already exist: `isShown` in S02a; later, country mapping, game-day math, the scheduler's decision function.
 
 ### 9. Models, effort and usage on Pro
-- **Model: Opus 5.5**, the default for Pro in Claude Code. Sonnet 5.5 and Haiku are included too; Fable 5.1 (the strongest) bills usage credits on Pro, which this project doesn't need. The subagents use `model: inherit`, so they run on whatever the session runs.
-- **Effort** sets how hard the model thinks per turn: `low`, `medium` (Opus 5.5's default), `high`, `xhigh`, `max`. The SESSIONS.md Overview gives each session's level; set it at the start of every session (`/effort medium` or `/effort high`), because a typed level is saved as your default. To change it for one session only, run `/effort` without an argument and press `s` in the slider. The reviewer subagent and `/slice-review` set `effort: high` themselves. For one hard question, put `ultrathink` in the prompt instead of raising effort for the whole session. `xhigh` and `max` cost a lot of usage for rare gains.
-- **Context:** Opus 5.5 and Sonnet 5.5 have 1M-token windows, and Claude Code auto-compacts only near the end of one. The window is no reason to let sessions grow: quality and usage both get worse as context fills (§1), hence the ~200K-token budget per session.
-- **If usage limits bite:** `/model opusplan` uses Opus in plan mode and Sonnet for the implementation, keeping the strong model where the thinking happens. If a cloud credit turns out to cover cloud sessions (see Cloud sessions), move sessions marked *either* there.
-- The reviewer runs at every handoff, as you chose. Subagents draw on the same usage limits as your session; `/usage` shows where usage goes.
-- Spreading sessions over days, as you plan, suits usage limits that reset over time. If a session runs out mid-way, stop at a green checkpoint (or `/handoff`) and continue later with the "Resume" template; PROGRESS.md, git and the PR carry the state.
-- **Optional:** Pro includes three one-time free runs of `/code-review ultra`, a cloud review by a fleet of agents that reproduces each finding before reporting it (after the free runs it bills usage credits, typically $5–25 per review). Spend them on the riskiest PRs — slices 1, 2 and 4 — with `/code-review ultra <PR number>`. Very large diffs (by default more than 500 files or 8,000 changed lines) are refused.
-- **Optional, later:** the Claude Code GitHub Action can run a project skill on PR events and authenticate with your subscription (a token from `claude setup-token`), which would automate the slice review on GitHub. Wait until the local loop feels routine; the local review can run the app and answer your follow-up questions.
+- **Model: Opus 5.5** for your session and for every helper agent (CLAUDE.md overrides superpowers' default of cheaper models for mechanical tasks). The project agents use `model: inherit`. Fable 5.1 bills usage credits on Pro; not needed.
+- **Usage:** subagent-driven development starts a fresh context per task and per review — roughly 15–25 agent runs per session, about 2–4× the usage of building in one context. Short sessions spread over days protect the 5-hour window; the weekly cap is the one to watch in the larger sessions (S02a, S04a, S04b, S05, S09). **Check `/usage` after the first such session.** If it bites: move implementers to Sonnet (one line in CLAUDE.md; reviewers stay on Opus), or use `superpowers:executing-plans` for that session.
+- **Effort:** `low` … `max`; the Overview gives each session's level. A typed `/effort <level>` is saved as your default; `/effort` alone opens a slider where `s` applies it to this session only. The reviewer agent pins `effort: high`. `ultrathink` in a prompt raises effort for one question.
+- **Context:** stop around 200K tokens even with a 1M window; quality and usage degrade first.
+- **`/code-review ultra`:** Pro includes three free runs of the deep cloud review (later billed as usage credits). Spend them on the riskiest PRs — S02a, S04a, S05, S09 — with `/code-review ultra <PR number>`. Diffs over ~8,000 changed lines are refused.
 
 ## Anti-patterns to watch for
 
-From Anthropic's list: the kitchen-sink session (unrelated tasks in one context), correcting over and over, the over-specified CLAUDE.md, the trust-then-verify gap, and unscoped "investigate X" requests that read hundreds of files.
+From Anthropic's list: the kitchen-sink session, correcting over and over, the over-specified CLAUDE.md, the trust-then-verify gap, unscoped "investigate X" requests.
 
 Specific to this project:
 - Raw upstream JSON leaking out of an adapter, or a "just this once" network call in a test.
@@ -199,41 +166,44 @@ Specific to this project:
 - Silent `catch {}` blocks or defaults that hide upstream changes.
 - Fixtures edited by hand; tests that snapshot whole objects instead of asserting specific values.
 - Speculative abstractions ("AdapterFactory", plugin systems) for two sources.
-- Docs drifting from code — `/handoff` updates PROGRESS and DECISIONS every session; challenge stale lines in CLAUDE.md.
+- Approving a plan without reading it — the plan is where hands-off work goes wrong cheaply.
+- Docs drifting from code — `/handoff` updates PROGRESS and DECISIONS every session.
 - Merging a PR with a red or pending CI check.
 
 ## Cheat sheet
 
 | Keys / command | What it does |
 |---|---|
-| `Shift+Tab` | Cycle permission modes: Manual → Accept edits → Plan (→ Auto) |
-| `/plan <prompt>` | Run one prompt in plan mode |
-| `Ctrl+G` | Open the proposed plan in your editor |
+| `Shift+Tab` | Cycle permission modes: Default → Accept edits → Plan → Auto |
 | `Esc` · `Esc Esc` or `/rewind` | Interrupt · restore code and/or conversation to a checkpoint |
 | `/clear` · `/compact <focus>` · `/context` | Reset context · summarize now · see what fills the window |
 | `/btw <question>` | Side question that doesn't enter the history |
 | `@path` · `@"reviewer (agent)"` | Attach a file · force a specific subagent |
-| `/handoff [notes]` · `/slice-review <n>` · `/walkthrough <area>` | This kit's skills |
-| `/code-review` · `/code-review ultra <PR>` | Bundled: quick local bug review · deep cloud review (3 free runs on Pro) |
-| `/verify` · `/run-skill-generator` | Bundled: run the app to confirm a change · record how to launch it |
-| `gh pr view --web` · `gh pr checks` | Open the current branch's PR in the browser · see its CI status |
+| `/handoff [notes]` · `/walkthrough <area>` | This kit's skills |
+| `/code-review high <PR> --comment` · `/code-review ultra <PR>` | Built-in: review a PR with inline comments · deep cloud review (3 free runs on Pro) |
+| `/simplify` · `/ponytail-review` | Built-in cleanup pass on the diff · ponytail's review of a change |
+| `/ponytail [lite\|full\|ultra\|off]` · `/ponytail-debt` | Change ponytail's level · list `shortcut:` comments |
+| "use superpowers:systematic-debugging" | Ask for a superpowers skill by name when it didn't start on its own |
+| `/plugin` · `/reload-plugins` · `/mcp` | Manage plugins · reload after changes · MCP status (context7) |
+| `/verify` · `/run-skill-generator` | Built-in: run the app to confirm a change · record how to launch it |
+| `gh pr view --web` · `gh pr checks` | Open the branch's PR · see its CI status |
 | `/rename` · `claude --continue` · `claude --resume` | Name and resume sessions |
 | `/permissions` · `/hooks` · `/skills` · `/memory` · `/doctor` | Inspect and tidy the configuration |
-| `/model` · `/effort high` · `/usage` | Switch model · set effort and save it as the default (`/effort` alone opens a slider: `s` = this session only) · see usage |
-| `claude --cloud "<prompt>"` · `claude --teleport` | Start a cloud session on the current branch · pull a cloud session into this terminal |
-| `/statusline <description>` | Set up a status line, e.g. showing context tokens used |
+| `/model` · `/effort high` · `/usage` | Switch model · set effort (saved as default) · see usage |
+| `claude --cloud "<prompt>"` · `claude --teleport` | Start a cloud session on the current branch · pull one into this terminal |
 
 ## Sources
 
 - Anthropic, *Best practices for Claude Code* — https://code.claude.com/docs/en/best-practices
-- Anthropic, Claude Code docs: subagents https://code.claude.com/docs/en/sub-agents · skills https://code.claude.com/docs/en/skills · hooks https://code.claude.com/docs/en/hooks-guide · permission modes https://code.claude.com/docs/en/permission-modes · permissions https://code.claude.com/docs/en/permissions · model configuration https://code.claude.com/docs/en/model-config · cloud sessions https://code.claude.com/docs/en/claude-code-on-the-web · cloud environments https://code.claude.com/docs/en/cloud-environments · GitHub Actions https://code.claude.com/docs/en/github-actions · ultrareview https://code.claude.com/docs/en/ultrareview · feature availability https://code.claude.com/docs/en/feature-availability
+- Anthropic, Claude Code docs: subagents https://code.claude.com/docs/en/sub-agents · skills https://code.claude.com/docs/en/skills · plugins https://code.claude.com/docs/en/plugins · hooks https://code.claude.com/docs/en/hooks-guide · permission modes https://code.claude.com/docs/en/permission-modes · permissions https://code.claude.com/docs/en/permissions · model configuration https://code.claude.com/docs/en/model-config · cloud sessions https://code.claude.com/docs/en/claude-code-on-the-web · ultrareview https://code.claude.com/docs/en/ultrareview
+- Plugins: superpowers https://github.com/obra/superpowers · ponytail https://github.com/DietrichGebert/ponytail · official marketplace (context7, typescript-lsp) https://github.com/anthropics/claude-plugins-official
 - Anthropic Engineering, *Effective context engineering for AI agents* (Sep 2025) — https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
 - Anthropic Engineering, *Effective harnesses for long-running agents* (Nov 2025) — https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents
 - Anthropic Engineering, *Harness design for long-running application development* (Mar 2026) — https://www.anthropic.com/engineering/harness-design-long-running-apps
-- Simon Willison, *Agentic Engineering Patterns* (red/green TDD, first run the tests, linear walkthroughs) — https://simonwillison.net/guides/agentic-engineering-patterns/
+- Simon Willison, *Agentic Engineering Patterns* — https://simonwillison.net/guides/agentic-engineering-patterns/
 - HumanLayer, *Writing a good CLAUDE.md* — https://www.humanlayer.dev/blog/writing-a-good-claude-md
 - GitHub Docs, *About protected branches* — https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
-- Android Developers, *Configure the app module* (application ID rules) — https://developer.android.com/build/configure-app-module
+- Android Developers, *Configure the app module* — https://developer.android.com/build/configure-app-module
 - Google Play Console Help, *App testing requirements for new personal developer accounts* — https://support.google.com/googleplay/android-developer/answer/14151465
 - Expo, *Work with monorepos* — https://docs.expo.dev/guides/monorepos/
-- The Omarchy 3 Manual: *Security* (firewall) https://learn.omacom.io/2/the-omarchy-manual/93/security · *Development Tools* (mise) https://learn.omacom.io/2/the-omarchy-manual/62/development-tools
+- The Omarchy 3 Manual: *Security* https://learn.omacom.io/2/the-omarchy-manual/93/security · *Development Tools* https://learn.omacom.io/2/the-omarchy-manual/62/development-tools

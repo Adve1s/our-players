@@ -3,15 +3,15 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** K0 — Kit review (2026-10-03): 20 findings, all accepted and applied to the docs and the Claude Code setup.
-- **Branch / PR:** `kit-review` → `main` (docs only, no CI yet); merge it on GitHub, then `git switch main && git pull --ff-only`.
-- **What works:** nothing runs yet; the repo holds the reviewed docs, `.claude/` config and `apps/server/data/nationality-overrides.json`.
-- **How to try it:** — (read `docs/SESSIONS.md`: S02 and S04 are now split into S02a/S02b and S04a/S04b).
-- **Next session:** S00 — Bootstrap. Claude creates branch `slice-0-setup`, and its first `/handoff` opens the slice's draft PR.
+- **Last session:** Plugin workflow (2026-10-16): the kit now runs on superpowers + ponytail + context7 + typescript-lsp; one branch and PR per session, reviewed by the built-in `/code-review` (DECISIONS.md D-022–D-025).
+- **Branch / PR:** `plan-change` → `main` (docs and config only, no CI yet).
+- **What works:** nothing runs yet; the repo holds the docs, `.claude/` config (with the project plugins) and `apps/server/data/nationality-overrides.json`. `origin/slice-0-setup` keeps an earlier attempt at S00–R0 under the old workflow as a backup — don't merge or modify it.
+- **How to try it:** `/plugin` shows four plugins enabled; read `docs/WORKFLOW.md` (TL;DR, Plugins) and `docs/SESSIONS.md` → "How to run a session".
+- **Next session:** S00 — Bootstrap. Claude creates branch `s00-bootstrap` from `main`; its `/handoff` opens the PR and runs `/code-review`.
 - **Notes for the next session:**
-  - Before S00, the owner protects `main` (WORKFLOW.md setup step 4, first part) and runs `/effort medium` — K0's `/effort high` was saved as the default.
-  - S00 scope grew slightly: CI runs on a Node 22 + 24 matrix (`verify (22)`, `verify (24)`), and a SessionStart hook installs dependencies in cloud sessions only.
-  - Cloud sessions now push the slice branch directly (DECISIONS.md D-020).
+  - Before S00, the owner protects `main` (WORKFLOW.md setup step 4, first part) if it isn't already, and sets effort per the Overview (`/effort medium` for S00).
+  - S00 is the first session with Opus helper agents: check `/usage` afterwards (D-025). Note any superpowers helper scripts that prompt repeatedly as candidate allow rules.
+  - Optional: a fresh session runs the "Docs review" template over this change before S00.
 
 ## Known issues
 - (none)
@@ -40,3 +40,12 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve-with-fixes; fixed 4 majors (split `/health` liveness from `/health/data` freshness; off-roster rule only after a complete league fetch; checkable S10 latency criteria; DEPLOY.md criterion restored) and 5 nits.
 - CI: none yet (no package.json before S00).
 - Follow-ups: verify D-020 on the first cloud session (does the harness let Claude push the slice branch?).
+
+### Plugin workflow — 2026-10-16 — PR into `main` (`plan-change`)
+- Changed: CLAUDE.md (Workflow configures superpowers; test rules beat ponytail), WORKFLOW.md (rewritten around the plugins), SESSIONS.md (per-session branches, brainstorm/plan prompts, R rows and K0 prompt removed, templates updated), handoff skill (per-session PR + `/code-review`), reviewer/test-writer agents, settings (default mode, project plugins, ponytail marketplace), `.gitignore` (`.superpowers/`); `/slice-review` and `docs/reviews/` deleted.
+- Decisions: D-022 (supersedes D-015), D-023, D-024 (supersedes D-016/D-020 in part), D-025 (amends D-018).
+- Read these: docs/WORKFLOW.md (TL;DR, Plugins, GitHub), CLAUDE.md (Workflow), docs/SESSIONS.md (How to run a session, S00 prompt), .claude/skills/handoff/SKILL.md.
+- Reviewer: not run (docs-only change; the "Docs review" template is the independent pass).
+- CI: none yet (no package.json before S00).
+- Follow-ups: check `/usage` after S00; confirm cloud sessions install the project plugins on first cloud run.
+
