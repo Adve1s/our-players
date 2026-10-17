@@ -60,6 +60,8 @@ export function parseStatPayload<K extends StatKind>(
   kind: K,
   value: unknown,
 ): z.infer<(typeof statPayloadSchemas)[K]> {
+  // hasOwn, not a truthiness check: inherited keys like 'constructor' are not kinds.
+  if (!Object.hasOwn(statPayloadSchemas, kind)) throw new Error(`invalid stat kind: ${kind}`);
   const result = statPayloadSchemas[kind].safeParse(value);
   if (!result.success) throw new Error(`invalid ${kind} stats:\n${z.prettifyError(result.error)}`);
   // TS cannot narrow the union of outputs through the generic index K.

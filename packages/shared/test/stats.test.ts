@@ -101,4 +101,9 @@ describe('parseStatPayload', () => {
     expect(() => parseStatPayload(kind, payload)).toThrow(kind);
     expect(() => parseStatPayload(kind, payload)).toThrow(key);
   });
+
+  // S02b passes kinds read from the database, which the type system cannot vouch for.
+  it.each(['hockey', 'constructor'])('rejects unknown kind %s naming it', (kind) =>
+    expect(() => parseStatPayload(kind as StatKind, skater)).toThrow(`invalid stat kind: ${kind}`),
+  );
 });
