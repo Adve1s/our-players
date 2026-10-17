@@ -1,4 +1,9 @@
-export { COUNTRY_CODES, type CountryCode, countryCodeSchema } from './countries';
+export {
+  COUNTRY_CODES,
+  type CountryCode,
+  countryCodeSchema,
+  ESPN_COUNTRY_ALIASES,
+} from './countries';
 export {
   type EndedIn,
   endedInSchema,

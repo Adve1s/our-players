@@ -15,7 +15,7 @@
     "dev:mobile": "pnpm --filter @our-players/mobile start",
     "fixtures:record": "pnpm --filter @our-players/server fixtures:record",
     "spike": "pnpm --filter @our-players/server spike",
-    "inspect": "echo 'pnpm inspect arrives in session S03' >&2; exit 1",
+    "inspect": "pnpm --filter @our-players/server inspect",
     "job": "echo 'pnpm job arrives in session S04a' >&2; exit 1",
     "recap": "echo 'pnpm recap arrives in session S04a' >&2; exit 1",
     "db:generate": "pnpm --filter @our-players/server db:generate",

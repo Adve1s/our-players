@@ -15,7 +15,7 @@ Unofficial, keyless, undocumented. Verified against fixtures recorded 2026-10-16
 | skater/goalie summary | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/summary?cayenneExp=seasonId=20252026` | `nhl/skater-summary/20252026.json`, `nhl/goalie-summary/20252026.json`, `nhl/skater-summary-lva/20252026.json`, `nhl/skater-summary-reg/20252026.json`, `nhl/goalie-summary-reg/20252026.json` |
 | skater/goalie bios | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/bios?cayenneExp=seasonId=20252026` | `nhl/skater-bios/20252026.json`, `nhl/goalie-bios/20252026.json`, `nhl/skater-bios-lva/20252026.json`, `nhl/goalie-bios-lva/20252026.json` |
 
-The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded); the `-reg` variants add `and gameTypeId=2`. Stats REST returns `{data[], total}` with 50 rows by default (`nhl/skater-summary/20252026.json`: `total` 977, 50 rows); paging params (`start`, `limit`) not tested.
+The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded); the `-reg` variants add `and gameTypeId=2`. Stats REST returns `{data[], total}` with 50 rows by default (`nhl/skater-summary/20252026.json`: `total` 977, 50 rows); `limit=-1` returns every row in one request (live probes 2026-10-17, 2025-26 `gameTypeId=2`: skater summary 940 of 940, goalie summary 98 of 98), so the adapter requests `limit=-1` and throws when rows < `total`; `start` paging is not tested.
 
 ## Field paths for VISION §8
 
@@ -51,7 +51,7 @@ Same as ESPN: a game is listed under the US schedule date, not its UTC date. `sc
 | `OFF` / `OK` | finished regular-season games (all `score` dates, `schedule/2026-03-24`, three boxscores) | `nhl/score/2026-03-24.json`: 15 games `OFF` |
 | `FINAL` / `OK` | finished **preseason** games (`gameType` 1), even weeks later | `nhl/schedule/2026-09-25.json`: 18 preseason `FINAL`, 16 regular `OFF`; `nhl/boxscore/2026010059.json` `"FINAL"` |
 | `FUT` / `OK` | future games, `period` null | `nhl/score/2026-10-16-states.json`: `2026020119` `FUT`, `startTimeUTC` `"2026-10-17T01:00:00Z"` |
-| `PRE`, `LIVE`, `CRIT` | not observed (no game in progress at recording time) | |
+| `PRE`, `LIVE`, `CRIT`, `OVER` | not observed (no game in progress at recording time); `OVER` (after the final horn, before `FINAL`/`OFF`) comes from community docs, the adapter maps it to `LIVE` | |
 | postponed / cancelled (`gameScheduleState` other than `OK`) | not observed | |
 
 So both `FINAL` and `OFF` must map to FINAL.

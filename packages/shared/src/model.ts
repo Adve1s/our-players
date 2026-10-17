@@ -84,6 +84,8 @@ export type SeasonStats = {
   season: string;
   seasonType: SeasonType;
   kind: StatKind;
+  // The basis of the counting stats; rates (toiPerGameSeconds, savePct, goalsAgainstAverage…) are
+  // named as rates and never divided by gamesPlayed.
   basis: 'totals' | 'per_game';
   stats: Readonly<Record<string, number>>; // shortcut: untyped per source, typed schemas when S03/S05 map them
 };
