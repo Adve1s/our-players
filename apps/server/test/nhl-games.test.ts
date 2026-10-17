@@ -331,10 +331,32 @@ describe('mapScore: errors', () => {
     expect(() => mapScore(raw)).toThrow(/^nhl score: .*gameState/);
   });
 
-  it('throws when gameScheduleState is unknown', () => {
+  it('skips a game with an unknown gameScheduleState and warns, keeping the others', () => {
     const raw = score('2026-10-16-states');
-    rawScoreGame(raw, 2026020119).gameScheduleState = 'XYZ';
-    expect(() => mapScore(raw)).toThrow(/^nhl score/);
+    rawScoreGame(raw, 2026020119).gameScheduleState = 'SUSP';
+    const { games, warnings } = mapScore(raw);
+    expect(games.map((g) => g.externalId)).toEqual(['2026020120']);
+    expect(warnings).toEqual([
+      'nhl score: game 2026020119: unknown gameScheduleState "SUSP", game skipped',
+    ]);
+  });
+
+  it('skips a schedule game with an unknown gameScheduleState and warns, keeping the week', () => {
+    const raw = schedule('2026-03-24');
+    only(
+      list(raw, 'gameWeek', 0, 'games'),
+      (x) => x.id === 2025021120,
+      'raw game',
+    ).gameScheduleState = 'TBD';
+    const { games, warnings } = mapSchedule(raw);
+    expect(games).toHaveLength(57);
+    expect(warnings).toEqual([
+      'nhl schedule: game 2025021120: unknown gameScheduleState "TBD", game skipped',
+    ]);
+  });
+
+  it('returns no warnings for a payload it maps fully', () => {
+    expect(mapScore(score('2026-01-17')).warnings).toEqual([]);
   });
 
   it('throws when the season is not two consecutive years (20252027)', () => {

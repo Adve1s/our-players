@@ -10,6 +10,8 @@ import {
 
 type RawGame = z.output<typeof scheduleGameSchema>;
 type RawGoals = NonNullable<z.output<typeof scoreGameSchema>['goals']>;
+// warnings name skipped games; jobs must log them.
+type NhlGames = { games: Game[]; teams: Team[]; warnings: string[] };
 
 // gameScheduleState decides first; only an OK game is read by gameState (VISION §8).
 const SCHEDULE_STATUS: Readonly<Record<string, GameStatus>> = {
@@ -29,11 +31,14 @@ const GAME_STATUS: Readonly<Record<string, GameStatus>> = {
 const SEASON_TYPES: Readonly<Record<number, SeasonType>> = { 1: 'PRE', 2: 'REG', 3: 'POST' };
 const ENDED_IN: Readonly<Record<string, EndedIn>> = { REG: 'REG', OT: 'OT', SO: 'SO' };
 
-function status(g: RawGame, where: string): GameStatus {
+// An unknown gameScheduleState (SUSP, TBD… are documented but unseen) skips only its game, with a
+// warning (D-035); an unknown gameState still throws.
+function status(g: RawGame, where: string, warnings: string[]): GameStatus | null {
   const bySchedule = lookup(SCHEDULE_STATUS, g.gameScheduleState);
   if (bySchedule) return bySchedule;
   if (g.gameScheduleState !== 'OK') {
-    throw new Error(`${where}: unknown gameScheduleState "${g.gameScheduleState}"`);
+    warnings.push(`${where}: unknown gameScheduleState "${g.gameScheduleState}", game skipped`);
+    return null;
   }
   const byGame = lookup(GAME_STATUS, g.gameState);
   if (!byGame) throw new Error(`${where}: unknown gameState "${g.gameState}"`);
@@ -67,17 +72,19 @@ function periodScores(g: RawGame, goals: RawGoals): PeriodScore[] | null {
   }));
 }
 
-// null for a game type we skip.
+// null for a game we skip.
 function toGame(
   endpoint: string,
   g: RawGame,
   gameDate: string,
   goals: RawGoals | null,
+  warnings: string[],
 ): Game | null {
   const seasonType = lookup(SEASON_TYPES, g.gameType);
   if (!seasonType) return null;
   const where = `nhl ${endpoint}: game ${g.id}`;
-  const gameStatus = status(g, where);
+  const gameStatus = status(g, where, warnings);
+  if (!gameStatus) return null;
   return {
     publicId: `nhl-${g.id}`,
     league: 'NHL',
@@ -102,20 +109,21 @@ function toGame(
 function collect(
   endpoint: string,
   dated: { g: RawGame; gameDate: string; goals: RawGoals | null }[],
-): { games: Game[]; teams: Team[] } {
+): NhlGames {
   const games: Game[] = [];
   const teams = new Map<string, Team>();
+  const warnings: string[] = [];
   for (const { g, gameDate, goals } of dated) {
-    const game = toGame(endpoint, g, gameDate, goals);
+    const game = toGame(endpoint, g, gameDate, goals, warnings);
     if (!game) continue;
     games.push(game);
     for (const t of [g.awayTeam, g.homeTeam])
       teams.set(String(t.id), toTeam(t.id, t.abbrev, t.name));
   }
-  return { games, teams: [...teams.values()] };
+  return { games, teams: [...teams.values()], warnings };
 }
 
-export function mapScore(raw: unknown): { games: Game[]; teams: Team[] } {
+export function mapScore(raw: unknown): NhlGames {
   const { games } = parsePayload(scoreSchema, 'score', raw);
   return collect(
     'score',
@@ -124,7 +132,7 @@ export function mapScore(raw: unknown): { games: Game[]; teams: Team[] } {
 }
 
 // The schedule has no goals, so no period scores; a game's date is the gameWeek day it is listed under.
-export function mapSchedule(raw: unknown): { games: Game[]; teams: Team[] } {
+export function mapSchedule(raw: unknown): NhlGames {
   const { gameWeek } = parsePayload(scheduleSchema, 'schedule', raw);
   return collect(
     'schedule',
