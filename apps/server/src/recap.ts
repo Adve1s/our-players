@@ -27,6 +27,7 @@ export async function loadRecap(
       awayScore: games.awayScore,
       homeScore: games.homeScore,
       endedIn: games.endedIn,
+      boxscoreFetchedAt: games.boxscoreFetchedAt,
     })
     .from(games)
     .innerJoin(homeTeam, eq(homeTeam.id, games.homeTeamId))
@@ -88,6 +89,7 @@ export async function loadRecap(
       awayScore: g.awayScore,
       homeScore: g.homeScore,
       endedIn: g.endedIn,
+      boxScoreStored: g.boxscoreFetchedAt !== null,
     })),
     // TS can't tie a row's kind to its parsed stats through the spread, so the union is asserted.
     lines: lineRows.map(

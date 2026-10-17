@@ -37,6 +37,7 @@ function game(
     awayScore: 4,
     homeScore: 3,
     endedIn: 'REG',
+    boxScoreStored: true,
     ...over,
   };
 }
@@ -185,6 +186,20 @@ describe('gameDayRows', () => {
     const p = player('nhl-10', PIT.id);
     const live = game(G1, CBJ, PIT, { status: 'LIVE' });
     expect(rowsOf({ games: [live], lines: [], players: [p] })).toEqual([]);
+  });
+
+  it("no not-in-lineup row for a FINAL game whose box score isn't stored", () => {
+    const p = player('nhl-10', PIT.id);
+    const unfetched = game(G1, CBJ, PIT, { boxScoreStored: false });
+    expect(rowsOf({ games: [unfetched], lines: [], players: [p] })).toEqual([]);
+  });
+
+  it('a line whose team is neither away nor home throws', () => {
+    const p = player('nhl-10', TBL.id);
+    const day = { games: [one], lines: [skaterLine(G1, p, TBL, 1)], players: [p] };
+    expect(() => gameDayRows(day, prefs())).toThrow(
+      'stat line nhl-1/nhl-10: team 3 not in the game',
+    );
   });
 
   it('no row for a player with no current team', () => {

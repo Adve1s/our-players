@@ -20,6 +20,8 @@ export type DayGame = {
   awayScore: number | null;
   homeScore: number | null;
   endedIn: EndedIn | null;
+  // A FINAL game can be stored before its box score; without one, absence from it means nothing.
+  boxScoreStored: boolean;
 };
 export type DayPlayer = SelectablePlayer & {
   firstName: string;
@@ -69,7 +71,9 @@ export function gameDayRows(
         }
         // shortcut: the current team, not the team on that date, so older dates can be wrong after a trade (VISION §4.1); upgrade if rosters are kept per date
         const t = player.currentTeamId === null ? undefined : team(player.currentTeamId);
-        return game.status === 'FINAL' && t ? [{ player, team: t, kind: 'not-in-lineup' }] : [];
+        return game.status === 'FINAL' && game.boxScoreStored && t
+          ? [{ player, team: t, kind: 'not-in-lineup' }]
+          : [];
       });
       rows.sort((a, b) => {
         const [ka, pa] = rank(a);

@@ -35,6 +35,7 @@ function game(over: Partial<DayGame> = {}): DayGame {
     awayScore: 4,
     homeScore: 3,
     endedIn: 'SO',
+    boxScoreStored: true,
     ...over,
   };
 }
@@ -241,11 +242,15 @@ afterEach(() => handle.close());
 describe('loadRecap', () => {
   it("the day's recap shows the game, both LVA goalies' lines and Girgensons not in lineup", async () => {
     const text = formatRecap(DATE, ['LVA'], gameDayRows(await loadRecap(handle.db, DATE), lva));
-    const lines = text.split('\n');
 
-    expect(lines).toContain('CBJ 4 – 3 PIT  Final/SO');
-    expect(lines.find((l) => l.includes('Merz'))).toMatch(/CBJ {2}30\/33 · \.909 · 3 GA · W$/);
-    expect(lines.find((l) => l.includes('ilovs'))).toMatch(/PIT {2}23\/26 · \.885 · 3 GA · OTL$/);
-    expect(lines.find((l) => l.includes('Girgensons'))).toMatch(/CBJ {2}Not in lineup$/);
+    expect(text).toBe(
+      [
+        'NHL 2026-01-17',
+        'CBJ 4 – 3 PIT  Final/SO',
+        '  Elvis Merzlikins   CBJ  30/33 · .909 · 3 GA · W',
+        '  Zemgus Girgensons  CBJ  Not in lineup',
+        '  Arturs Silovs      PIT  23/26 · .885 · 3 GA · OTL',
+      ].join('\n'),
+    );
   });
 });

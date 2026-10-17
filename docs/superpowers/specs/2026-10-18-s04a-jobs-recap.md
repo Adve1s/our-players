@@ -28,7 +28,7 @@ apps/server/src/jobs/
   backfill.ts   backfillJob
   roster.ts     rosterJob
   index.ts      JOBS registry: name → job function
-apps/server/src/recap.ts           loadRecap(db, date, prefs) + formatRecap(rows) (pure)
+apps/server/src/recap.ts           loadRecap(db, date) + formatRecap(rows) (pure)
 apps/server/scripts/job.ts         pnpm job
 apps/server/scripts/recap.ts       pnpm recap
 apps/server/test/fake-client.ts    fixture-backed fake fetcher
@@ -120,7 +120,7 @@ The recap shows VISION §4.1's rows now, through one pure function that S06's `/
 `gameDayRows({ games, lines, players }, prefs)` (`apps/server/src/game-day-rows.ts`) → per game with at least one shown player, in start-time order, that game's rows:
 - **line** — a shown player with a played line;
 - **dnp** — a shown player whose line is `played: false` (`DNP`, plus ` — reason` when there is one);
-- **not in lineup** — a shown player whose *current* team played this game, the game is FINAL, and he has no line (Girgensons as a healthy scratch). A player with no current team (sent to the AHL, released) gets no row. Known limit, as §4.1 says: current team, so older dates can be wrong after a trade.
+- **not in lineup** — a shown player whose *current* team played this game, the game is FINAL and its box score is stored, and he has no line (Girgensons as a healthy scratch). A player with no current team (sent to the AHL, released) gets no row. Known limit, as §4.1 says: current team, so older dates can be wrong after a trade.
 
 "Shown" is `isShown` (leagues: all, countries from `--countries`, default `LVA`, no favorites/hidden). Order within a game: away team first; within a team, played skaters by points descending, then goalies, then DNP and not-in-lineup rows.
 
