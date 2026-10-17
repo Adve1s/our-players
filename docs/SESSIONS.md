@@ -256,11 +256,16 @@ Prove each acceptance criterion with output, then tell me it's ready for /handof
 - Jobs per VISION §6.1: `schedule`; `results` (finalization: for each game that became final, fetch its box score once and store every line); `roster` (nationality recomputation, plus the off-roster rule in §6.1); `backfill`. Unknown players in box scores become stubs and get enriched.
 - `pnpm job …` and `pnpm recap --date … [--countries …]`; remove the spike.
 - Fixture-backed fake fetcher for job tests.
+- Carried over from S02b (PR #7 review, PROGRESS parking lot):
+  - How `pnpm job`/`pnpm recap` and `pnpm dev:server` share the single-process dev PGlite (`shortcut:` in `apps/server/src/db/client.ts`).
+  - Every `upsertPlayers` call passes the loaded overrides; otherwise the write reverts an overridden player to his birth country.
+  - A stored FINAL game is never downgraded: a schedule re-run must not set it back to SCHEDULED/LIVE or null its scores.
+  - Consistency checks on write: a game's `league` matches its `source` and both teams' league, and home ≠ away; a season-stats row's `kind` fits the player's league.
 
 **Out of scope:** season stats, corrections and the scheduler (S04b); ESPN; API; app.
 
 **Acceptance criteria**
-1. Job tests (PGlite + fixture-backed fetcher): results stores lines for final games only; re-running changes nothing; an unknown player becomes an enriched stub; roster sets a player who is missing from every roster of his league to `active = false` with no current team, and restores him when he reappears; when any of that league's roster fetches fails, no `active` flag changes and `job_runs` records the partial failure.
+1. Job tests (PGlite + fixture-backed fetcher): results stores lines for final games only; re-running changes nothing; a schedule re-run never downgrades a stored FINAL game; an unknown player becomes an enriched stub; roster sets a player who is missing from every roster of his league to `active = false` with no current team, and restores him when he reappears; when any of that league's roster fetches fails, no `active` flag changes and `job_runs` records the partial failure.
 2. Starting a job while the same job runs is skipped and logged.
 3. Every run writes a `job_runs` row with counts; a forced failure records the error.
 4. Live, run by you: `pnpm job roster --league nhl`, `pnpm job backfill --league nhl --from <d> --to <d>`, then `pnpm recap --date <d> --countries LVA` shows the Latvians' lines matching nhl.com.
@@ -272,7 +277,7 @@ Session S04a — Ingestion jobs + recap CLI (slice 1). Create branch `s04a-jobs-
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S04a (the contract), and docs/VISION.md §6, §7 and §8. First run the tests.
 
-Brainstorm with §S04a as the spec. The design must cover: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
+Brainstorm with §S04a as the spec. The design must cover: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; how jobs share the dev PGlite with the dev server; the S02b carry-overs (FINAL never downgraded, overrides on every player write, game/season-stats consistency checks); the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
 
 Then plan and build: red/green for job behavior (the implementers write these tests; no test-writer needed). Prove each criterion with output. For criterion 4, give me the exact commands and wait for my result before calling it done. Then tell me it's ready for /handoff.
 ```
