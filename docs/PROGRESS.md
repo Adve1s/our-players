@@ -3,9 +3,9 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** S01 — Data spike + fixtures (2026-10-17): polite HTTP client (17 tests), fixture recorder, 42 recorded NHL/ESPN fixtures with `.meta.json`, throwaway `pnpm spike`, and `docs/sources/nhl.md` + `docs/sources/espn-nba.md` answering VISION §9 Q1–Q8 with evidence. 68 live requests of the 250 budget.
-- **Branch / PR:** `s01-data-spike` → `main` (PR opened by this handoff). `origin/s01-data-spike-old` is a backup copy of the same commits; the owner deletes it later.
-- **What works:** `pnpm verify` (5 test files, 40 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]` (endpoint table in `apps/server/scripts/endpoints.ts`); `pnpm spike --date 2026-03-16` prints Šilovs (PIT, SV 25/27 W) and Porziņģis (GS, 30 PTS) — owner spot-checked against nhl.com/espn.com. Everything from S00 still works.
+- **Last session:** Review fixes for PR #5, then S01 — Data spike + fixtures (2026-10-17): polite HTTP client (17 tests), fixture recorder, 42 recorded NHL/ESPN fixtures with `.meta.json`, throwaway `pnpm spike`, and `docs/sources/nhl.md` + `docs/sources/espn-nba.md` answering VISION §9 Q1–Q8 with evidence. 68 live requests of the 250 budget.
+- **Branch / PR:** `s01-data-spike` → `main`, PR #5 (review fixes pushed). `origin/s01-data-spike-old` is a backup copy of the same commits; the owner deletes it later.
+- **What works:** `pnpm verify` (5 test files, 47 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]` (endpoint table in `apps/server/scripts/endpoints.ts`); `pnpm spike --date 2026-03-16` prints Šilovs (PIT, SV 25/27 W) and Porziņģis (GS, 30 PTS) — owner spot-checked against nhl.com/espn.com. Everything from S00 still works.
 - **How to try it:** `pnpm install && pnpm verify`; `pnpm spike --date 2026-03-16` (live, ~26 requests, ~25 s); read `docs/sources/nhl.md` and `docs/sources/espn-nba.md`.
 - **Next session:** S02a — Domain model, selection rule, nationality, branch `s02a-domain-model`.
 - **Notes for the next session:**
@@ -22,7 +22,7 @@ Ideas that came up but are out of scope for now.
 - `apps/mobile/app.json` keeps the template's `web.output: "server"`, which `expo export -p web` turns into a server bundle needing a Node host; S08 (screenshots from the web build) or S14 (static home-screen web app) should switch it to `"static"` (PR #4 review).
 - Mobile typecheck differs between a dev machine and CI: Expo's typed-route and asset types (`.expo/types`, `expo-env.d.ts`) are gitignored and only exist after `expo start`. Settle it in S08, when screens first use `Link href` or import assets — e.g. run `expo customize`/type generation before `tsc` in the mobile `typecheck` script (PR #4 review).
 - CI: cache the pnpm store (`corepack enable` before `actions/setup-node`, then `cache: pnpm`) once runs get slow; they take about 20 s now (PR #4 review).
-- S01 deferred minors: `fixtures:record --as` isn't sanitised (a `../` name writes outside the fixture dir); endpoint ids aren't `encodeURIComponent`-ed; the spike doesn't skip boxscores of not-yet-played (FUT) games; the polite-client backoff test asserts `≥` delays rather than exact ones. Fix the first two if the recorder grows beyond owner use.
+- S01 deferred minors: the polite-client backoff test asserts `≥` delays rather than exact ones; the polite client reads the wall clock (`Date.now`), so a backward clock step could stall a host's queue — inject a monotonic clock if the jobs ever show it (PR #5 review).
 - `docs/sources/nhl.md` size table lacks rows for `skater-summary-reg`/`goalie-summary-reg` (~20 KB each).
 - `apps/server/scripts/spike/spike.ts:2` — `shortcut:` NBA Latvians come from current rosters; the spike is deleted when S04a adds `pnpm recap`.
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
@@ -97,3 +97,10 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Requests: 68 of 250. Owner spot-check of spike numbers: matched.
 - CI: first run on this PR.
 - Follow-ups: release-age exemptions after 20:00 UTC; delete `s01-data-spike-old`; S02a settles nationality.
+
+### Review fixes for PR #5 — 2026-10-17 — PR #5 (`s01-data-spike`)
+- Changed: polite client pauses the whole host during a retry backoff / `Retry-After` (queued requests included); `recordFixture` rejects names that aren't plain file names (`../x`, `a/b`, `.hidden`); `endpoints.ts` escapes every id and uses `satisfies` (keys stay typed); recorder prints "bytes upstream". +7 tests (47).
+- Decisions: D-028 corrected (the clock isn't injected; fake timers drive it) and extended (host-wide pause).
+- Declined: clock injection (fake timers already make tests deterministic; backward-step risk parked); shared script setup and the scripts' PORT validation (the duplicate lives in the spike, deleted in S04a); the three spike findings (throwaway, replaced by `pnpm recap` in S04a).
+- Checked: 41 of 42 recorded fixture URLs rebuild identically from `endpoints.ts` (the 42nd is the `--as`-named states fixture).
+- CI: re-run on push.
