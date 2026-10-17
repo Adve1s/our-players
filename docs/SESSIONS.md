@@ -261,6 +261,11 @@ Prove each acceptance criterion with output, then tell me it's ready for /handof
   - Every `upsertPlayers` call passes the loaded overrides; otherwise the write reverts an overridden player to his birth country.
   - A stored FINAL game is never downgraded: a schedule re-run must not set it back to SCHEDULED/LIVE or null its scores.
   - Consistency checks on write: a game's `league` matches its `source` and both teams' league, and home ≠ away; a season-stats row's `kind` fits the player's league.
+- Carried over from S03 (PROGRESS notes, D-034/D-035):
+  - `schedule` games carry `periodScores: null` (only `score` has goals): the schedule job must not write past games over score-derived period scores.
+  - Jobs log the `warnings` that `mapRoster`/`mapPlayerLanding` return (unknown birth countries); otherwise they vanish.
+  - Fetch box scores for FINAL games only: `mapBoxscore` throws on a game that hasn't started.
+  - The live run is the first check of the unrecorded game states (PRE/LIVE/CRIT/OVER/PPD/CNCL) and of fields the API may send as `null` rather than omit (raw schemas accept only absent); widen a field to `.nullish()` with a re-recorded fixture if it does.
 
 **Out of scope:** season stats, corrections and the scheduler (S04b); ESPN; API; app.
 
@@ -277,7 +282,7 @@ Session S04a — Ingestion jobs + recap CLI (slice 1). Create branch `s04a-jobs-
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S04a (the contract), and docs/VISION.md §6, §7 and §8. First run the tests.
 
-Brainstorm with §S04a as the spec. The design must cover: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; how jobs share the dev PGlite with the dev server; the S02b carry-overs (FINAL never downgraded, overrides on every player write, game/season-stats consistency checks); the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
+Brainstorm with §S04a as the spec. The design must cover: the job runner (locking, job_runs, logging); each job's algorithm step by step — especially results: which games a run looks at and how finalization works; how roster handles players who left every roster; how jobs share the dev PGlite with the dev server; the S02b and S03 carry-overs (FINAL never downgraded, overrides on every player write, game/season-stats consistency checks, schedule vs score period scores, mapper warnings); the fixture-backed fake fetcher; the CLI surface of `pnpm job` and `pnpm recap`; and the live commands I'll run at the end (small request count).
 
 Then plan and build: red/green for job behavior (the implementers write these tests; no test-writer needed). Prove each criterion with output. For criterion 4, give me the exact commands and wait for my result before calling it done. Then tell me it's ready for /handoff.
 ```
