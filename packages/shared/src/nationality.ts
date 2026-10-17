@@ -11,5 +11,8 @@ export function resolveNationality(
   player: { publicId: PublicId; birthCountry: CountryCode | null },
   overrides: ReadonlyMap<PublicId, { readonly nationality: CountryCode }>,
 ): ResolvedNationality {
-  throw new Error('not implemented');
+  const override = overrides.get(player.publicId);
+  if (override) return { nationality: override.nationality, source: 'override' };
+  if (player.birthCountry) return { nationality: player.birthCountry, source: 'birth' };
+  return { nationality: null, source: null };
 }

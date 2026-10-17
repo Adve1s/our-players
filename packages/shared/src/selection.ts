@@ -18,5 +18,10 @@ export type SelectablePlayer = {
 
 // shown(p) ⇔ league(p) ∈ L ∧ p ∉ H ∧ (p ∈ F ∨ nat(p) ∈ C)
 export function isShown(player: SelectablePlayer, prefs: Prefs): boolean {
-  throw new Error('not implemented');
+  return (
+    prefs.leagues.has(player.league) &&
+    !prefs.hidden.has(player.publicId) &&
+    (prefs.favorites.has(player.publicId) ||
+      (player.nationality !== null && prefs.countries.has(player.nationality)))
+  );
 }
