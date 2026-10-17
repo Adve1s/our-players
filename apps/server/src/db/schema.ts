@@ -37,7 +37,8 @@ export const endedInEnum = pgEnum('ended_in', endedInSchema.enum);
 export const statKindEnum = pgEnum('stat_kind', statKindSchema.enum);
 export const positionGroupEnum = pgEnum('position_group', positionGroupSchema.enum);
 export const nationalitySourceEnum = pgEnum('nationality_source', nationalitySourceSchema.enum);
-export const statBasisEnum = pgEnum('stat_basis', ['totals', 'per_game']);
+const STAT_BASES = ['totals', 'per_game'] as const satisfies readonly SeasonStats['basis'][];
+export const statBasisEnum = pgEnum('stat_basis', STAT_BASES);
 // VISION §6.1: a roster run can fail for some teams and still store the rest.
 export const JOB_STATUSES = ['running', 'succeeded', 'failed', 'partial'] as const;
 export const jobStatusEnum = pgEnum('job_status', JOB_STATUSES);
@@ -115,7 +116,9 @@ export const games = pgTable(
     publicId: text('public_id').notNull().unique(),
     source: sourceEnum('source').notNull(),
     externalId: text('external_id').notNull(),
-    league: leagueEnum('league').notNull(),
+    league: leagueEnum('league')
+      .notNull()
+      .references(() => leagues.code),
     season: text('season').notNull(),
     seasonType: seasonTypeEnum('season_type').notNull(),
     gameDate: date('game_date', { mode: 'string' }).notNull(),

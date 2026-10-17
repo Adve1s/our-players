@@ -114,6 +114,7 @@ CREATE TABLE "teams" (
 	CONSTRAINT "teams_source_external_id_unique" UNIQUE("source","external_id")
 );
 --> statement-breakpoint
+ALTER TABLE "games" ADD CONSTRAINT "games_league_leagues_code_fk" FOREIGN KEY ("league") REFERENCES "public"."leagues"("code") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "games" ADD CONSTRAINT "games_home_team_id_teams_id_fk" FOREIGN KEY ("home_team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "games" ADD CONSTRAINT "games_away_team_id_teams_id_fk" FOREIGN KEY ("away_team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "player_external_ids" ADD CONSTRAINT "player_external_ids_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

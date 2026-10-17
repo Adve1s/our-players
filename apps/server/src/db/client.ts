@@ -40,7 +40,11 @@ export function openPglite(dataDir?: string): DbHandle {
   // shortcut: one process at a time on .data/pglite; S04a settles sharing with pnpm job/recap
   // PGlite creates only the last directory of the path.
   if (dataDir) mkdirSync(dataDir, { recursive: true });
-  const client = new PGlite(dataDir);
+  return pgliteHandle(new PGlite(dataDir));
+}
+
+// Exported so tests can wrap a clone of a migrated template (see test/db.ts).
+export function pgliteHandle(client: PGlite): DbHandle {
   const db = drizzlePglite(client);
   return {
     db,

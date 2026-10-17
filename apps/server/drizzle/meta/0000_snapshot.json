@@ -1,5 +1,5 @@
 {
-  "id": "354f7e6b-4f04-473e-b46c-d3f5dc97cf83",
+  "id": "9861899e-6c9b-4715-90c1-a3a9e372739d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -165,6 +165,19 @@
         }
       },
       "foreignKeys": {
+        "games_league_leagues_code_fk": {
+          "name": "games_league_leagues_code_fk",
+          "tableFrom": "games",
+          "tableTo": "leagues",
+          "columnsFrom": [
+            "league"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "games_home_team_id_teams_id_fk": {
           "name": "games_home_team_id_teams_id_fk",
           "tableFrom": "games",
