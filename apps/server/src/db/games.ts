@@ -1,59 +1,85 @@
 import {
   type Game,
   LEAGUE_SPORT,
+  type League,
   type PublicId,
   parseStatPayload,
+  type Source,
   type StatLine,
 } from '@our-players/shared';
-import { and, eq, notInArray } from 'drizzle-orm';
+import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './client';
 import { playerIdLookup } from './players';
 import { games, statLines, teams } from './schema';
-import { teamIdLookup } from './teams';
+import { teamLookup } from './teams';
 import { conflictUpdate, lastByKey } from './upsert';
+
+const SOURCE_LEAGUES: Record<Source, League> = { nhl: 'NHL', espn: 'NBA' };
 
 export async function upsertGames(db: Db, list: readonly Game[]): Promise<number> {
   const batch = lastByKey(list, (g) => g.publicId);
   if (batch.length === 0) return 0;
-  const teamId = await teamIdLookup(
+  const team = await teamLookup(
     db,
     batch.flatMap((g) => [
       { source: g.source, externalId: g.homeTeamExternalId },
       { source: g.source, externalId: g.awayTeamExternalId },
     ]),
   );
-  const rows = batch.map(({ homeTeamExternalId, awayTeamExternalId, startTimeUtc, ...g }) => ({
-    ...g,
-    startTimeUtc: new Date(startTimeUtc),
-    homeTeamId: teamId(g.source, homeTeamExternalId),
-    awayTeamId: teamId(g.source, awayTeamExternalId),
-  }));
+  // Every game is checked before anything is written: one bad game rejects the batch.
+  const rows = batch.map(({ homeTeamExternalId, awayTeamExternalId, startTimeUtc, ...g }) => {
+    const fail = (problem: string): never => {
+      throw new Error(`game ${g.publicId}: ${problem}`);
+    };
+    if (SOURCE_LEAGUES[g.source] !== g.league) {
+      fail(`league ${g.league} does not fit source ${g.source}`);
+    }
+    if (homeTeamExternalId === awayTeamExternalId) fail('home and away are the same team');
+    const teamId = (externalId: string) => {
+      const { id, league } = team(g.source, externalId);
+      if (league !== g.league) fail(`team ${g.source}/${externalId} is in league ${league}`);
+      return id;
+    };
+    return {
+      ...g,
+      startTimeUtc: new Date(startTimeUtc),
+      homeTeamId: teamId(homeTeamExternalId),
+      awayTeamId: teamId(awayTeamExternalId),
+    };
+  });
+  const { set, setWhere } = conflictUpdate(
+    games,
+    [
+      'source',
+      'externalId',
+      'league',
+      'season',
+      'seasonType',
+      'gameDate',
+      'startTimeUtc',
+      'status',
+      'homeTeamId',
+      'awayTeamId',
+      'homeScore',
+      'awayScore',
+      'periodScores',
+      'endedIn',
+    ],
+    'updatedAt',
+  );
   const written = await db
     .insert(games)
     .values(rows)
     .onConflictDoUpdate({
       target: games.publicId,
       // finalAt, boxscoreFetchedAt and correctedAt are the jobs' bookkeeping, not the model's.
-      ...conflictUpdate(
-        games,
-        [
-          'source',
-          'externalId',
-          'league',
-          'season',
-          'seasonType',
-          'gameDate',
-          'startTimeUtc',
-          'status',
-          'homeTeamId',
-          'awayTeamId',
-          'homeScore',
-          'awayScore',
-          'periodScores',
-          'endedIn',
-        ],
-        'updatedAt',
+      set,
+      // A stale feed (a FINAL game listed as LIVE, a schedule without period scores) skips the row whole.
+      setWhere: and(
+        setWhere,
+        sql`not (${games.status} = 'FINAL' and excluded.status <> 'FINAL')`,
+        sql`not (${games.periodScores} is not null and excluded.period_scores is null)`,
       ),
     })
     .returning({ id: games.id });

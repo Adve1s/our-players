@@ -1,5 +1,6 @@
 import {
   type CountryCode,
+  type League,
   type Player,
   type PublicId,
   resolveNationality,
@@ -99,22 +100,30 @@ export async function upsertPlayers(
 }
 
 // One query for a batch's players; the returned lookup throws on a player that isn't stored.
-export async function playerIdLookup(
+export async function playerLookup(
   db: Db,
   publicIds: readonly PublicId[],
-): Promise<(publicId: PublicId) => number> {
+): Promise<(publicId: PublicId) => { id: number; league: League }> {
   const unique = [...new Set(publicIds)];
   const found =
     unique.length === 0
       ? []
       : await db
-          .select({ id: players.id, publicId: players.publicId })
+          .select({ id: players.id, league: players.league, publicId: players.publicId })
           .from(players)
           .where(inArray(players.publicId, unique));
-  const ids = new Map(found.map((p) => [p.publicId, p.id]));
+  const rows = new Map(found.map((p) => [p.publicId, p]));
   return (publicId) => {
-    const id = ids.get(publicId);
-    if (id === undefined) throw new Error(`unknown player ${publicId}`);
-    return id;
+    const row = rows.get(publicId);
+    if (row === undefined) throw new Error(`unknown player ${publicId}`);
+    return row;
   };
+}
+
+export async function playerIdLookup(
+  db: Db,
+  publicIds: readonly PublicId[],
+): Promise<(publicId: PublicId) => number> {
+  const player = await playerLookup(db, publicIds);
+  return (publicId) => player(publicId).id;
 }
