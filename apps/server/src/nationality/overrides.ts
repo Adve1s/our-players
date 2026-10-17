@@ -60,7 +60,9 @@ export async function loadNationalityOverrides(
   try {
     json = await readFile(file, 'utf8');
   } catch (e) {
-    throw new Error(`${file}: ${(e as Error).message}`, { cause: e });
+    // Node's message repeats the path; the code is enough, and the full error stays in cause.
+    const code = (e as NodeJS.ErrnoException).code ?? (e as Error).message;
+    throw new Error(`${file}: cannot read (${code})`, { cause: e });
   }
   return parseNationalityOverrides(json, file);
 }

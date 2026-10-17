@@ -31,7 +31,7 @@ Ideas that came up but are out of scope for now.
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
 - Nationality upgrade (D-030): NHL stats `bios` `nationalityCode` as a source value between the override and the birth country (override → source → birth; `nationality_source` gains `source`). Backward-compatible: an optional resolver input. Needs the bios pages (~20 requests a season) in the season-stats job.
 - `packages/shared/src/model.ts:84` — `shortcut:` `SeasonStats.stats` is an untyped number record until S03/S05 define per-source season-stat schemas.
-- S02a deferred test minors: `apps/server/test/nationality-overrides.test.ts` missing-file regex also matches Node's own ENOENT text (anchor `/^\/nonexistent\/overrides\.json: /` to pin the rethrow); `stats.test.ts` never pins the exact `invalid <kind> stats:` prefix and has no goalie `savePct` < 0 case; `nationality.ts` checks `birthCountry` by truthiness where `selection.ts` uses `!== null`.
+- S02a deferred test minors: `stats.test.ts` never pins the exact `invalid <kind> stats:` prefix and has no goalie `savePct` < 0 case; `nationality.ts` checks `birthCountry` by truthiness where `selection.ts` uses `!== null`.
 
 ## Session log
 <!--

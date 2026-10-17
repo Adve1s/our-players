@@ -67,8 +67,8 @@ describe('nationality overrides', () => {
       /overrides\.json:[\s\S]*extra/,
     ));
 
-  it('a missing file rejects naming the path', () =>
+  it('a missing file rejects naming the path once, with the error code', () =>
     expect(loadNationalityOverrides('/nonexistent/overrides.json')).rejects.toThrow(
-      /\/nonexistent\/overrides\.json/,
+      /^\/nonexistent\/overrides\.json: cannot read \(ENOENT\)$/,
     ));
 });
