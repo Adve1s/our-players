@@ -49,7 +49,8 @@ describe('nationality overrides', () => {
       'overrides.json: overrides[1] (nba-3059318): duplicate player, first at overrides[0]',
     ));
 
-  it.each(['embiid', 'NBA-3059318'])('rejects malformed public ID %s', (player) =>
+  // A leading zero can never match an ID derived from a numeric source ID.
+  it.each(['embiid', 'NBA-3059318', 'nba-03059318'])('rejects malformed public ID %s', (player) =>
     expect(parse(json([{ ...embiid, player }]))).toThrow(/overrides\[0\][\s\S]*player/),
   );
 
