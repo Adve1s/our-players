@@ -18,6 +18,10 @@ export const endpoints: Record<'nhl' | 'espn-nba', Record<string, (id: string) =
       `${NHL_STATS}/skater/bios?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
     'skater-summary-lva': (seasonId) =>
       `${NHL_STATS}/skater/summary?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
+    'skater-summary-reg': (seasonId) =>
+      `${NHL_STATS}/skater/summary?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and gameTypeId=2`)}`,
+    'goalie-summary-reg': (seasonId) =>
+      `${NHL_STATS}/goalie/summary?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and gameTypeId=2`)}`,
     'goalie-bios-lva': (seasonId) =>
       `${NHL_STATS}/goalie/bios?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
   },
