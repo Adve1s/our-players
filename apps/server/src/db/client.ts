@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { LEAGUE_SPORT, type League, leagueSchema } from '@our-players/shared';
@@ -37,10 +37,52 @@ export async function seedLeagues(db: Db): Promise<void> {
 }
 
 export function openPglite(dataDir?: string): DbHandle {
-  // shortcut: one process at a time on .data/pglite; S04a settles sharing with pnpm job/recap
+  if (!dataDir) return pgliteHandle(new PGlite());
   // PGlite creates only the last directory of the path.
-  if (dataDir) mkdirSync(dataDir, { recursive: true });
-  return pgliteHandle(new PGlite(dataDir));
+  mkdirSync(dataDir, { recursive: true });
+  // PGlite has no lock of its own and two processes on one dir corrupt it; a sibling file survives db:reset's rm.
+  const lock = `${dataDir}.lock`;
+  takeLock(lock, dataDir);
+  const handle = pgliteHandle(new PGlite(dataDir));
+  return {
+    ...handle,
+    close: async () => {
+      try {
+        await handle.close();
+      } finally {
+        rmSync(lock, { force: true });
+      }
+    },
+  };
+}
+
+function takeLock(lock: string, dataDir: string, retry = true): void {
+  try {
+    const fd = openSync(lock, 'wx');
+    writeSync(fd, String(process.pid));
+    closeSync(fd);
+  } catch (err) {
+    if (!retry || (err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+    const pid = Number(readFileSync(lock, 'utf8'));
+    // An empty or garbled file (crash mid-write) counts as stale.
+    if (Number.isInteger(pid) && pid > 0 && isAlive(pid)) {
+      throw new Error(
+        `PGlite ${dataDir} is in use by process ${pid} (is pnpm dev:server running?) — stop it, or set DATABASE_URL`,
+      );
+    }
+    rmSync(lock, { force: true });
+    takeLock(lock, dataDir, false);
+  }
+}
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    // EPERM: alive but owned by another user.
+    return (err as NodeJS.ErrnoException).code !== 'ESRCH';
+  }
 }
 
 // Exported so tests can wrap a clone of a migrated template (see test/db.ts).
@@ -52,7 +94,11 @@ export function pgliteHandle(client: PGlite): DbHandle {
       await migratePglite(db, { migrationsFolder: MIGRATIONS_DIR });
       await seedLeagues(db);
     },
-    close: () => client.close(),
+    // close() on a PGlite that is still booting never settles.
+    close: async () => {
+      await client.waitReady;
+      await client.close();
+    },
   };
 }
 
