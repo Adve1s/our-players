@@ -9,50 +9,10 @@ import type {
   StatKind,
 } from './enums';
 import type { PublicId } from './ids';
+import type { BasketballPlayerStats, HockeyGoalieStats, HockeySkaterStats } from './stats';
 
 // What adapters return and repositories store. Ingestion bookkeeping and nationality
 // (computed on store by resolveNationality) are deliberately not part of it.
-
-// Temporary plain payload types; Task 4 replaces them with z.infer types from stats.ts.
-export type HockeySkaterStats = {
-  goals: number;
-  assists: number;
-  points: number;
-  plusMinus: number;
-  shots: number;
-  toiSeconds: number;
-  pim?: number;
-  hits?: number;
-  blocks?: number;
-  powerPlayGoals?: number;
-};
-export type HockeyGoalieStats = {
-  saves: number;
-  shotsAgainst: number;
-  goalsAgainst: number;
-  savePct: number | null;
-  toiSeconds: number;
-  decision: 'W' | 'L' | 'OTL' | null;
-};
-export type BasketballPlayerStats = {
-  minutes: number;
-  points: number;
-  rebounds: number;
-  assists: number;
-  fgMade: number;
-  fgAttempted: number;
-  threeMade: number;
-  threeAttempted: number;
-  ftMade: number;
-  ftAttempted: number;
-  turnovers: number;
-  steals: number;
-  blocks: number;
-  offRebounds: number;
-  defRebounds: number;
-  fouls: number;
-  plusMinus: number;
-};
 
 export type Team = {
   league: League;

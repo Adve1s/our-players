@@ -22,10 +22,7 @@ export {
 } from './enums';
 export { type PublicId, publicIdSchema } from './ids';
 export type {
-  BasketballPlayerStats,
   Game,
-  HockeyGoalieStats,
-  HockeySkaterStats,
   PeriodScore,
   Player,
   SeasonStats,
@@ -35,3 +32,13 @@ export type {
 export { type ResolvedNationality, resolveNationality } from './nationality';
 export { seasonLabel } from './season';
 export { isShown, type Prefs, type SelectablePlayer } from './selection';
+export {
+  type BasketballPlayerStats,
+  basketballPlayerStatsSchema,
+  type HockeyGoalieStats,
+  type HockeySkaterStats,
+  hockeyGoalieStatsSchema,
+  hockeySkaterStatsSchema,
+  parseStatPayload,
+  statPayloadSchemas,
+} from './stats';
