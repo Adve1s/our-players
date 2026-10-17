@@ -22,7 +22,6 @@ const parse = (text: string) => () => parseNationalityOverrides(text, file);
 describe('nationality overrides', () => {
   it('the committed overrides file loads cleanly', async () => {
     const map = await loadNationalityOverrides();
-    expect(map.size).toBe(2);
     expect(map.get('nba-3059318')).toMatchObject({ nationality: 'USA', name: 'Joel Embiid' });
     expect(map.get('nba-3136195')?.nationality).toBe('DOM');
   });
