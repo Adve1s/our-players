@@ -21,6 +21,8 @@ Session S03, branch `s03-nhl-adapter`. Spec: `docs/SESSIONS.md` §S03. NHL raw J
 
 No new dependencies.
 
+Layout note (ruling during the build): `.claude/rules/adapters.md` asks for `client.ts` / `schemas.ts` / `map-*.ts` / `index.ts`. URL builders and fetchers follow it (`client.ts`, `index.ts`); the mapper files keep the names below because the red-phase tests import them.
+
 ## Module layout
 
 ```
@@ -31,10 +33,10 @@ apps/server/src/sources/nhl/
   boxscore.ts      mapBoxscore
   players.ts       mapRoster, mapPlayerLanding
   season-stats.ts  mapSkaterSummary, mapGoalieSummary
-  urls.ts          URL builders (the ones jobs use)
-  fetch.ts         fetchers: client.get → JSON.parse → mapper
+  client.ts        URL builders (the ones jobs use) and fetchers: client.get → JSON.parse → mapper
+  index.ts         the adapter's public surface (mappers, nhlUrls, fetchers)
 apps/server/scripts/inspect.ts   pnpm inspect
-apps/server/scripts/endpoints.ts its NHL entries that match urls.ts reuse them (recording-only variants stay)
+apps/server/scripts/endpoints.ts its NHL entries that match nhlUrls reuse them (recording-only variants stay)
 packages/shared/src/countries.ts + ESPN_COUNTRY_ALIASES scaffold
 vitest.config.ts                 + setupFiles: a setup that makes globalThis.fetch throw (check PGlite doesn't fetch its wasm in Node; if it does, block only http(s) URLs)
 ```
@@ -104,7 +106,7 @@ Observed in fixtures: `OK` with `FUT`, `FINAL`, `OFF` only; `PRE`/`LIVE`/`CRIT`/
 
 **Period scores** (score only; null when the game has no `periodDescriptor`, i.e. not started): periods 1..`periodDescriptor.number`, each `{ period, away, home }` counting `goals[]` by `periodDescriptor.number` and `teamAbbrev`. Label: n ≤ `maxRegulationPeriods` → `"n"`; the last period when its type is `SO` → `"SO"`; first overtime → `"OT"`; later overtimes → `"2OT"`, `"3OT"` (playoffs). A shootout counts 1 for the winner, as right-rail does. right-rail is not fetched: `score` gives the same numbers with no extra request per game.
 
-## Fetchers (`fetch.ts`)
+## Fetchers (`client.ts`)
 `fetchScore(client, date)`, `fetchSchedule(client, date)`, `fetchBoxscore(client, gameId)`, `fetchRoster(client, teamAbbrev, teamExternalId)`, `fetchPlayerLanding(client, playerId)`, `fetchSkaterSummary(client, season, seasonType)` and `fetchGoalieSummary(…)` (`season` `"2025-26"` → `seasonId=20252026`; adds `and gameTypeId=<1|2|3>` and `limit=-1`, which returned every row in one request in live probes on 2026-10-17: 940/940 skaters, 98/98 goalies for 2025-26 REG, none with a null in a field we use; throws when rows < `total`). Tested with a fake client serving fixture text: the URL requested and the mapped result. Four summary fixtures are cut at 50 rows, so (my call) the success path uses `skater-summary-lva` (5 of 5) and, for goalies, a copy of `goalie-summary-reg` whose `total` the test sets to its row count; the untouched `-reg` fixtures prove the truncation error. No new fixtures.
 
 ## pnpm inspect

@@ -95,7 +95,7 @@ The test-writer works from the spec's Mappers, Mapping tables, Errors and Test c
 ### Task 4: URL builders and fetchers
 
 **Files:**
-- Create: `apps/server/src/sources/nhl/urls.ts`, `fetch.ts`; `apps/server/test/nhl-fetch.test.ts`
+- Create: `apps/server/src/sources/nhl/urls.ts`, `fetch.ts`; `apps/server/test/nhl-fetch.test.ts` — *ruled during the build: both live in `client.ts`, plus `index.ts` as the public surface (`.claude/rules/adapters.md`)*
 - Modify: `apps/server/scripts/endpoints.ts` (its `score`, `schedule`, `boxscore`, `roster`, `player-landing` NHL entries call `nhlUrls`; recording-only variants unchanged)
 
 **Interfaces:**
