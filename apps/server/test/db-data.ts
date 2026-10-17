@@ -36,12 +36,13 @@ export const cbj = {
   abbrev: 'CBJ',
   name: 'Columbus Blue Jackets',
 } satisfies Team;
-export const tbl = {
+// Shares external ID '2' with the Celtics, so lookups must go by (source, external ID).
+export const nyi = {
   league: 'NHL',
   source: 'nhl',
-  externalId: '14',
-  abbrev: 'TBL',
-  name: 'Tampa Bay Lightning',
+  externalId: '2',
+  abbrev: 'NYI',
+  name: 'New York Islanders',
 } satisfies Team;
 // Stored only by the test that needs a team not playing in the NHL game.
 export const bos = {
@@ -61,7 +62,7 @@ export const girgensons = {
   lastName: 'Girgensons',
   position: 'C',
   positionGroup: 'forward',
-  currentTeamExternalId: '14',
+  currentTeamExternalId: '2',
   jersey: '28',
   birthDate: '1994-01-05',
   birthCity: 'Riga',
@@ -110,7 +111,7 @@ export const nhlGame = {
   startTimeUtc: '2026-10-07T23:00:00.000Z',
   status: 'FINAL',
   homeTeamExternalId: '29',
-  awayTeamExternalId: '14',
+  awayTeamExternalId: '2',
   homeScore: 3,
   awayScore: 2,
   periodScores: [
@@ -143,7 +144,7 @@ export const goalieStats = {
 export const girgensonsLine = {
   gamePublicId: 'nhl-2026020001',
   playerPublicId: 'nhl-8476878',
-  teamExternalId: '14',
+  teamExternalId: '2',
   kind: 'hockey_skater',
   played: true,
   dnpReason: null,
@@ -344,7 +345,7 @@ export type LeagueSlice = {
 };
 
 export const nhl: LeagueSlice = {
-  teams: [cbj, tbl],
+  teams: [cbj, nyi],
   players: [girgensons, merzlikins, freeAgent],
   game: nhlGame,
   lines: [girgensonsLine, merzlikinsLine],

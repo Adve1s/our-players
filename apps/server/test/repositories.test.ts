@@ -1,5 +1,5 @@
-import type { StatKind, StatLine } from '@our-players/shared';
-import { eq } from 'drizzle-orm';
+import type { Source, StatKind, StatLine } from '@our-players/shared';
+import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Db, DbHandle } from '../src/db/client';
 import { upsertGames, upsertStatLines } from '../src/db/games';
@@ -20,6 +20,8 @@ import { createTestDb } from './db';
 import {
   bertansDnpLine,
   bos,
+  cbj,
+  celtics,
   embiid,
   embiidLine,
   freeAgent,
@@ -34,11 +36,13 @@ import {
   nhl,
   nhlGame,
   nhlSeasonStats,
+  nyi,
   override,
   overrides,
   porzingis,
   porzingisLine,
   porzingisStats,
+  sixers,
   skaterStats,
 } from './db-data';
 
@@ -85,6 +89,22 @@ async function linesOf(db: Db, gamePublicId: string) {
     .from(statLines)
     .where(eq(statLines.gameId, game.id))
     .orderBy(statLines.playerId);
+}
+
+async function teamRowId(db: Db, source: Source, externalId: string): Promise<number> {
+  const [row] = await db
+    .select()
+    .from(teams)
+    .where(and(eq(teams.source, source), eq(teams.externalId, externalId)));
+  if (!row) throw new Error(`test setup: team ${source}/${externalId} not stored`);
+  return row.id;
+}
+
+// Both leagues' teams go in first, so every lookup below sees NYI and the Celtics sharing ID '2'.
+async function writeBothSlices(db: Db): Promise<void> {
+  await upsertTeams(db, [...nhl.teams, ...nba.teams]);
+  await writeSlice(db, nhl);
+  await writeSlice(db, nba);
 }
 
 async function playerRow(db: Db, publicId: string) {
@@ -225,9 +245,24 @@ describe('repositories', () => {
       await writeSlice(db, nhl);
       await writeSlice(db, nba);
       const nhlBefore = await linesOf(db, nhlGame.publicId);
+      expect(nhlBefore).toHaveLength(2);
       await tick();
       await upsertStatLines(db, nbaGame.publicId, [porzingisLine]);
       expect(await linesOf(db, nhlGame.publicId)).toEqual(nhlBefore);
+    });
+
+    it('an invalid batch that drops a player leaves the stored lines unchanged', async () => {
+      const db = await open();
+      await writeSlice(db, nba);
+      const before = await linesOf(db, nbaGame.publicId);
+      expect(before).toHaveLength(3);
+      await tick();
+      // Drops Bertāns and carries one invalid line: validation must come before the delete.
+      const bad = malformed(embiidLine, { stats: { ...embiidLine.stats, points: -1 } });
+      await expect(upsertStatLines(db, nbaGame.publicId, [porzingisLine, bad])).rejects.toThrow(
+        /stat line nba-401810001\/nba-3059318[\s\S]*invalid basketball_player stats:/,
+      );
+      expect(await linesOf(db, nbaGame.publicId)).toEqual(before);
     });
 
     it("an empty set deletes all of that game's lines", async () => {
@@ -473,8 +508,8 @@ describe('repositories', () => {
     it("resolves the current team to that team's row", async () => {
       const db = await open();
       await writeNbaPlayers(db);
-      const [celticsRow] = await db.select().from(teams).where(eq(teams.externalId, '2'));
-      expect((await playerRow(db, porzingis.publicId)).currentTeamId).toBe(celticsRow?.id);
+      const celticsId = await teamRowId(db, 'espn', celtics.externalId);
+      expect((await playerRow(db, porzingis.publicId)).currentTeamId).toBe(celticsId);
     });
 
     it('a free agent stores current_team_id null', async () => {
@@ -530,6 +565,45 @@ describe('repositories', () => {
       await writeSliceWithoutLines(db, nhl);
       expect(await upsertStatLines(db, nhlGame.publicId, [])).toBe(0);
     });
+  });
+
+  describe('team lookups go by (source, external ID)', () => {
+    it.each([
+      ['Girgensons', girgensons.publicId, nyi],
+      ['Porziņģis', porzingis.publicId, celtics],
+    ])("%s's current team is the row of his own source", async (_name, publicId, team) => {
+      const db = await open();
+      await writeBothSlices(db);
+      const expected = await teamRowId(db, team.source, team.externalId);
+      expect((await playerRow(db, publicId)).currentTeamId).toBe(expected);
+    });
+
+    it.each([
+      ['NHL', nhlGame.publicId, cbj, nyi],
+      ['NBA', nbaGame.publicId, celtics, sixers],
+    ])(
+      "the %s game's home and away teams are the rows of its source",
+      async (_league, publicId, home, away) => {
+        const db = await open();
+        await writeBothSlices(db);
+        const [row] = await db.select().from(games).where(eq(games.publicId, publicId));
+        expect(row?.homeTeamId).toBe(await teamRowId(db, home.source, home.externalId));
+        expect(row?.awayTeamId).toBe(await teamRowId(db, away.source, away.externalId));
+      },
+    );
+
+    it.each([
+      ['Girgensons', nhlGame.publicId, girgensons.publicId, nyi],
+      ['Porziņģis', nbaGame.publicId, porzingis.publicId, celtics],
+    ])(
+      "%s's stat line team is the row of the game's source",
+      async (_name, gamePublicId, playerPublicId, team) => {
+        const db = await open();
+        await writeBothSlices(db);
+        const line = await lineOf(db, gamePublicId, playerPublicId);
+        expect(line.teamId).toBe(await teamRowId(db, team.source, team.externalId));
+      },
+    );
   });
 
   describe('job runs', () => {
