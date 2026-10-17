@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mapScore } from '../src/sources/nhl/games';
+import { mapRoster } from '../src/sources/nhl/players';
 import { loadFixture } from './fixtures';
 import { list, only } from './json';
 
@@ -17,5 +18,12 @@ describe('NHL status and position table rows', () => {
     );
     expect(mapped.status).toBe('LIVE');
     expect(mapped.endedIn).toBeNull();
+  });
+
+  it('maps positionCode R (Rust, PIT roster) to a forward', () => {
+    const { players } = mapRoster(loadFixture('nhl', 'roster', 'PIT'), '5');
+    const rust = only(players, (p) => p.externalId === '8475810', 'Rust');
+    expect(rust.position).toBe('R');
+    expect(rust.positionGroup).toBe('forward');
   });
 });
