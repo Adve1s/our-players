@@ -1,0 +1,6 @@
+{
+  "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=401810839",
+  "fetchedAt": "2026-10-17T00:00:30.951Z",
+  "status": 200,
+  "bytes": 396535
+}

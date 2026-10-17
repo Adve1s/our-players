@@ -3,17 +3,17 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** Review fixes for PR #4 (2026-10-17): 5 of 10 `/code-review` findings fixed (cloud install hook quiet/rooted/resumable with a timeout; `export default` route exception in `.claude/rules/mobile.md`; duplicate `strict` removed), 3 deferred to the parking lot, 2 declined with replies on the PR. Before that, S00 — Bootstrap: pnpm monorepo (`packages/shared`, `apps/server`, `apps/mobile`), every CLAUDE.md command exists, `pnpm verify` green on Node 24 and 22, CI `verify (22)`/`verify (24)` green.
-- **Branch / PR:** `s00-bootstrap` → `main`, PR #4.
-- **What works:** `pnpm verify` (typecheck + Biome + Vitest, 12 tests); `pnpm dev:server` serves `GET /health` → `{"ok":true}` on :3001; `pnpm dev:mobile` shows the placeholder ("Our Players", "Season 2026-27" from `packages/shared`) on web and in Expo Go (SDK 58); the later-session commands print which session adds them and exit 1. `origin/slice-0-setup` stays an untouched backup.
-- **How to try it:** `mise install && corepack enable && pnpm install`, then `pnpm verify`; `pnpm dev:server` + `curl localhost:3001/health`; `pnpm dev:mobile` → `w` for web or scan the QR with Expo Go (SDK 58 — if Play Store's Expo Go is older, install it from https://expo.dev/go).
-- **Next session:** S01 — Data spike + fixtures, branch `s01-data-spike`.
+- **Last session:** Review fixes for PR #5, then S01 — Data spike + fixtures (2026-10-17): polite HTTP client (17 tests), fixture recorder, 42 recorded NHL/ESPN fixtures with `.meta.json`, throwaway `pnpm spike`, and `docs/sources/nhl.md` + `docs/sources/espn-nba.md` answering VISION §9 Q1–Q8 with evidence. 68 live requests of the 250 budget.
+- **Branch / PR:** `s01-data-spike` → `main`, PR #5 (review fixes pushed). `origin/s01-data-spike-old` is a backup copy of the same commits; the owner deletes it later.
+- **What works:** `pnpm verify` (5 test files, 47 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]` (endpoint table in `apps/server/scripts/endpoints.ts`); `pnpm spike --date 2026-03-16` prints Šilovs (PIT, SV 25/27 W) and Porziņģis (GS, 30 PTS) — owner spot-checked against nhl.com/espn.com. Everything from S00 still works.
+- **How to try it:** `pnpm install && pnpm verify`; `pnpm spike --date 2026-03-16` (live, ~26 requests, ~25 s); read `docs/sources/nhl.md` and `docs/sources/espn-nba.md`.
+- **Next session:** S02a — Domain model, selection rule, nationality, branch `s02a-domain-model`.
 - **Notes for the next session:**
-  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` (its `shortcut:` comment) and confirm `pnpm install --frozen-lockfile` still passes — S01 can do it as a one-commit chore.
-  - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); a brand-new release fails the install until it ages.
-  - After mise installs a different Node, run `corepack enable && mise reshim` once, or pnpm fails with "No version is set for shim: pnpm".
-  - Expo SDK 58 uses `apps/mobile/src/app/` for routes (`.claude/rules/mobile.md` updated).
-  - Still untested: the test-writer routing (S00 had no test-writer task — first one is S02a) and the cloud install hook in a real cloud session (it now runs on `startup|resume`, from `$CLAUDE_PROJECT_DIR`, output on stderr; consider `fork` too if a forked cloud session starts without `node_modules`).
+  - S02a decides the nationality rule: both source docs end their **Nationality** section with a "Proposal for S02a (not adopted)". NHL stats `bios` carry `nationalityCode` (agrees with `birthCountryCode` for every Latvian); ESPN `citizenship` is often missing and gives Embiid "Cameroon", so overrides stay. VISION §7, CLAUDE.md rule 6 and DECISIONS are unchanged until then.
+  - For S03: NHL stats `summary`/`bios` rows without `gameTypeId=2` sum regular season + playoffs and repeat once per game type; NHL boxscore has no period scores (`right-rail` `linescore` has them); NHL preseason finals end in `FINAL`, not `OFF`. ESPN `reason` reads "COACH'S DECISION" even for players who played — read it only when `didNotPlay` is true; `statistics/byathlete` is the bulk season-stats endpoint (578 athletes, 12 pages). See each doc's Quirks.
+  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` and confirm `pnpm install --frozen-lockfile` still passes (S01 ended before 20:00).
+  - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
+  - Still untested: test-writer routing (first use S02a) and the cloud install hook in a real cloud session.
 ## Known issues
 - `pnpm-workspace.yaml` exempts 9 Expo SDK 58 packages from pnpm's 1-day release-age check until 2026-10-17 20:00 UTC; delete the block after that.
 
@@ -22,6 +22,9 @@ Ideas that came up but are out of scope for now.
 - `apps/mobile/app.json` keeps the template's `web.output: "server"`, which `expo export -p web` turns into a server bundle needing a Node host; S08 (screenshots from the web build) or S14 (static home-screen web app) should switch it to `"static"` (PR #4 review).
 - Mobile typecheck differs between a dev machine and CI: Expo's typed-route and asset types (`.expo/types`, `expo-env.d.ts`) are gitignored and only exist after `expo start`. Settle it in S08, when screens first use `Link href` or import assets — e.g. run `expo customize`/type generation before `tsc` in the mobile `typecheck` script (PR #4 review).
 - CI: cache the pnpm store (`corepack enable` before `actions/setup-node`, then `cache: pnpm`) once runs get slow; they take about 20 s now (PR #4 review).
+- S01 deferred minors: the polite-client backoff test asserts `≥` delays rather than exact ones; the polite client reads the wall clock (`Date.now`), so a backward clock step could stall a host's queue — inject a monotonic clock if the jobs ever show it (PR #5 review).
+- `docs/sources/nhl.md` size table lacks rows for `skater-summary-reg`/`goalie-summary-reg` (~20 KB each).
+- `apps/server/scripts/spike/spike.ts:2` — `shortcut:` NBA Latvians come from current rosters; the spike is deleted when S04a adds `pnpm recap`.
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
 
 ## Session log
@@ -83,4 +86,21 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Deferred (parking lot): typed-route/asset types differ between dev machine and CI (S08); `web.output: "server"` (S08/S14); pnpm store cache in CI.
 - Declined: `seasonLabel` input validation (adapters validate with zod and convert ESPN's end-year label); typechecking the root `vitest.config.ts` (Vitest loads it on every `pnpm verify`).
 - Reviewer: approve; 0 Critical/Important; fixed 1 minor (rule wording), left 3 (`timeout: 600` equals the documented default; a failing install's notice shows pnpm's first stderr line; the Vitest-config reply overstates — misspelled options are ignored silently).
+- CI: re-run on push.
+
+### S01 — Data spike + fixtures — 2026-10-17 — PR into `main` (`s01-data-spike`)
+- Changed: `apps/server/src/http/polite-client.ts` (+17 tests), `src/fixtures/record-fixture.ts` + `scripts/fixtures-record.ts` + `scripts/endpoints.ts`, `loadConfig` gains `contactUrl`, 42 fixtures under `apps/server/test/fixtures/`, throwaway `scripts/spike/spike.ts`, `docs/sources/nhl.md`, `docs/sources/espn-nba.md`.
+- Decisions: D-028 (polite client), D-029 (fixture format). Nationality wording proposed in docs/sources for S02a, not adopted.
+- Read these: docs/superpowers/specs/2026-10-17-s01-data-spike.md, apps/server/src/http/polite-client.ts, docs/sources/nhl.md, docs/sources/espn-nba.md.
+- Reviewer: final whole-branch review found 1 Important (NHL summary rows sum REG+POST) — fixed with `gameTypeId=2` fixtures and doc corrections; cheap doc minors fixed; code minors parked.
+- Rulings: 8 (demo date 2026-03-16 because Porziņģis hasn't played in 2026-27; spacing start-to-start; others in the PR briefing).
+- Requests: 68 of 250. Owner spot-check of spike numbers: matched.
+- CI: first run on this PR.
+- Follow-ups: release-age exemptions after 20:00 UTC; delete `s01-data-spike-old`; S02a settles nationality.
+
+### Review fixes for PR #5 — 2026-10-17 — PR #5 (`s01-data-spike`)
+- Changed: polite client pauses the whole host during a retry backoff / `Retry-After` (queued requests included); `recordFixture` rejects names that aren't plain file names (`../x`, `a/b`, `.hidden`); `endpoints.ts` escapes every id and uses `satisfies` (keys stay typed); recorder prints "bytes upstream". +7 tests (47).
+- Decisions: D-028 corrected (the clock isn't injected; fake timers drive it) and extended (host-wide pause).
+- Declined: clock injection (fake timers already make tests deterministic; backward-step risk parked); shared script setup and the scripts' PORT validation (the duplicate lives in the spike, deleted in S04a); the three spike findings (throwaway, replaced by `pnpm recap` in S04a).
+- Checked: 41 of 42 recorded fixture URLs rebuild identically from `endpoints.ts` (the 42nd is the `--as`-named states fixture).
 - CI: re-run on push.

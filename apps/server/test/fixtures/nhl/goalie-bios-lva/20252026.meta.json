@@ -1,0 +1,6 @@
+{
+  "url": "https://api.nhle.com/stats/rest/en/goalie/bios?cayenneExp=seasonId%3D20252026%20and%20nationalityCode%3D%22LVA%22",
+  "fetchedAt": "2026-10-16T23:58:19.715Z",
+  "status": 200,
+  "bytes": 1382
+}
