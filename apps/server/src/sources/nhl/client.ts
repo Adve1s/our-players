@@ -1,4 +1,4 @@
-import { type SeasonStats, type SeasonType, seasonLabel } from '@our-players/shared';
+import { type SeasonStats, type SeasonType, seasonLabel, type Team } from '@our-players/shared';
 import type { PoliteClient } from '../../http/polite-client';
 import { mapBoxscore } from './boxscore';
 import { mapSchedule, mapScore } from './games';
@@ -46,8 +46,10 @@ export const fetchSchedule = async (client: Client, date: string) =>
 export const fetchBoxscore = async (client: Client, gameId: string) =>
   mapBoxscore(await getJson(client, 'boxscore', nhlUrls.boxscore(gameId)));
 
-export const fetchRoster = async (client: Client, teamAbbrev: string, teamExternalId: string) =>
-  mapRoster(await getJson(client, 'roster', nhlUrls.roster(teamAbbrev)), teamExternalId);
+// One team, not an abbrev and an ID apart: the roster names no team, so a mismatched pair would
+// silently move every player to the wrong team.
+export const fetchRoster = async (client: Client, team: Pick<Team, 'abbrev' | 'externalId'>) =>
+  mapRoster(await getJson(client, 'roster', nhlUrls.roster(team.abbrev)), team.externalId);
 
 export const fetchPlayerLanding = async (client: Client, playerId: string) =>
   mapPlayerLanding(await getJson(client, 'player-landing', nhlUrls.playerLanding(playerId)));

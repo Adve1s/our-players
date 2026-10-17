@@ -46,9 +46,9 @@ describe('NHL fetchers', () => {
     expect(games.some((g) => g.publicId === 'nhl-2025020760')).toBe(true);
   });
 
-  it('fetchRoster requests the current roster and sets the given team id', async () => {
+  it("fetchRoster requests the team's current roster by abbrev and sets its id", async () => {
     const client = serving(fixtureText('roster', 'FLA'));
-    const { players } = await fetchRoster(client, 'FLA', '13');
+    const { players } = await fetchRoster(client, { abbrev: 'FLA', externalId: '13' });
     expect(client.get).toHaveBeenCalledWith('https://api-web.nhle.com/v1/roster/FLA/current');
     const vilmanis = only(players, (p) => p.externalId === '8483771', 'Vilmanis');
     expect(vilmanis.currentTeamExternalId).toBe('13');
