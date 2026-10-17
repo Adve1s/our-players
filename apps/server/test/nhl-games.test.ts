@@ -305,6 +305,23 @@ describe('mapScore: states and inputs no fixture contains (mutated copies)', () 
     expect(games.map((g) => g.externalId)).not.toContain('2025020760');
     expect(games).toHaveLength(12);
   });
+
+  it('skips a gameType 4 game whose teams lack fields league games have', () => {
+    const raw = score('2026-01-17');
+    const g = rawScoreGame(raw, 2025020760);
+    g.gameType = 4;
+    delete obj(g, 'awayTeam').name;
+    delete obj(g, 'homeTeam').id;
+    expect(mapScore(raw).games).toHaveLength(12);
+  });
+
+  it('skips a gameType 4 schedule game whose teams lack commonName', () => {
+    const raw = schedule('2026-03-24');
+    const g = only(list(raw, 'gameWeek', 0, 'games'), (x) => x.id === 2025021120, 'raw game');
+    g.gameType = 4;
+    delete obj(g, 'awayTeam').commonName;
+    expect(mapSchedule(raw).games).toHaveLength(57);
+  });
 });
 
 describe('mapScore: errors', () => {

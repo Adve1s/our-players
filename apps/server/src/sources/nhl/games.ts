@@ -25,7 +25,7 @@ const GAME_STATUS: Readonly<Record<string, GameStatus>> = {
   FINAL: 'FINAL', // preseason finals stay FINAL
   OFF: 'FINAL', // regular-season finals become OFF
 };
-// Other game types (4 = All-Star, international events) are not league games we track.
+// Other game types (4 = All-Star, international events) never get here: the schema drops them.
 const SEASON_TYPES: Readonly<Record<number, SeasonType>> = { 1: 'PRE', 2: 'REG', 3: 'POST' };
 const ENDED_IN: Readonly<Record<string, EndedIn>> = { REG: 'REG', OT: 'OT', SO: 'SO' };
 
