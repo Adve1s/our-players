@@ -258,3 +258,12 @@ export const countryCodeSchema = z.enum(COUNTRY_CODES, {
 });
 // A literal union, so a typo like 'LAV' fails typecheck.
 export type CountryCode = z.infer<typeof countryCodeSchema>;
+
+// ESPN gives birth countries as names; these are the spellings that are not the country's own name.
+// shortcut: aliases only; S05 adds the full ESPN country-name table and the lookup
+export const ESPN_COUNTRY_ALIASES: Readonly<Record<string, CountryCode>> = {
+  USA: 'USA',
+  England: 'GBR',
+  Scotland: 'GBR',
+  Wales: 'GBR',
+};
