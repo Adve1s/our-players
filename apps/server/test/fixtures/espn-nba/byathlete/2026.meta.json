@@ -1,0 +1,6 @@
+{
+  "url": "https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?season=2026&seasontype=2&limit=50&page=1",
+  "fetchedAt": "2026-10-17T00:01:22.037Z",
+  "status": 200,
+  "bytes": 665097
+}
