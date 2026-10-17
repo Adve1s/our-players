@@ -40,6 +40,14 @@ function stub(p: RawPlayer, teamExternalId: string, where: string): Player {
   };
 }
 
+// TOI 00:00 is a dressed player who never got on the ice: a DNP line (owner ruling). Stats are
+// read only for a played line, so a DNP goalie's decision is never mapped.
+function playedOrDnp<S>(toi: number, stats: () => S) {
+  return toi === 0
+    ? { played: false as const, stats: null }
+    : { played: true as const, stats: stats() };
+}
+
 export function mapBoxscore(raw: unknown): {
   lines: StatLine[];
   teams: Team[];
@@ -55,67 +63,56 @@ export function mapBoxscore(raw: unknown): {
 
   for (const [team, side] of sides) {
     const teamExternalId = String(team.id);
-    const base = (p: RawPlayer) => {
-      const where = `nhl boxscore: game ${box.id}: player ${p.playerId}`;
-      players.push(stub(p, teamExternalId, where));
-      // TOI 00:00 is a dressed player who never got on the ice: a DNP line (owner ruling).
-      const toi = toiSeconds(p.toi, where);
-      return {
-        where,
-        toi,
-        line: {
-          gamePublicId: `nhl-${box.id}`,
-          playerPublicId: `nhl-${p.playerId}`,
-          teamExternalId,
-          dnpReason: null,
-        },
-      };
-    };
+    const where = (p: RawPlayer) => `nhl boxscore: game ${box.id}: player ${p.playerId}`;
+    const line = (p: RawPlayer) => ({
+      gamePublicId: `nhl-${box.id}`,
+      playerPublicId: `nhl-${p.playerId}`,
+      teamExternalId,
+      dnpReason: null,
+    });
+
+    for (const p of [...side.forwards, ...side.defense, ...side.goalies]) {
+      players.push(stub(p, teamExternalId, where(p)));
+    }
 
     for (const p of [...side.forwards, ...side.defense]) {
-      const { toi, line } = base(p);
-      const played =
-        toi === 0
-          ? { played: false as const, stats: null }
-          : {
-              played: true as const,
-              stats: {
-                goals: p.goals,
-                assists: p.assists,
-                points: p.points,
-                plusMinus: p.plusMinus,
-                shots: p.sog,
-                toiSeconds: toi,
-                pim: p.pim,
-                hits: p.hits,
-                blocks: p.blockedShots,
-                powerPlayGoals: p.powerPlayGoals,
-              },
-            };
-      lines.push({ ...line, starter: null, kind: 'hockey_skater', ...played });
+      const toi = toiSeconds(p.toi, where(p));
+      const stats = () => ({
+        goals: p.goals,
+        assists: p.assists,
+        points: p.points,
+        plusMinus: p.plusMinus,
+        shots: p.sog,
+        toiSeconds: toi,
+        pim: p.pim,
+        hits: p.hits,
+        blocks: p.blockedShots,
+        powerPlayGoals: p.powerPlayGoals,
+      });
+      lines.push({ ...line(p), starter: null, kind: 'hockey_skater', ...playedOrDnp(toi, stats) });
     }
 
     for (const p of side.goalies) {
-      const { where, toi, line } = base(p);
+      const w = where(p);
+      const toi = toiSeconds(p.toi, w);
       if (toi > 0 && p.shotsAgainst > 0 && p.savePctg === undefined) {
-        throw new Error(`${where}: savePctg missing with ${p.shotsAgainst} shots against`);
+        throw new Error(`${w}: savePctg missing with ${p.shotsAgainst} shots against`);
       }
-      const played =
-        toi === 0
-          ? { played: false as const, stats: null }
-          : {
-              played: true as const,
-              stats: {
-                saves: p.saves,
-                shotsAgainst: p.shotsAgainst,
-                goalsAgainst: p.goalsAgainst,
-                savePct: p.shotsAgainst === 0 ? null : (p.savePctg ?? null),
-                toiSeconds: toi,
-                decision: decision(p.decision, where),
-              },
-            };
+      const stats = () => ({
+        saves: p.saves,
+        shotsAgainst: p.shotsAgainst,
+        goalsAgainst: p.goalsAgainst,
+        savePct: p.shotsAgainst === 0 ? null : (p.savePctg ?? null),
+        toiSeconds: toi,
+        decision: decision(p.decision, w),
+      });
       // Preseason box scores have no starter field.
-      lines.push({ ...line, starter: p.starter ?? null, kind: 'hockey_goalie', ...played });
+      lines.push({
+        ...line(p),
+        starter: p.starter ?? null,
+        kind: 'hockey_goalie',
+        ...playedOrDnp(toi, stats),
+      });
     }
   }
 

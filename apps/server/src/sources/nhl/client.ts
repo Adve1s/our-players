@@ -20,10 +20,6 @@ export const nhlUrls = {
   boxscore: (gameId: string) => `${WEB}/gamecenter/${e(gameId)}/boxscore`,
   roster: (teamAbbrev: string) => `${WEB}/roster/${e(teamAbbrev)}/current`,
   playerLanding: (playerId: string) => `${WEB}/player/${e(playerId)}/landing`,
-  skaterSummary: (seasonId: string, gameTypeId: GameTypeId) =>
-    summaryUrl('skater', seasonId, gameTypeId),
-  goalieSummary: (seasonId: string, gameTypeId: GameTypeId) =>
-    summaryUrl('goalie', seasonId, gameTypeId),
 };
 
 type Client = Pick<PoliteClient, 'get'>;

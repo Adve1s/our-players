@@ -10,6 +10,7 @@ import {
   mapScore,
   mapSkaterSummary,
 } from '../sources/nhl';
+import { lookup } from '../sources/nhl/common';
 
 // Keys are fixture directory names under test/fixtures/nhl.
 const nhl: Record<string, (raw: unknown, id: string) => unknown> = {
@@ -31,7 +32,7 @@ export async function inspectFixture(
 ): Promise<unknown> {
   if (source === 'espn-nba') throw new Error('espn-nba arrives in S05');
   if (source !== 'nhl') throw new Error(`unknown source "${source}"; valid: nhl`);
-  const map = Object.hasOwn(nhl, endpoint) ? nhl[endpoint] : undefined;
+  const map = lookup(nhl, endpoint);
   if (map === undefined)
     throw new Error(
       `unknown endpoint "${endpoint}" for nhl; valid: ${Object.keys(nhl).join(', ')}`,
