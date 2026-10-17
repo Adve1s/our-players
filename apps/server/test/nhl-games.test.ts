@@ -221,6 +221,14 @@ describe('mapScore: states and inputs no fixture contains (mutated copies)', () 
     expect(game(mapScore(raw).games, '2026020119').status).toBe(status);
   });
 
+  it('gives a PRE game no period scores even with a period descriptor', () => {
+    const raw = score('2026-10-16-states');
+    const g = rawScoreGame(raw, 2026020119);
+    g.gameState = 'PRE';
+    g.periodDescriptor = { number: 1, periodType: 'REG', maxRegulationPeriods: 3 };
+    expect(game(mapScore(raw).games, '2026020119').periodScores).toBeNull();
+  });
+
   describe('a live game (2025020760 mid second period, CBJ leading 3-2)', () => {
     const live = () => {
       const raw = score('2026-01-17');

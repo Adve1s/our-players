@@ -92,7 +92,9 @@ function toGame(
     awayTeamExternalId: String(g.awayTeam.id),
     homeScore: g.homeTeam.score ?? null,
     awayScore: g.awayTeam.score ?? null,
-    periodScores: goals ? periodScores(g, goals) : null,
+    // A pregame game can already carry a period descriptor; no line score before puck drop.
+    periodScores:
+      goals && (gameStatus === 'LIVE' || gameStatus === 'FINAL') ? periodScores(g, goals) : null,
     endedIn: gameStatus === 'FINAL' ? endedIn(g, where) : null,
   };
 }
