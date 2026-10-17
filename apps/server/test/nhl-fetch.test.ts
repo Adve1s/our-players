@@ -82,6 +82,14 @@ describe('NHL fetchers', () => {
     );
   });
 
+  it('fetchSkaterSummary rejects a malformed season before any request', async () => {
+    const client = serving(fixtureText('skater-summary-lva', '20252026'));
+    await expect(fetchSkaterSummary(client, '2025-27', 'REG')).rejects.toThrow(
+      /^nhl skater-summary: unknown season "2025-27"/,
+    );
+    expect(client.get).not.toHaveBeenCalled();
+  });
+
   it('throws naming source and endpoint when the body is not JSON', async () => {
     await expect(fetchBoxscore(serving('<html>'), '2025020760')).rejects.toThrow(
       /^nhl boxscore: response is not JSON/,

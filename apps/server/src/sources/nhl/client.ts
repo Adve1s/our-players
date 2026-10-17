@@ -55,9 +55,11 @@ export const fetchPlayerLanding = async (client: Client, playerId: string) =>
 const GAME_TYPE_IDS: Readonly<Record<SeasonType, GameTypeId>> = { PRE: 1, REG: 2, POST: 3 };
 
 // "2025-26" → "20252026"; the round trip through seasonLabel rejects "2025-27" and other typos.
-function toSeasonId(season: string): string {
+function toSeasonId(season: string, endpoint: string): string {
   const start = Number(season.slice(0, 4));
-  if (seasonLabel(start) !== season) throw new Error(`nhl: unknown season "${season}"`);
+  if (seasonLabel(start) !== season) {
+    throw new Error(`nhl ${endpoint}: unknown season "${season}"`);
+  }
   return `${start}${start + 1}`;
 }
 
@@ -68,7 +70,7 @@ async function fetchSummary(
   seasonType: SeasonType,
 ): Promise<SeasonStats[]> {
   const endpoint = `${kind}-summary`;
-  const url = summaryUrl(kind, toSeasonId(season), GAME_TYPE_IDS[seasonType]);
+  const url = summaryUrl(kind, toSeasonId(season, endpoint), GAME_TYPE_IDS[seasonType]);
   const map = kind === 'skater' ? mapSkaterSummary : mapGoalieSummary;
   const { seasonStats, total } = map(await getJson(client, endpoint, url), seasonType);
   // limit=-1 returned every row in live probes; a short page means it silently stopped doing so.
