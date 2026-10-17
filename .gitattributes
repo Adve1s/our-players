@@ -2,3 +2,4 @@
 # They still appear in the file list; click a file to expand it.
 apps/server/test/fixtures/** linguist-generated=true
 pnpm-lock.yaml linguist-generated=true
+apps/server/drizzle/meta/** linguist-generated=true

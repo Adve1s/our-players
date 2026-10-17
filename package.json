@@ -18,9 +18,9 @@
     "inspect": "echo 'pnpm inspect arrives in session S03' >&2; exit 1",
     "job": "echo 'pnpm job arrives in session S04a' >&2; exit 1",
     "recap": "echo 'pnpm recap arrives in session S04a' >&2; exit 1",
-    "db:generate": "echo 'pnpm db:generate arrives in session S02b' >&2; exit 1",
-    "db:migrate": "echo 'pnpm db:migrate arrives in session S02b' >&2; exit 1",
-    "db:reset": "echo 'pnpm db:reset arrives in session S02b' >&2; exit 1",
+    "db:generate": "pnpm --filter @our-players/server db:generate",
+    "db:migrate": "pnpm --filter @our-players/server db:migrate",
+    "db:reset": "pnpm --filter @our-players/server db:reset",
     "screenshots": "echo 'pnpm screenshots arrives in session S08' >&2; exit 1"
   },
   "devDependencies": {
