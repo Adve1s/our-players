@@ -120,7 +120,8 @@ async function finalizeGame(
     } catch (e) {
       // The line is never dropped: the stub stands in until a roster run names the player.
       run.log.warn(`player ${stub.publicId}: enrichment failed, stub written: ${message(e)}`);
-      await upsertPlayers(ctx.db, [stub], ctx.overrides);
+      // The box score's team is historical on a backfill, so the stub gets none.
+      await upsertPlayers(ctx.db, [{ ...stub, currentTeamExternalId: null }], ctx.overrides);
       run.add('stubs');
       run.fail(`player ${stub.publicId}: ${message(e)}`);
     }

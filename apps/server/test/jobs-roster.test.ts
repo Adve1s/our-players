@@ -152,6 +152,24 @@ describe('rosterJob', () => {
     expect(run?.error).toContain('roster PIT');
   });
 
+  it('an empty roster counts as a failed fetch', async () => {
+    // Seeds PIT's players with Girgensons kept active, then puts him back on NYI.
+    await rosterRun(routes([], cbjWithGirgensons()));
+    await upsertPlayers(handle.db, [girgensons], NO_OVERRIDES);
+    const empty = { ...roster('PIT'), forwards: [], defensemen: [], goalies: [] };
+    const result = await rosterRun({ ...routes(), [nhlUrls.roster('PIT')]: empty });
+
+    const row = await playerRow(girgensons.publicId);
+    expect(row.active).toBe(true);
+    expect(row.team).toBe('NYI');
+    const silovs = await playerRow(SILOVS);
+    expect(silovs.active).toBe(true);
+    expect(silovs.team).toBe('PIT');
+    const [run] = await handle.db.select().from(jobRuns).where(eq(jobRuns.id, result.runId));
+    expect(run?.status).toBe('partial');
+    expect(run?.error).toContain('roster PIT');
+  });
+
   it('a re-run changes nothing', async () => {
     await rosterRun();
     const stamps = async () =>

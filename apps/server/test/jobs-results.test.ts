@@ -244,6 +244,8 @@ describe('resultsJob', () => {
 
     const stub = box.players.find((p) => p.publicId === MERZLIKINS);
     expect((await playerRow(MERZLIKINS)).firstName).toBe(stub?.firstName);
+    // The box score's team is historical on a backfill, so the stub gets none.
+    expect((await playerRow(MERZLIKINS)).currentTeamId).toBeNull();
     expect((await linesOf(`nhl-${GAME}`)).map((l) => l.player)).toContain(MERZLIKINS);
     expect(result.status).toBe('partial');
     expect(result.status === 'skipped' ? undefined : result.error).toContain(MERZLIKINS);

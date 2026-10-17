@@ -23,6 +23,8 @@ export const rosterJob: Job = async (ctx, run, args) => {
   for (const team of teams) {
     try {
       const roster = await fetchRoster(ctx.client, team);
+      // An empty roster would deactivate the whole team, so it is treated like a failed fetch.
+      if (roster.players.length === 0) throw new Error('empty roster');
       for (const w of roster.warnings) run.log.warn(w);
       collected.push(...roster.players);
     } catch (e) {
