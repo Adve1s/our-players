@@ -12,7 +12,8 @@
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "@our-players/shared": "workspace:*",
-    "hono": "^4.13.13"
+    "hono": "^4.13.13",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^22",
