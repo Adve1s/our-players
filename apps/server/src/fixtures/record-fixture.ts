@@ -13,6 +13,9 @@ export async function recordFixture(a: {
   url: string;
   force: boolean;
 }): Promise<{ jsonPath: string; metaPath: string; bytes: number }> {
+  // The name comes from the command line; keep it a plain file name inside the fixture folder.
+  if (!/^[\w-][\w.-]*$/.test(a.name))
+    throw new Error(`invalid fixture name ${JSON.stringify(a.name)}`);
   const dir = join(a.root, a.source, a.endpoint);
   const jsonPath = join(dir, `${a.name}.json`);
   const metaPath = join(dir, `${a.name}.meta.json`);

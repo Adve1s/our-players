@@ -96,6 +96,19 @@ describe('createPoliteClient', () => {
     expect(g2).toBeGreaterThanOrEqual(4000);
   });
 
+  it('holds other queued requests to the host during a retry pause', async () => {
+    const { client, times } = setup([status(429, { 'Retry-After': '5' }), ok(), ok()]);
+    await settle(
+      Promise.all([
+        client.get('https://api-web.nhle.com/v1/a'),
+        client.get('https://api-web.nhle.com/v1/b'),
+      ]),
+    );
+    expect(times).toHaveLength(3);
+    expect(times[1]).toBeGreaterThanOrEqual(NOW + 5000);
+    expect(gaps(times)[1]).toBeGreaterThanOrEqual(1000);
+  });
+
   it('retries 503', async () => {
     const { client, times } = setup([status(503), ok()]);
     const res = await settle(client.get('https://api-web.nhle.com/v1/a'));

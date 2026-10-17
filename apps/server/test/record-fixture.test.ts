@@ -63,6 +63,13 @@ describe('recordFixture', () => {
     ]);
   });
 
+  it.each(['../x', 'a/b', 'a\\b', '.hidden', ''])('rejects the unsafe name %j', async (name) => {
+    const a = args(async () => reply('{}'), { name });
+    await expect(recordFixture(a)).rejects.toThrow('invalid fixture name');
+    expect(a.client.get).not.toHaveBeenCalled();
+    expect(await readdir(root)).toEqual([]);
+  });
+
   it('refuses to overwrite without force', async () => {
     const dir = join(root, 'nhl', 'score');
     await mkdir(dir, { recursive: true });
@@ -110,6 +117,15 @@ describe('endpoints', () => {
   it('builds the scoreboard URL with dates=20260316', () => {
     expect(endpoints['espn-nba'].scoreboard?.('2026-03-16')).toBe(
       'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20260316',
+    );
+  });
+
+  it('escapes ids so they cannot change the URL', () => {
+    expect(endpoints.nhl.boxscore('1&x=y#z')).toBe(
+      'https://api-web.nhle.com/v1/gamecenter/1%26x%3Dy%23z/boxscore',
+    );
+    expect(endpoints.nhl['skater-summary']('2025/2026')).toBe(
+      'https://api.nhle.com/stats/rest/en/skater/summary?cayenneExp=seasonId=2025%2F2026',
     );
   });
 

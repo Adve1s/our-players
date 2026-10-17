@@ -22,7 +22,7 @@ async function main(): Promise<number> {
     console.error(`unknown source "${source}"; valid: ${Object.keys(endpoints).join(', ')}`);
     return 1;
   }
-  const table = endpoints[source as keyof typeof endpoints];
+  const table: Record<string, (id: string) => string> = endpoints[source as keyof typeof endpoints];
   const build = Object.hasOwn(table, endpoint) ? table[endpoint] : undefined;
   if (build === undefined) {
     console.error(
@@ -48,7 +48,7 @@ async function main(): Promise<number> {
       url: build(id),
       force: values.force,
     });
-    console.log(`${r.jsonPath} (${r.bytes} bytes)`);
+    console.log(`${r.jsonPath} (${r.bytes} bytes upstream)`);
     return 0;
   } finally {
     console.log(`requests: ${client.requestCount}`);

@@ -55,15 +55,22 @@ export function createPoliteClient(o: PoliteClientOptions): PoliteClient {
     random = Math.random,
   } = o;
   const nextAllowed = new Map<string, number>();
+  // A retry pause covers the whole host, including requests that already reserved a slot.
+  const pausedUntil = new Map<string, number>();
   const requestsByHost = new Map<string, number>();
   let requestCount = 0;
 
   // Slots are reserved synchronously, so concurrent callers queue instead of bursting.
   async function waitTurn(host: string): Promise<void> {
-    const now = Date.now();
-    const at = Math.max(now, nextAllowed.get(host) ?? 0);
-    nextAllowed.set(host, at + minIntervalMs);
-    if (at > now) await sleep(at - now);
+    for (;;) {
+      const now = Date.now();
+      const at = Math.max(now, nextAllowed.get(host) ?? 0);
+      nextAllowed.set(host, at + minIntervalMs);
+      if (at > now) await sleep(at - now);
+      const paused = (pausedUntil.get(host) ?? 0) - Date.now();
+      if (paused <= 0) return;
+      await sleep(paused);
+    }
   }
 
   type Reply = { status: number; retryAfter: string | null; text: string };
@@ -134,7 +141,9 @@ export function createPoliteClient(o: PoliteClientOptions): PoliteClient {
         }
         delay = ra;
       }
-      await sleep(delay);
+      const until = Date.now() + delay;
+      pausedUntil.set(host, until);
+      nextAllowed.set(host, Math.max(nextAllowed.get(host) ?? 0, until));
     }
   }
 
