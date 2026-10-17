@@ -62,17 +62,21 @@ type StatLineBase = {
   gamePublicId: PublicId;
   playerPublicId: PublicId;
   teamExternalId: string;
-  played: boolean;
   dnpReason: string | null;
   starter: boolean | null;
 };
 
-// stats is null when played is false.
+// A played line always has stats and a DNP line never does, so the compiler rejects the mix.
+type KindLine<K extends StatKind, S> = { kind: K } & (
+  | { played: true; stats: S }
+  | { played: false; stats: null }
+);
+
 export type StatLine = StatLineBase &
   (
-    | { kind: 'hockey_skater'; stats: HockeySkaterStats | null }
-    | { kind: 'hockey_goalie'; stats: HockeyGoalieStats | null }
-    | { kind: 'basketball_player'; stats: BasketballPlayerStats | null }
+    | KindLine<'hockey_skater', HockeySkaterStats>
+    | KindLine<'hockey_goalie', HockeyGoalieStats>
+    | KindLine<'basketball_player', BasketballPlayerStats>
   );
 
 export type SeasonStats = {
