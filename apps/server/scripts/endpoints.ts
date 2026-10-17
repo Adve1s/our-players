@@ -1,3 +1,5 @@
+import { nhlUrls } from '../src/sources/nhl/client';
+
 const NHL = 'https://api-web.nhle.com/v1';
 const NHL_STATS = 'https://api.nhle.com/stats/rest/en';
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
@@ -7,12 +9,12 @@ const e = encodeURIComponent;
 
 export const endpoints = {
   nhl: {
-    score: (date) => `${NHL}/score/${e(date)}`,
-    schedule: (date) => `${NHL}/schedule/${e(date)}`,
-    boxscore: (gameId) => `${NHL}/gamecenter/${e(gameId)}/boxscore`,
+    score: nhlUrls.score,
+    schedule: nhlUrls.schedule,
+    boxscore: nhlUrls.boxscore,
     'right-rail': (gameId) => `${NHL}/gamecenter/${e(gameId)}/right-rail`,
-    roster: (team) => `${NHL}/roster/${e(team)}/current`,
-    'player-landing': (playerId) => `${NHL}/player/${e(playerId)}/landing`,
+    roster: nhlUrls.roster,
+    'player-landing': nhlUrls.playerLanding,
     'skater-summary': (seasonId) =>
       `${NHL_STATS}/skater/summary?cayenneExp=seasonId=${e(seasonId)}`,
     'goalie-summary': (seasonId) =>
