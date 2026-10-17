@@ -4,6 +4,7 @@ import { mapBoxscore } from './boxscore';
 import { mapSchedule, mapScore } from './games';
 import { mapPlayerLanding, mapRoster } from './players';
 import { mapGoalieSummary, mapSkaterSummary } from './season-stats';
+import { mapScheduleCalendar } from './teams';
 
 const WEB = 'https://api-web.nhle.com/v1';
 const STATS = 'https://api.nhle.com/stats/rest/en';
@@ -17,6 +18,7 @@ const summaryUrl = (kind: 'skater' | 'goalie', seasonId: string, gameTypeId: Gam
 export const nhlUrls = {
   score: (date: string) => `${WEB}/score/${e(date)}`,
   schedule: (date: string) => `${WEB}/schedule/${e(date)}`,
+  scheduleCalendar: (date: string) => `${WEB}/schedule-calendar/${e(date)}`,
   boxscore: (gameId: string) => `${WEB}/gamecenter/${e(gameId)}/boxscore`,
   roster: (teamAbbrev: string) => `${WEB}/roster/${e(teamAbbrev)}/current`,
   playerLanding: (playerId: string) => `${WEB}/player/${e(playerId)}/landing`,
@@ -38,6 +40,9 @@ export const fetchScore = async (client: Client, date: string) =>
 
 export const fetchSchedule = async (client: Client, date: string) =>
   mapSchedule(await getJson(client, 'schedule', nhlUrls.schedule(date)));
+
+export const fetchScheduleCalendar = async (client: Client, date: string) =>
+  mapScheduleCalendar(await getJson(client, 'schedule-calendar', nhlUrls.scheduleCalendar(date)));
 
 export const fetchBoxscore = async (client: Client, gameId: string) =>
   mapBoxscore(await getJson(client, 'boxscore', nhlUrls.boxscore(gameId)));

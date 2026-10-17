@@ -5,6 +5,7 @@ export {
   fetchPlayerLanding,
   fetchRoster,
   fetchSchedule,
+  fetchScheduleCalendar,
   fetchScore,
   fetchSkaterSummary,
   nhlUrls,
@@ -12,3 +13,4 @@ export {
 export { mapSchedule, mapScore } from './games';
 export { mapPlayerLanding, mapRoster } from './players';
 export { mapGoalieSummary, mapSkaterSummary } from './season-stats';
+export { mapScheduleCalendar } from './teams';

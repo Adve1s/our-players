@@ -5,8 +5,10 @@ import {
   fetchBoxscore,
   fetchGoalieSummary,
   fetchRoster,
+  fetchScheduleCalendar,
   fetchScore,
   fetchSkaterSummary,
+  nhlUrls,
 } from '../src/sources/nhl/client';
 import { loadFixture } from './fixtures';
 import { obj, only } from './json';
@@ -44,6 +46,13 @@ describe('NHL fetchers', () => {
     const { games } = await fetchScore(client, '2026-01-17');
     expect(client.get).toHaveBeenCalledWith('https://api-web.nhle.com/v1/score/2026-01-17');
     expect(games.some((g) => g.publicId === 'nhl-2025020760')).toBe(true);
+  });
+
+  it('fetchScheduleCalendar requests the schedule calendar of the date', async () => {
+    const client = serving(fixtureText('schedule-calendar', '2026-10-18'));
+    const { teams } = await fetchScheduleCalendar(client, '2026-10-18');
+    expect(client.get).toHaveBeenCalledWith(nhlUrls.scheduleCalendar('2026-10-18'));
+    expect(teams).toHaveLength(32);
   });
 
   it("fetchRoster requests the team's current roster by abbrev and sets its id", async () => {

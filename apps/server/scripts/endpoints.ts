@@ -11,6 +11,7 @@ export const endpoints = {
   nhl: {
     score: nhlUrls.score,
     schedule: nhlUrls.schedule,
+    'schedule-calendar': nhlUrls.scheduleCalendar,
     boxscore: nhlUrls.boxscore,
     'right-rail': (gameId) => `${NHL}/gamecenter/${e(gameId)}/right-rail`,
     roster: nhlUrls.roster,
