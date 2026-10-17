@@ -3,17 +3,20 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** Review fixes for PR #5, then S01 — Data spike + fixtures (2026-10-17): polite HTTP client (17 tests), fixture recorder, 42 recorded NHL/ESPN fixtures with `.meta.json`, throwaway `pnpm spike`, and `docs/sources/nhl.md` + `docs/sources/espn-nba.md` answering VISION §9 Q1–Q8 with evidence. 68 live requests of the 250 budget.
-- **Branch / PR:** `s01-data-spike` → `main`, PR #5 (review fixes pushed). `origin/s01-data-spike-old` is a backup copy of the same commits; the owner deletes it later.
-- **What works:** `pnpm verify` (5 test files, 47 tests); `pnpm fixtures:record <source> <endpoint> <id> [--as <name>] [--force]` (endpoint table in `apps/server/scripts/endpoints.ts`); `pnpm spike --date 2026-03-16` prints Šilovs (PIT, SV 25/27 W) and Porziņģis (GS, 30 PTS) — owner spot-checked against nhl.com/espn.com. Everything from S00 still works.
-- **How to try it:** `pnpm install && pnpm verify`; `pnpm spike --date 2026-03-16` (live, ~26 requests, ~25 s); read `docs/sources/nhl.md` and `docs/sources/espn-nba.md`.
-- **Next session:** S02a — Domain model, selection rule, nationality, branch `s02a-domain-model`.
+- **Last session:** S02a — Domain model, selection rule, nationality (2026-10-17): `packages/shared` gains the domain enums, the 249 ISO alpha-3 codes, public IDs, the normalized model types, zod stat payload schemas, `isShown` and `resolveNationality`; `apps/server` gains the zod-validated nationality overrides loader. Red/green: the test-writer's 22 tests (`949b7a2`) failed on "not implemented", then passed unchanged.
+- **Branch / PR:** `s02a-domain-model` → `main` (PR opened by this handoff). PR #5 (S01) is merged.
+- **What works:** `pnpm verify` (10 test files, 114 tests). Shared exports from `packages/shared/src/index.ts`: `isShown(player, prefs)` (prefs are four `ReadonlySet`s), `resolveNationality({ publicId, birthCountry }, overrides)`, `parseStatPayload(kind, value)`, `countryCodeSchema`, `publicIdSchema`, model types `Team`/`Player`/`Game`/`StatLine`/`SeasonStats`. Server: `loadNationalityOverrides()` → `Map<PublicId, NationalityOverride>` that plugs straight into `resolveNationality`. Everything from S00/S01 still works.
+- **How to try it:** `pnpm install && pnpm verify`; `pnpm test selection nationality stats` (names state the behaviors); read `docs/superpowers/specs/2026-10-17-s02a-domain-model.md`.
+- **Next session:** S02b — Database schema and repositories, branch `s02b-database`.
 - **Notes for the next session:**
-  - S02a decides the nationality rule: both source docs end their **Nationality** section with a "Proposal for S02a (not adopted)". NHL stats `bios` carry `nationalityCode` (agrees with `birthCountryCode` for every Latvian); ESPN `citizenship` is often missing and gives Embiid "Cameroon", so overrides stay. VISION §7, CLAUDE.md rule 6 and DECISIONS are unchanged until then.
-  - For S03: NHL stats `summary`/`bios` rows without `gameTypeId=2` sum regular season + playoffs and repeat once per game type; NHL boxscore has no period scores (`right-rail` `linescore` has them); NHL preseason finals end in `FINAL`, not `OFF`. ESPN `reason` reads "COACH'S DECISION" even for players who played — read it only when `didNotPlay` is true; `statistics/byathlete` is the bulk season-stats endpoint (578 athletes, 12 pages). See each doc's Quirks.
-  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` and confirm `pnpm install --frozen-lockfile` still passes (S01 ended before 20:00).
+  - Nationality rule decided (D-030): override, else birth country, else `null` (source `null` too). VISION §7 and CLAUDE.md rule 6 are unchanged. S02b's recomputation feeds `resolveNationality` with stored `birth_country`; the override name-mismatch / missing-player warnings are S02b's (they need the DB).
+  - `parseStatPayload` throws `invalid <kind> stats:` + zod's prettified issues — use it on stat-line writes (S02b AC 3). Stat payloads are null when `played` is false.
+  - `SeasonStats.stats` is an untyped number record (`shortcut:` in `model.ts`); S03/S05 type it.
+  - For S03: `countries.ts` alpha-3 validation is done (moved here from S03); S03 only adds the ESPN alias scaffold. NHL stats `summary`/`bios` rows without `gameTypeId=2` sum regular season + playoffs; NHL boxscore has no period scores (`right-rail`); NHL preseason finals end in `FINAL`. See `docs/sources/*` Quirks.
+  - zod: root `node_modules/zod` is 4.6.7; Expo's zod 3.25.76 is nested under `@expo/cli`. The mobile web export still bundles shared with zod.
+  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` and confirm `pnpm install --frozen-lockfile` still passes (S02a ended before 20:00).
   - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
-  - Still untested: test-writer routing (first use S02a) and the cloud install hook in a real cloud session.
+  - Test-writer routing worked on first use (brief → report file → one `test:` commit). Still untested: the cloud install hook in a real cloud session.
 ## Known issues
 - `pnpm-workspace.yaml` exempts 9 Expo SDK 58 packages from pnpm's 1-day release-age check until 2026-10-17 20:00 UTC; delete the block after that.
 
@@ -26,6 +29,9 @@ Ideas that came up but are out of scope for now.
 - `docs/sources/nhl.md` size table lacks rows for `skater-summary-reg`/`goalie-summary-reg` (~20 KB each).
 - `apps/server/scripts/spike/spike.ts:2` — `shortcut:` NBA Latvians come from current rosters; the spike is deleted when S04a adds `pnpm recap`.
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
+- Nationality upgrade (D-030): NHL stats `bios` `nationalityCode` as a source value between the override and the birth country (override → source → birth; `nationality_source` gains `source`). Backward-compatible: an optional resolver input. Needs the bios pages (~20 requests a season) in the season-stats job.
+- `packages/shared/src/model.ts:84` — `shortcut:` `SeasonStats.stats` is an untyped number record until S03/S05 define per-source season-stat schemas.
+- S02a deferred test minors: `apps/server/test/nationality-overrides.test.ts` missing-file regex also matches Node's own ENOENT text (anchor `/^\/nonexistent\/overrides\.json: /` to pin the rethrow); `stats.test.ts` never pins the exact `invalid <kind> stats:` prefix and has no goalie `savePct` < 0 case; `nationality.ts` checks `birthCountry` by truthiness where `selection.ts` uses `!== null`.
 
 ## Session log
 <!--
@@ -104,3 +110,12 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Declined: clock injection (fake timers already make tests deterministic; backward-step risk parked); shared script setup and the scripts' PORT validation (the duplicate lives in the spike, deleted in S04a); the three spike findings (throwaway, replaced by `pnpm recap` in S04a).
 - Checked: 41 of 42 recorded fixture URLs rebuild identically from `endpoints.ts` (the 42nd is the `--as`-named states fixture).
 - CI: re-run on push.
+
+### S02a — Domain model, selection rule, nationality — 2026-10-17 — PR into `main` (`s02a-domain-model`)
+- Changed: `packages/shared/src/` `enums.ts`, `countries.ts` (249 ISO alpha-3 from iso-codes 4.20.1), `ids.ts`, `model.ts`, `stats.ts`, `selection.ts` (`isShown`), `nationality.ts` (`resolveNationality`); `apps/server/src/nationality/overrides.ts` (loader); zod ^4.6.7 in shared + server. +67 tests (114).
+- Decisions: D-030 (nationality rule kept: override, else birth, else null; NHL `nationalityCode` parked), D-031 (zod 4; country codes as a literal `z.enum`).
+- Read these: docs/superpowers/specs/2026-10-17-s02a-domain-model.md, packages/shared/src/selection.ts, packages/shared/test/selection.test.ts, apps/server/src/nationality/overrides.ts.
+- Red/green: test-writer's `949b7a2` — 22/22 failed on "not implemented"; unchanged since; task reviewer ran 12 mutants, each failed ≥ 1 test.
+- Reviewer: approve; 0 Critical/Important; 5 minors left (parked: 4 test/style minors; the design doc's zod-hoisting sentence fixed).
+- Rulings: none. CI: first run on this PR.
+- Follow-ups: release-age exemptions after 20:00 UTC; S03 skips the alpha-3 part of `countries.ts`.
