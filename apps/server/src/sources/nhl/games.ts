@@ -21,6 +21,7 @@ const GAME_STATUS: Readonly<Record<string, GameStatus>> = {
   PRE: 'SCHEDULED',
   LIVE: 'LIVE',
   CRIT: 'LIVE',
+  OVER: 'LIVE', // final horn sounded, result not official until FINAL/OFF
   FINAL: 'FINAL', // preseason finals stay FINAL
   OFF: 'FINAL', // regular-season finals become OFF
 };
