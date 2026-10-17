@@ -14,6 +14,12 @@ export const endpoints: Record<'nhl' | 'espn-nba', Record<string, (id: string) =
     'goalie-summary': (seasonId) => `${NHL_STATS}/goalie/summary?cayenneExp=seasonId=${seasonId}`,
     'skater-bios': (seasonId) => `${NHL_STATS}/skater/bios?cayenneExp=seasonId=${seasonId}`,
     'goalie-bios': (seasonId) => `${NHL_STATS}/goalie/bios?cayenneExp=seasonId=${seasonId}`,
+    'skater-bios-lva': (seasonId) =>
+      `${NHL_STATS}/skater/bios?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
+    'skater-summary-lva': (seasonId) =>
+      `${NHL_STATS}/skater/summary?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
+    'goalie-bios-lva': (seasonId) =>
+      `${NHL_STATS}/goalie/bios?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
   },
   'espn-nba': {
     // Takes YYYY-MM-DD like the NHL date endpoints; ESPN wants YYYYMMDD.
@@ -24,5 +30,8 @@ export const endpoints: Record<'nhl' | 'espn-nba', Record<string, (id: string) =
       `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/${athleteId}`,
     overview: (athleteId) =>
       `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${athleteId}/overview`,
+    // Q5 probe: ESPN labels a season by its end year; seasontype 2 = regular season.
+    byathlete: (season) =>
+      `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?season=${season}&seasontype=2&limit=50&page=1`,
   },
 };
