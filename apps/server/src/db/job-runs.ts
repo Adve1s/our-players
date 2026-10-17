@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from './client';
 import { type JOB_STATUSES, jobRuns } from './schema';
 
@@ -29,7 +29,8 @@ export async function finishJobRun(
   const updated = await db
     .update(jobRuns)
     .set({ ...result, finishedAt: sql`now()` })
-    .where(eq(jobRuns.id, id))
+    // Only a running run can finish, so a retry can't rewrite a recorded result.
+    .where(and(eq(jobRuns.id, id), eq(jobRuns.status, 'running')))
     .returning({ id: jobRuns.id });
-  if (updated.length === 0) throw new Error(`unknown job run ${id}`);
+  if (updated.length === 0) throw new Error(`job run ${id} is not running`);
 }

@@ -69,6 +69,8 @@ export async function upsertStatLines(
   gamePublicId: PublicId,
   lines: readonly StatLine[],
 ): Promise<number> {
+  // A box score always lists players; an empty one is broken upstream data and would delete every line.
+  if (lines.length === 0) throw new Error(`stat lines ${gamePublicId}: empty batch`);
   const [game] = await db
     .select({
       id: games.id,
@@ -142,7 +144,6 @@ export async function upsertStatLines(
         ),
       )
       .returning({ playerId: statLines.playerId });
-    if (rows.length === 0) return deleted.length;
     const written = await tx
       .insert(statLines)
       .values(rows)

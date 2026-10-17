@@ -265,11 +265,15 @@ describe('repositories', () => {
       expect(await linesOf(db, nbaGame.publicId)).toEqual(before);
     });
 
-    it("an empty set deletes all of that game's lines", async () => {
+    // PR #7 review: an empty box score from upstream must not wipe a game's stored lines.
+    it("an empty set is rejected and keeps the game's lines", async () => {
       const db = await open();
       await writeSlice(db, nba);
-      expect(await upsertStatLines(db, nbaGame.publicId, [])).toBeGreaterThanOrEqual(1);
-      expect(await linesOf(db, nbaGame.publicId)).toEqual([]);
+      const before = await linesOf(db, nbaGame.publicId);
+      await expect(upsertStatLines(db, nbaGame.publicId, [])).rejects.toThrow(
+        'stat lines nba-401810001: empty batch',
+      );
+      expect(await linesOf(db, nbaGame.publicId)).toEqual(before);
     });
   });
 
@@ -560,10 +564,12 @@ describe('repositories', () => {
       expect(await write(db)).toBe(0);
     });
 
-    it('upsertStatLines with an empty batch for a game without lines returns 0', async () => {
+    it('upsertStatLines rejects an empty batch even for a game without lines', async () => {
       const db = await open();
       await writeSliceWithoutLines(db, nhl);
-      expect(await upsertStatLines(db, nhlGame.publicId, [])).toBe(0);
+      await expect(upsertStatLines(db, nhlGame.publicId, [])).rejects.toThrow(
+        `stat lines ${nhlGame.publicId}: empty batch`,
+      );
     });
   });
 
@@ -631,6 +637,19 @@ describe('repositories', () => {
       expect(row?.counts).toEqual({ teams: 29, players: 512 });
       expect(row?.error).toBe('team espn/5: timeout');
       expect(row?.finishedAt).toBeInstanceOf(Date);
+    });
+
+    // PR #7 review: a retry or a second `finally` must not rewrite a finished run.
+    it('finishJobRun refuses a run that already finished and keeps its result', async () => {
+      const db = await open();
+      const id = await startJobRun(db, 'roster', { league: 'NBA' });
+      await finishJobRun(db, id, { status: 'failed', counts: {}, error: 'team espn/5: timeout' });
+      const [before] = await db.select().from(jobRuns).where(eq(jobRuns.id, id));
+      await expect(
+        finishJobRun(db, id, { status: 'succeeded', counts: { teams: 30 }, error: null }),
+      ).rejects.toThrow(`job run ${id} is not running`);
+      const [after] = await db.select().from(jobRuns).where(eq(jobRuns.id, id));
+      expect(after).toEqual(before);
     });
   });
 });
