@@ -17,7 +17,7 @@ Session S02a, branch `s02a-domain-model`. Spec: `docs/SESSIONS.md` §S02a. The n
 
 ## New dependency
 - **`zod` ^4 (4.6.7)** as a runtime dependency of `packages/shared` and `apps/server`. Why: CLAUDE.md names zod for every schema (stat payloads now, adapters and the API contract later). Only Expo's CLI has it today, as a transitive zod 3, so neither package can import it yet. No other dependency: no property-testing library (the generated-inputs check uses a small seeded generator in the test file).
-- zod 4.6.7 came out on 2026-10-12, so pnpm's 1-day release-age rule allows it. Expo's zod 3.25.76 stays hoisted at the root, so zod 4 installs next to it. Task 1 checks that the lockfile resolves `zod@4` for both packages and that `pnpm dev:mobile` (web) still renders the placeholder, because the app imports `packages/shared`, which now imports zod.
+- zod 4.6.7 came out on 2026-10-12, so pnpm's 1-day release-age rule allows it. pnpm hoists zod 4 to the root and nests Expo's zod 3.25.76 under `@expo/cli` (checked after install), so each package resolves the version it declares. Task 1 checks that the lockfile resolves `zod@4` for both packages and that `pnpm dev:mobile` (web) still renders the placeholder, because the app imports `packages/shared`, which now imports zod.
 
 ## Files
 ```
