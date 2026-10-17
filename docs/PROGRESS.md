@@ -3,20 +3,22 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** Review fixes for PR #6 (2026-10-17), on top of S02a — Domain model, selection rule, nationality: `packages/shared` gains the domain enums, the 249 ISO alpha-3 codes, public IDs, the normalized model types, zod stat payload schemas, `isShown` and `resolveNationality`; `apps/server` gains the zod-validated nationality overrides loader. Red/green: the test-writer's 22 tests (`949b7a2`) failed on "not implemented", then passed unchanged. The review-fix pass fixed 5 `/code-review` findings (StatLine ties stats to `played`; `parseStatPayload` names an unknown kind; public IDs reject a leading zero; the missing-file error names the path once; the committed-file test no longer pins the count) and declined 4.
-- **Branch / PR:** `s02a-domain-model` → `main` PR #6 (open; review fixes pushed). PR #5 (S01) is merged.
-- **What works:** `pnpm verify` (11 test files, 118 tests). Shared exports from `packages/shared/src/index.ts`: `isShown(player, prefs)` (prefs are four `ReadonlySet`s), `resolveNationality({ publicId, birthCountry }, overrides)`, `parseStatPayload(kind, value)`, `countryCodeSchema`, `publicIdSchema` (`/^(nhl|nba)-[1-9]\d*$/`), model types `Team`/`Player`/`Game`/`StatLine`/`SeasonStats`. Server: `loadNationalityOverrides()` → `Map<PublicId, NationalityOverride>` that plugs straight into `resolveNationality`. Everything from S00/S01 still works.
-- **How to try it:** `pnpm install && pnpm verify`; `pnpm test selection nationality stats` (names state the behaviors); read `docs/superpowers/specs/2026-10-17-s02a-domain-model.md`.
-- **Next session:** S02b — Database schema and repositories, branch `s02b-database`.
-- **Notes for the next session:**
-  - Nationality rule decided (D-030): override, else birth country, else `null` (source `null` too). VISION §7 and CLAUDE.md rule 6 are unchanged. S02b's recomputation feeds `resolveNationality` with stored `birth_country`; the override name-mismatch / missing-player warnings are S02b's (they need the DB).
-  - `parseStatPayload` throws `invalid <kind> stats:` + zod's prettified issues — use it on stat-line writes (S02b AC 3); a kind outside the three throws `invalid stat kind: <kind>`, so it is safe on kinds read from DB rows. `StatLine` is a union on `played`: `played: true` requires stats, `played: false` requires `null` (type test in `packages/shared/test/model.test.ts`).
-  - `SeasonStats.stats` is an untyped number record (`shortcut:` in `model.ts`); S03/S05 type it.
-  - For S03: `countries.ts` alpha-3 validation is done (moved here from S03); S03 only adds the ESPN alias scaffold. NHL stats `summary`/`bios` rows without `gameTypeId=2` sum regular season + playoffs; NHL boxscore has no period scores (`right-rail`); NHL preseason finals end in `FINAL`. See `docs/sources/*` Quirks.
-  - zod: root `node_modules/zod` is 4.6.7; Expo's zod 3.25.76 is nested under `@expo/cli`. The mobile web export still bundles shared with zod.
-  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` and confirm `pnpm install --frozen-lockfile` still passes (S02a ended before 20:00).
+- **Last session:** S02b — Database schema and repositories (2026-10-17): Drizzle schema for VISION §8 (8 tables, 11 `pgEnum`s built from the shared zod enums), one generated init migration, PGlite on disk for dev / in memory for tests / node-postgres when `DATABASE_URL` is set, `pnpm db:generate|migrate|reset`, idempotent repositories for teams, players (+ external IDs), games, stat lines, season stats and job runs, and `recomputeNationalities` with override warnings. Red/green: the test-writer's 89 tests (`827224a`, `3810d24`) failed on "not implemented", then passed unchanged.
+- **Branch / PR:** `s02b-database` → `main` (PR opened by this handoff). PR #6 (S02a) is merged.
+- **What works:** `pnpm verify` (14 test files, 209 tests, ~28 s — DB tests dominate). Server `src/db/`: `openDb()` / `openPglite(dir?)` / `openPostgres(url)` return `{ db, migrate, close }` (`migrate` = drizzle migrator over `apps/server/drizzle/` + league seed); `upsertTeams`, `upsertPlayers(db, players, overrides)`, `upsertGames`, `upsertStatLines(db, gamePublicId, lines)`, `upsertSeasonStats`, `startJobRun`/`finishJobRun`, `searchName`; `src/nationality/recompute.ts` `recomputeNationalities(db, overrides) → { updated, warnings }`. Test helper `apps/server/test/db.ts` `createTestDb()` (clone of a migrated template, ~0.5 s). Everything from S00–S02a still works.
+- **How to try it:** `pnpm install && pnpm verify`; `rm -rf apps/server/.data && pnpm db:migrate && pnpm db:generate` ("No schema changes"); `pnpm test repositories nationality-recompute`; read `docs/superpowers/specs/2026-10-17-s02b-database.md`.
+- **Next session:** S03 — NHL adapter.
+- **Notes for the next sessions:**
+  - Repositories take the normalized model and return rows inserted/changed/deleted (0 on a repeat write — `updated_at` only moves when a value changes; S04a can put the counts in `job_runs.counts`). A batch is deduped by natural key, last wins.
+  - `upsertStatLines` writes one game's **complete** set: lines missing from the batch are deleted. Every write overwrites all columns (nulls included) — callers pass complete records; box-score stubs (S04a) only for players not yet stored.
+  - `upsertPlayers` computes nationality on write: S04a must always pass the loaded overrides, or a write reverts an overridden player to his birth country. `recomputeNationalities` is for override-file changes and warnings.
+  - Unknown references throw: `unknown team <source>/<id>`, `unknown player <id>`, `unknown game <id>`; stat-line errors start `stat line <game>/<player>: `. A line's kind must match the game's sport, its team must be home or away.
+  - PGlite on disk is single-process (`shortcut:` in `client.ts`): S04a decides how `pnpm job`/`pnpm recap` share `.data/pglite` with `pnpm dev:server`. The node-postgres path is untested until S10.
+  - `games.final_at`, `boxscore_fetched_at`, `corrected_at` exist but nothing writes them yet (S04a/S04b). `players.active` defaults true; the roster job owns it.
+  - Postgres sorts enum columns in declaration order (NHL before NBA): order by a text column or cast when a test needs alphabetical order.
+  - After 2026-10-17 20:00 UTC, delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` and confirm `pnpm install --frozen-lockfile` still passes (still pending).
+  - For S03: `countries.ts` alpha-3 validation is done; S03 only adds the ESPN alias scaffold. NHL stats `summary`/`bios` rows without `gameTypeId=2` sum regular season + playoffs; NHL boxscore has no period scores (`right-rail`); NHL preseason finals end in `FINAL`. See `docs/sources/*` Quirks.
   - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
-  - Test-writer routing worked on first use (brief → report file → one `test:` commit). Still untested: the cloud install hook in a real cloud session.
 ## Known issues
 - `pnpm-workspace.yaml` exempts 9 Expo SDK 58 packages from pnpm's 1-day release-age check until 2026-10-17 20:00 UTC; delete the block after that.
 
@@ -32,6 +34,10 @@ Ideas that came up but are out of scope for now.
 - Nationality upgrade (D-030): NHL stats `bios` `nationalityCode` as a source value between the override and the birth country (override → source → birth; `nationality_source` gains `source`). Backward-compatible: an optional resolver input. Needs the bios pages (~20 requests a season) in the season-stats job.
 - `packages/shared/src/model.ts:84` — `shortcut:` `SeasonStats.stats` is an untyped number record until S03/S05 define per-source season-stat schemas.
 - S02a deferred test minors: `stats.test.ts` never pins the exact `invalid <kind> stats:` prefix and has no goalie `savePct` < 0 case; `nationality.ts` checks `birthCountry` by truthiness where `selection.ts` uses `!== null`.
+- S02b deferred minors (task and final reviews): the stat-payload error drops the zod error as `cause` (`games.ts`); two line-deletion tests assert `≥ 1` where the count is known; the played/sport/team rejection tests match only the `stat line <game>/<player>` prefix; the sport check is tested one direction only; "migrating twice" checks only `leagues` rows; `STAT_BASES` `satisfies` is one-way; `teamIdLookup` filters by `external_id` only (the map keys by source); a line for an unstored team reports "is not the home or away team" rather than "unknown team"; a line's player from the other league isn't rejected.
+- `recomputeNationalities` runs one UPDATE per changed row — fine at override scale; batch it if a mass change ever happens.
+- S10: the node-postgres `Pool` has no `'error'` listener (an idle-client error would crash the process); exercise `openPostgres` against the real deploy (`client.ts` `shortcut:`).
+- `apps/server/src/db/players.ts:13` — `shortcut:` `searchName` leaves ø, ł, đ undecomposed; S07's search decides.
 
 ## Session log
 <!--
@@ -126,3 +132,12 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Declined: plain unions instead of the "unused" zod enums (§S02a asks for them; S02b/S03 use them); dropping the `firstIndex` map (a few lines); a subpath export to keep zod out of the mobile bundle (the API contract brings zod in anyway); `XKX` for Kosovo (real limit, no current player needs it).
 - Reviewer: approve; 0 findings; 3 minors (stale test count — fixed; design doc snippets — fixed; `?? message` fallback in the missing-file rethrow — left, `readFile` always sets `code`).
 - CI: re-run on push.
+
+### S02b — Database schema and repositories — 2026-10-17 — PR into `main` (`s02b-database`)
+- Changed: `apps/server/src/db/` (`schema.ts`, `client.ts`, `cli.ts`, `upsert.ts`, `teams.ts`, `players.ts`, `games.ts`, `season-stats.ts`, `job-runs.ts`), `src/nationality/recompute.ts`, `drizzle/0000_init.sql` (generated), `drizzle.config.ts`, `test/db.ts`; root `db:*` scripts; `.gitattributes` (migration snapshots), Biome ignores `apps/server/drizzle`. Deps: drizzle-orm 0.45.4, @electric-sql/pglite 0.5.10, pg 8.23.1, drizzle-kit 0.31.11, @types/pg. +91 tests (209).
+- Decisions: D-032 (DB clients, own migrate CLI, leagues seeded in code, enums from shared), D-033 (no-op upserts; a game's lines as one set; nationality on write).
+- Read these: docs/superpowers/specs/2026-10-17-s02b-database.md, apps/server/src/db/schema.ts, apps/server/src/db/upsert.ts, apps/server/src/db/games.ts, apps/server/src/nationality/recompute.ts.
+- Red/green: test-writer's `827224a` + follow-up `3810d24` — 89/89 failed on "not implemented"; unchanged since (only `db-client.test.ts` gained a warm-up hook).
+- Reviewer: approve; 0 Critical/Important; 4 optional minors parked with the task-review minors.
+- Rulings: 8 (clone-based test DBs, `games.league` FK, `stat_basis` tied to the model, init migration regenerated, warm-up hook, follow-up red tests, Tasks 3+4 in one commit, scope of "tests unchanged").
+- Follow-ups: release-age exemptions after 20:00 UTC; S04a settles PGlite sharing and must pass overrides to `upsertPlayers`.
