@@ -1,24 +1,35 @@
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from './client';
-import type { JOB_STATUSES } from './schema';
+import { type JOB_STATUSES, jobRuns } from './schema';
 
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export async function startJobRun(
-  _db: Db,
-  _job: string,
-  _args: Record<string, unknown>,
+  db: Db,
+  job: string,
+  args: Record<string, unknown>,
 ): Promise<number> {
-  throw new Error('not implemented');
+  const [row] = await db
+    .insert(jobRuns)
+    .values({ job, args, status: 'running' })
+    .returning({ id: jobRuns.id });
+  if (!row) throw new Error(`job run ${job}: insert returned no row`);
+  return row.id;
 }
 
 export async function finishJobRun(
-  _db: Db,
-  _id: number,
-  _result: {
+  db: Db,
+  id: number,
+  result: {
     status: Exclude<JobStatus, 'running'>;
     counts: Record<string, number>;
     error: string | null;
   },
 ): Promise<void> {
-  throw new Error('not implemented');
+  const updated = await db
+    .update(jobRuns)
+    .set({ ...result, finishedAt: sql`now()` })
+    .where(eq(jobRuns.id, id))
+    .returning({ id: jobRuns.id });
+  if (updated.length === 0) throw new Error(`unknown job run ${id}`);
 }

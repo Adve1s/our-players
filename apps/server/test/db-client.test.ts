@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { DbHandle } from '../src/db/client';
 import { leagues } from '../src/db/schema';
 import { createTestDb } from './db';
@@ -12,6 +12,8 @@ const SEEDED = [
 ];
 
 describe('db client', () => {
+  // The first createTestDb() migrates this file's template (~3 s, longer under parallel load).
+  beforeAll(async () => (await createTestDb()).close(), 30_000);
   let handle: DbHandle | undefined;
   afterEach(async () => {
     await handle?.close();
