@@ -38,7 +38,7 @@ Unofficial, keyless. Verified against fixtures recorded 2026-10-16/17 (S01). Com
 ## Answers to VISION §9
 
 ### Q1 Game-day convention
-Same as NHL: a game is listed under the US schedule date. `scoreboard?dates=20260323` (`espn-nba/scoreboard/2026-03-23.json`) lists GS@DAL `401810899` with `events[].date` `"2026-03-24T01:30Z"`, plus BKN@POR `"2026-03-24T02:00Z"` and MIL@LAC `"2026-03-24T02:30Z"`; it is not in `espn-nba/scoreboard/2026-03-24.json`, which in turn lists DEN@PHX `"2026-03-25T03:00Z"`. Also SA@LAC `401810845` `"2026-03-17T02:00Z"` under `dates=20260316`. The design's "2026-03-24" for `401810899` (and ESPN's web game logs) use the UTC date. Since no event field carries the local date, the adapter takes `gameDate` from the `dates=` it requested. (The design's 2026-04-13 scoreboard is empty and answers nothing.)
+Same as NHL: a game is listed under the US schedule date. `scoreboard?dates=20260323` (`espn-nba/scoreboard/2026-03-23.json`) lists GS@DAL `401810899` with `events[].date` `"2026-03-24T01:30Z"`, plus BKN@POR `"2026-03-24T02:00Z"` and MIL@LAC `"2026-03-24T02:30Z"`; it is not in `espn-nba/scoreboard/2026-03-24.json`, which in turn lists DEN@PHX `"2026-03-25T03:00Z"`. Also SA@LAC `401810845` `"2026-03-17T02:00Z"` under `dates=20260316`. The design's "2026-03-24" for `401810899` is the UTC date. The overview game log also carries a UTC timestamp, not a schedule date: `gameLog.events["401810997"].gameDate` `"2026-04-06T02:00:00.000+00:00"` (`espn-nba/overview/3102531.json`; the US evening of 2026-04-05). Since no event field carries the local date, the adapter takes `gameDate` from the `dates=` it requested. (The design's 2026-04-13 scoreboard is empty and answers nothing.)
 
 ### Q2 Status names
 | `status.type.name` / `state` | Where | Example |
@@ -104,7 +104,7 @@ No upstream body is over 1 MB; only `byathlete` is over 1 MB on disk (pretty-pri
 
 No `citizenshipCountry`, flag or alpha-3 field.
 
-| Player | ID | `birthPlace.country` | `citizenship` | Represents |
+| Player | ID | `birthPlace.country` | `citizenship` | Represents (not from fixtures; owner to confirm) |
 |---|---|---|---|---|
 | Kristaps Porziņģis | `3102531` | `"Latvia"` | absent | LVA |
 | Joel Embiid | `3059318` | `"Cameroon"` | `"Cameroon"` | USA (2024 Olympics) |

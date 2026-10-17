@@ -12,10 +12,10 @@ Unofficial, keyless, undocumented. Verified against fixtures recorded 2026-10-16
 | right-rail | `https://api-web.nhle.com/v1/gamecenter/{gameId}/right-rail` | `nhl/right-rail/2025020760.json` |
 | roster | `https://api-web.nhle.com/v1/roster/{teamAbbrev}/current` | `nhl/roster/CBJ.json` (no Latvian), `nhl/roster/FLA.json`, `nhl/roster/PIT.json` |
 | player-landing | `https://api-web.nhle.com/v1/player/{playerId}/landing` | `nhl/player-landing/8476878.json` (Girgensons), `nhl/player-landing/8478007.json` (Merzļikins) |
-| skater/goalie summary | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/summary?cayenneExp=seasonId=20252026` | `nhl/skater-summary/20252026.json`, `nhl/goalie-summary/20252026.json`, `nhl/skater-summary-lva/20252026.json` |
+| skater/goalie summary | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/summary?cayenneExp=seasonId=20252026` | `nhl/skater-summary/20252026.json`, `nhl/goalie-summary/20252026.json`, `nhl/skater-summary-lva/20252026.json`, `nhl/skater-summary-reg/20252026.json`, `nhl/goalie-summary-reg/20252026.json` |
 | skater/goalie bios | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/bios?cayenneExp=seasonId=20252026` | `nhl/skater-bios/20252026.json`, `nhl/goalie-bios/20252026.json`, `nhl/skater-bios-lva/20252026.json`, `nhl/goalie-bios-lva/20252026.json` |
 
-The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded). Stats REST returns `{data[], total}` with 50 rows by default (`nhl/skater-summary/20252026.json`: `total` 977, 50 rows); paging params (`start`, `limit`) not tested.
+The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded); the `-reg` variants add `and gameTypeId=2`. Stats REST returns `{data[], total}` with 50 rows by default (`nhl/skater-summary/20252026.json`: `total` 977, 50 rows); paging params (`start`, `limit`) not tested.
 
 ## Field paths for VISION §8
 
@@ -36,7 +36,7 @@ The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded
 | Player in box score | `playerId`, `sweaterNumber`, `position`, `name.default` | `8476878`, `28`, `"C"`, `"Z. Girgensons"` |
 | Roster player | `roster.{forwards,defensemen,goalies}[]`: `id`, `firstName.default`, `lastName.default`, `sweaterNumber`, `positionCode`, `birthDate`, `birthCity.default`, `birthCountry` | Vilmanis `8483771`, `95`, `"L"`, `"LVA"` (`nhl/roster/FLA.json`) |
 | Landing | `playerId`, `isActive`, `currentTeamAbbrev`, `position`, `sweaterNumber`, `birthDate`, `birthCity.default`, `birthCountry`, `featuredStats`, `last5Games[]`, `seasonTotals[]` | Girgensons `"TBL"`, `"C"`, `28`, `"1994-01-05"`, `"Riga"`, `"LVA"` (`nhl/player-landing/8476878.json`) |
-| Season stats (totals) | `featuredStats.regularSeason.subSeason` (landing) or stats REST `summary` `data[]` | landing (current season, `featuredStats.season`): `gamesPlayed` 7, `goals` 1, `points` 2; summary-lva (2025-26): Girgensons `gamesPlayed` 81, `points` 20 |
+| Season stats (totals) | `featuredStats.regularSeason.subSeason` (landing) or stats REST `summary` `data[]` with `gameTypeId` in `cayenneExp` (see Q5) | landing (current season, `featuredStats.season`): `gamesPlayed` 7, `goals` 1, `points` 2; summary-lva (2025-26, no `gameTypeId`): Girgensons `gamesPlayed` 81 = 74 regular season + 7 playoffs (landing `seasonTotals` 20252026 `gameTypeId` 2 / 3) |
 
 ## Answers to VISION §9
 
@@ -63,7 +63,7 @@ So both `FINAL` and `OFF` must map to FINAL.
 Not in the boxscore (top-level keys of `nhl/boxscore/2025020760.json` have no `linescore`). Use `gamecenter/{id}/right-rail`: `linescore.byPeriod[]` `{periodDescriptor:{number,periodType}, away, home}`, `linescore.totals` `{"away":4,"home":3}`, `linescore.shootout` `{"awayConversions":2,"awayAttempts":4,"homeConversions":1,"homeAttempts":4,...}` (`nhl/right-rail/2025020760.json`; the SO "period" is `{"number":5,"periodType":"SO"}` with `away` 1, `home` 0). `score` also has per-goal `games[].goals[].periodDescriptor.periodType` (`"SO"` for the deciding shootout goal of `2025020760` in `nhl/score/2026-01-17.json`) — period scores could be summed from it, but right-rail is direct.
 
 ### Q5 Bulk season stats
-NHL has bulk: stats REST `skater/summary` and `goalie/summary` (`total` 977 / 100 for 2025-26, 50 rows per page). One row per player with totals summed across teams (`teamAbbrevs` e.g. `"VAN"`). (The NBA question is answered in `espn-nba.md`.) Per-player alternative: landing `featuredStats.regularSeason.subSeason`.
+NHL has bulk: stats REST `skater/summary` and `goalie/summary` (`total` 977 / 100 for 2025-26, 50 rows per page). One row per player, but **without `gameTypeId` the row sums regular season + playoffs**: unfiltered `nhl/skater-summary/20252026.json` has Keegan Kolesar `8478434` at `gamesPlayed` 103 (> 82), and Girgensons' 81 in `skater-summary-lva` is his 74 regular-season + 7 playoff games (landing `seasonTotals`). Adapters must add `and gameTypeId=2` (regular season) or `and gameTypeId=3` (playoffs): `nhl/skater-summary-reg/20252026.json` (`seasonId=20252026 and gameTypeId=2`, `total` 940) has max `gamesPlayed` 82, Kolesar 82; `nhl/goalie-summary-reg/20252026.json` (`total` 98) max 58. Separately, a player traded mid-season gets one row summed across teams: Maksim Tsyplakov `teamAbbrevs` `"NYI,NJD"`, `gamesPlayed` 49 (both summary fixtures). (The NBA question is answered in `espn-nba.md`.) Per-player alternative: landing `featuredStats.regularSeason.subSeason`.
 
 ### Q6 DNP
 Not an NHL field. Goalies who didn't play appear with `toi` `"00:00"` and no `decision`; in regular-season boxscores `savePctg` is absent, in preseason it is `0` (`nhl/boxscore/2026010059.json`, goalie `8481544`). Scratched skaters: not verified whether they appear.
@@ -119,7 +119,7 @@ Max 117608 bytes: no NHL fixture needs pruning. Pruning rule (proposal, shared w
 | `nationalityCode` | stats REST bios `data[]` | alpha-3; filterable in `cayenneExp` |
 | `birthCountryCode` | stats REST bios `data[]` | alpha-3 |
 | `birthCountry` | roster players, landing | alpha-3; no nationality field on these endpoints |
-| `seasonTotals[]` national-team rows | landing | `leagueAbbrev` `"WJC-A"`, `"WC-A"`, `"Olympics"`, `teamName.default` `"Latvia"` (`nhl/player-landing/8476878.json`) |
+| `seasonTotals[]` national-team rows | landing | `leagueAbbrev` in the landing fixtures: `"OG"`, `"OGQ"`, `"Olympics"`, `"WC"`, `"WC-A"`, `"WJ18-A"`, `"WJC-A"`, `teamName.default` e.g. `"Latvia"` (`nhl/player-landing/8476878.json`, `8478007.json`; all `leagueAbbrev` values there: AHL EJHL EmJHL NHL NL OG OGQ Olympics Swiss Swiss-Jr. Swiss-U17 USHL WC WC-A WJ18-A WJC-A) |
 
 Where `nationalityCode` ≠ `birthCountryCode` (page 1 of `nhl/skater-bios/20252026.json`; none on goalie page 1):
 
@@ -129,7 +129,7 @@ Where `nationalityCode` ≠ `birthCountryCode` (page 1 of `nhl/skater-bios/20252
 | Harrison Brunicke | `8484839` | `CAN` | `ZAF` |
 | Nathan Walker | `8477573` | `AUS` | `GBR` |
 
-In each case `nationalityCode` is the national team the player represents. For every Latvian row (`nhl/skater-bios-lva/20252026.json` 6 rows, `nhl/goalie-bios-lva/20252026.json` 3 rows) both are `"LVA"`. `nationalityCode="LVA"` finds 5 skaters + 2 goalies for 2025-26.
+In each case `nationalityCode` appears to be the national team the player represents (not from fixtures; owner to confirm). For every Latvian row (`nhl/skater-bios-lva/20252026.json` 6 rows, `nhl/goalie-bios-lva/20252026.json` 3 rows) both are `"LVA"`. `nationalityCode="LVA"` finds 5 skaters + 2 goalies for 2025-26.
 
 **Proposal for S02a (not adopted)** — VISION §7 default and CLAUDE.md rule 6:
 > Nationality means sporting nationality — the national team a player represents. One ISO 3166-1 alpha-3 code per player (or null): the override if one exists; else the source's nationality field where one exists (NHL stats bios `nationalityCode`); else the birth country. `nationality_source` ∈ `override`, `source`, `birth`.
@@ -137,7 +137,7 @@ In each case `nationalityCode` is the national team the player represents. For e
 (NBA keeps birth country + overrides: ESPN has no reliable nationality field, see `espn-nba.md`.)
 
 ## Quirks
-- **Bios repeat a player per game type** unless filtered: Girgensons `8476878` has two rows in `nhl/skater-bios-lva/20252026.json` (`gamesPlayed` 7 and 74), Šilovs two in `nhl/goalie-bios-lva/20252026.json` (39 and 3); rows carry no `gameTypeId`. Add `and gameTypeId=2` or dedupe by `playerId`. Summary rows are one per player (Girgensons `gamesPlayed` 81).
+- **Bios repeat a player per game type** unless filtered: Girgensons `8476878` has two rows in `nhl/skater-bios-lva/20252026.json` (`gamesPlayed` 7 and 74), Šilovs two in `nhl/goalie-bios-lva/20252026.json` (39 and 3); rows carry no `gameTypeId`. Add `and gameTypeId=2` or dedupe by `playerId`. Summary rows are one per player but, without `gameTypeId`, sum regular season + playoffs (Girgensons `gamesPlayed` 81 = 74 + 7; see Q5); add `and gameTypeId=2` there too.
 - **Bios `currentTeamAbbrev` is today's team**, not the season's: Blueger `"TOR"`, Abols `null`; the 2025-26 team is in summary `teamAbbrevs` (`"VAN"`, `"PHI"`).
 - Names come without diacritics in `default`: `"A. Silovs"`, with `cs`/`sk` variants `"A. Šilovs"` (`nhl/boxscore/2025020760.json`); landing `lastName.default` `"Merzlikins"`.
 - Goalie `toi` in a shootout game differs between goalies (`"65:00"` vs `"64:26"` in `nhl/boxscore/2025020760.json`).
