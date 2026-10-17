@@ -1,6 +1,6 @@
 # Recording log (S01 Task 3)
 
-Working notes for Task 5: which fixture was recorded and why, swaps from the design's candidates, and probe findings. Recorded 2026-10-16 ~23:57–00:05 UTC (evening of 2026-10-16 US Eastern). 39 fixtures, 39 requests (every run printed `requests: 1`). Task 5 folds this into `nhl.md` / `espn-nba.md` and deletes it.
+Working notes for Task 5: which fixture was recorded and why, swaps from the design's candidates, and probe findings. Recorded 2026-10-16 ~23:57–00:05 UTC (evening of 2026-10-16 US Eastern). 39 fixtures, 39 requests (every run printed `requests: 1`); fix round 1 added `nhl/roster/FLA` (40 fixtures, 40 requests). Task 5 folds this into `nhl.md` / `espn-nba.md` and deletes it.
 
 All paths below are relative to `apps/server/test/fixtures/`.
 
@@ -37,9 +37,10 @@ All paths below are relative to `apps/server/test/fixtures/`.
 | `nhl/boxscore/2025021064.json` | 13407 | OT: BOS@NJD 2026-03-16, first OT final in recorded `score` (`gameOutcome` `{"lastPeriodType":"OT","otPeriods":1}`). |
 | `nhl/right-rail/2025020760.json` | 6140 | Boxscore has no period scores → right-rail `linescore` for the SO game. |
 | `nhl/schedule/2026-09-25.json` | 59426 | Late-September week: preseason games (`gameType` 1) and the opening regular-season games. |
-| `nhl/boxscore/2026010059.json` | 12427 | Preseason TBL@FLA 2026-09-26: Girgensons, Vilmanis (1 G), Balinskis. |
-| `nhl/roster/CBJ.json` | 9842 | `current` (2026-27) roster; no Latvian now. |
+| `nhl/boxscore/2026010059.json` | 12427 | Preseason TBL@FLA 2026-09-26: Girgensons, Vilmanis (1 G), Balinskis. Also a shootout (`gameOutcome.lastPeriodType` `"SO"`); `gameState` `"FINAL"`, not `"OFF"`. |
+| `nhl/roster/CBJ.json` | 9842 | `current` (2026-27) roster; kept as the "no Latvian anymore" case (Merzļikins left). |
 | `nhl/roster/PIT.json` | 10575 | `current` roster; Šilovs (`birthCountry` `"LVA"`). |
+| `nhl/roster/FLA.json` | 10125 | Second roster with Latvians (fix round 1): Vilmanis `8483771` (L) and Balinskis `8484304` (D), both `birthCountry` `"LVA"`. |
 | `nhl/player-landing/8476878.json` | 19767 | Girgensons (skater). |
 | `nhl/player-landing/8478007.json` | 18456 | Merzļikins (goalie). |
 | `espn-nba/scoreboard/2026-03-24.json` | 59453 | Shared-day candidate; showed no GS game. |
@@ -74,12 +75,12 @@ All paths below are relative to `apps/server/test/fixtures/`.
 - Owner to check: whether ESPN `citizenship` matches sporting nationality for Embiid (the recorded value is `"Cameroon"`).
 
 ### Rosters (Q3)
-- NHL `current` rosters have no status/injury field. Vilmanis/FLA: FLA roster not recorded (no extra requests per ruling); he is in `nhl/skater-bios-lva` with `currentTeamAbbrev` `"FLA"` and in the preseason boxscore `2026010059`. AHL/injured representation not observed.
+- NHL `current` rosters have no status/injury/assignment field. Vilmanis `8483771` **is listed** on `nhl/roster/FLA.json` (`forwards[]`, `birthCountry` `"LVA"`), like Balinskis; the roster alone can't say whether a player is in the AHL or injured. CBJ lists no Latvian (`birthCountry=="LVA"` count 0).
 - ESPN roster lists injured players: Porziņģis `athletes[].status.name` `"Active"`, `athletes[].injuries` `[{"status":"Out","date":"2026-10-15T16:17Z"}]`.
 
 ### States (Q2)
 - NHL `gameState`/`gameScheduleState`: `OFF`/`OK` (finished regular season, in `score` and `schedule`), `FINAL`/`OK` (finished preseason games in `schedule/2026-09-25` and boxscore `2026010059`), `FUT`/`OK` (`score/2026-10-16-states`, both games, `period` null). Not observed: `LIVE`, `CRIT`, `PRE`, postponed schedule states.
-- ESPN `status.type.name`/`state`: `STATUS_FINAL`/`post`; `STATUS_SCHEDULED`/`pre` (only in `overview` `nextGame` and summary `401898399`). Not observed: in-progress, postponed.
+- ESPN `status.type.name`/`state`: `STATUS_FINAL`/`post` (every recorded game, incl. preseason `401898399` `header.competitions[0].status.type.name`); `STATUS_SCHEDULED`/`pre` only for future games: `overview` `nextGame`, and summary `401898399` `seasonseries[0].events[].statusType.name` (later games of the season series). Not observed: in-progress, postponed.
 
 ### Game day (Q1)
 - NHL `score/2026-03-24`: ANA@VAN `2025021134` `startTimeUTC` `"2026-03-25T02:00:00Z"`, listed under 03-24 (`gameDate` = the schedule date).
@@ -95,7 +96,7 @@ All paths below are relative to `apps/server/test/fixtures/`.
 
 ### DNP (Q6)
 - ESPN summary `boxscore.players[].statistics[0].athletes[]`: `didNotPlay` `true`, `stats` `[]`, `reason` e.g. `"COACH'S DECISION"`, `"RIGHT FOOT"`, `"NOT WITH TEAM"` (`401810839`). Labels: `["MIN","PTS","FG","3PT","FT","REB","AST","TO","STL","BLK","OREB","DREB","PF","+/-"]`; Porziņģis `["26","30","8-13","1-5","13-14","5","4","3","2","3","1","4","2","+7"]`.
-- Injured-out players can be **absent** from the box score entirely: in preseason `401898399` Porziņģis isn't in `boxscore.players` but is in `injuries[]` (GS: `"Kristaps Porzingis"`, `status` `"Out"`). Absent ≠ DNP row.
+- Players can be **absent** from the box score entirely: in preseason `401898399` Porziņģis isn't in `boxscore.players` (no DNP row). Summary `injuries[]` is the injury list at fetch time, not at game time: `summary/401810839` lists Porziņģis `"Out"` dated `2026-10-15T16:17Z` although he scored 30 in that game. So `injuries[]` can't explain an absence after the fact; absent ≠ DNP row.
 
 ### Bulk NBA stats (Q5)
 - `byathlete?season=2026&seasontype=2&limit=50&page=1`: `pagination` `{"count":578,"limit":50,"pages":12}`, `categories` `general`/`offensive`/`defensive`, `athletes[].categories[].totals`. Bulk: ~12 requests per season at 50/page (limit may go higher, not tested).
