@@ -119,4 +119,4 @@ No `citizenshipCountry`, flag or alpha-3 field.
 - IDs and scores are strings; stats are strings, `+/-` signed.
 - Names come without diacritics (`"Kristaps Porzingis"`, birth city `"Liepaja"`).
 - Roster positions are coarse (`C`/`F`/`G`).
-- **Spike limits** (`apps/server/scripts/spike/spike.ts`, throwaway): NBA Latvians come from each team's *current* roster (`birthPlace.country === "Latvia"`), so past dates can miss traded players (its `shortcut:` comment); a Latvian missing from the box score is skipped silently. Live run 2026-03-16 printed `NBA  Kristaps Porzingis  GS  MIN 26 PTS 30 REB 5 AST 4 FG 8-13 3PT 1-5 FT 13-14`, matching `espn-nba/summary/401810839.json`.
+- Team rosters are *current* rosters only: finding a date's players by roster (`birthPlace.country === "Latvia"`) can miss players traded since. A live S01 run on 2026-03-16 gave Kristaps Porzingis (GS) MIN 26 PTS 30 REB 5 AST 4 FG 8-13 3PT 1-5 FT 13-14, matching `espn-nba/summary/401810839.json`.

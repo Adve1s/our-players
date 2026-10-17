@@ -144,4 +144,4 @@ In each case `nationalityCode` appears to be the national team the player repres
 - Goalie `toi` in a shootout game differs between goalies (`"65:00"` vs `"64:26"` in `nhl/boxscore/2025020760.json`).
 - Preseason games stay `FINAL`, never `OFF`; preseason boxscores lack `starter` and set `savePctg` 0 for unused goalies.
 - The regular season 2026-27 started 2026-09-29 (`gameType` 2 games from that date in `nhl/schedule/2026-09-25.json`).
-- **Spike limits** (`apps/server/scripts/spike/spike.ts`, throwaway): it fetches every game's boxscore without checking `gameState`, so a `FUT` game's boxscore is unguarded (shape not recorded); NBA Latvians come from current rosters (see `espn-nba.md`). Live run 2026-03-16 printed `NHL  Arturs Silovs  PIT  SV 25/27 DEC W`.
+- A `FUT` game's boxscore shape is not recorded. A live S01 run on 2026-03-16 gave Arturs Silovs (PIT) 25 saves on 27 shots and the win.

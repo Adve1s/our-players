@@ -28,7 +28,6 @@ Ideas that came up but are out of scope for now.
 - CI: cache the pnpm store (`corepack enable` before `actions/setup-node`, then `cache: pnpm`) once runs get slow; they take about 20 s now (PR #4 review).
 - S01 deferred minors: the polite-client backoff test asserts `≥` delays rather than exact ones; the polite client reads the wall clock (`Date.now`), so a backward clock step could stall a host's queue — inject a monotonic clock if the jobs ever show it (PR #5 review).
 - `docs/sources/nhl.md` size table lacks rows for `skater-summary-reg`/`goalie-summary-reg` (~20 KB each).
-- `apps/server/scripts/spike/spike.ts:2` — `shortcut:` NBA Latvians come from current rosters; the spike is deleted when S04a adds `pnpm recap`.
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
 - Nationality upgrade (D-030): NHL stats `bios` `nationalityCode` as a source value between the override and the birth country (override → source → birth; `nationality_source` gains `source`). Backward-compatible: an optional resolver input. Needs the bios pages (~20 requests a season) in the season-stats job.
 - `packages/shared/src/model.ts:84` — `shortcut:` `SeasonStats.stats` is an untyped number record; S03 maps it (`gamesPlayed`, `goals`, … / `wins`, `savePct`, …) without a schema — S04b's season-stats job decides whether to type it (and update the comment's trigger).
