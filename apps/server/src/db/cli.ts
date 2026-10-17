@@ -1,8 +1,6 @@
-import { rm } from 'node:fs/promises';
-import { DEFAULT_DATA_DIR, openDb } from './client';
+import { type DbHandle, DEFAULT_DATA_DIR, openDb, resetPglite } from './client';
 
-async function migrate(): Promise<void> {
-  const handle = openDb();
+async function migrate(handle: DbHandle): Promise<void> {
   try {
     await handle.migrate();
   } finally {
@@ -14,14 +12,13 @@ async function migrate(): Promise<void> {
 
 const [command] = process.argv.slice(2);
 if (command === 'migrate') {
-  await migrate();
+  await migrate(openDb());
 } else if (command === 'reset') {
   if (process.env.DATABASE_URL) {
     console.error('db:reset is local only: unset DATABASE_URL');
     process.exit(1);
   }
-  await rm(DEFAULT_DATA_DIR, { recursive: true, force: true });
-  await migrate();
+  await migrate(resetPglite(DEFAULT_DATA_DIR));
 } else {
   console.error(`unknown command "${command ?? ''}": expected migrate or reset`);
   process.exit(1);

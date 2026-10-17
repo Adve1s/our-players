@@ -1,4 +1,5 @@
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { LEAGUE_SPORT, type League, leagueSchema } from '@our-players/shared';
@@ -37,12 +38,22 @@ export async function seedLeagues(db: Db): Promise<void> {
 }
 
 export function openPglite(dataDir?: string): DbHandle {
-  if (!dataDir) return pgliteHandle(new PGlite());
-  // PGlite creates only the last directory of the path.
-  mkdirSync(dataDir, { recursive: true });
-  // PGlite has no lock of its own and two processes on one dir corrupt it; a sibling file survives db:reset's rm.
+  return dataDir ? openLocked(dataDir, false) : pgliteHandle(new PGlite());
+}
+
+// For db:reset: the delete runs under the lock, so it can't pull the dir out from under another process.
+export function resetPglite(dataDir: string): DbHandle {
+  return openLocked(dataDir, true);
+}
+
+function openLocked(dataDir: string, wipe: boolean): DbHandle {
+  mkdirSync(dirname(dataDir), { recursive: true });
+  // PGlite has no lock of its own and two processes on one dir corrupt it; a sibling file survives the wipe.
   const lock = `${dataDir}.lock`;
   takeLock(lock, dataDir);
+  if (wipe) rmSync(dataDir, { recursive: true, force: true });
+  // PGlite creates only the last directory of the path.
+  mkdirSync(dataDir, { recursive: true });
   const handle = pgliteHandle(new PGlite(dataDir));
   return {
     ...handle,
