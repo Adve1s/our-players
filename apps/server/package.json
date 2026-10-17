@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "typecheck": "tsc --noEmit",
-    "fixtures:record": "tsx scripts/fixtures-record.ts"
+    "fixtures:record": "tsx scripts/fixtures-record.ts",
+    "spike": "tsx scripts/spike/spike.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
