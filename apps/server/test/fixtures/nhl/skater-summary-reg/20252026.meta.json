@@ -1,0 +1,6 @@
+{
+  "url": "https://api.nhle.com/stats/rest/en/skater/summary?cayenneExp=seasonId%3D20252026%20and%20gameTypeId%3D2",
+  "fetchedAt": "2026-10-17T01:35:57.567Z",
+  "status": 200,
+  "bytes": 22889
+}
