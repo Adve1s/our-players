@@ -96,6 +96,8 @@ Shared rules:
 | `CNCL` | any | CANCELLED |
 | other | other | throws |
 
+Amended after the PR #8 review (D-035): an unknown `gameScheduleState` skips only its game with a returned warning; `OVER` → LIVE; game types other than 1/2/3 are dropped before the strict parse.
+
 Observed in fixtures: `OK` with `FUT`, `FINAL`, `OFF` only; `PRE`/`LIVE`/`CRIT`/`PPD`/`CNCL` are from VISION and the community docs (unverified).
 
 **Season type**: `gameType` 1 → PRE, 2 → REG, 3 → POST. Any other game type (4 = All-Star, international events) is **skipped** — not a league game we track (my call).
