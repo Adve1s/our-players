@@ -43,7 +43,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 ## Conventions
 - TypeScript strict with `noUncheckedIndexedAccess`; ESM; no `any` (use `unknown` + zod). Biome formats and lints; a hook formats each edited file.
 - Files kebab-case; DB tables and columns snake_case; TS camelCase; named exports.
-- Pure functions for logic; side effects at the edges (jobs, routes, adapter fetch layer). Inject the clock and the HTTP layer so tests are deterministic.
+- Pure functions for logic; side effects at the edges (jobs, routes, adapter fetch layer). Inject the clock and the HTTP layer so tests are deterministic; bookkeeping timestamps (`updated_at`, `fetched_at`, `job_runs` times) use the database's `now()` (D-033).
 - Jobs fail loudly (log + `job_runs` row). The API returns `{ "error": { "code", "message" } }` with the right status.
 - Comments explain why, not what.
 - New runtime dependency: name it and say why in the plan, and wait for approval.

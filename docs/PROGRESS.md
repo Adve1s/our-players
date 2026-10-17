@@ -3,9 +3,9 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** S02b — Database schema and repositories (2026-10-17): Drizzle schema for VISION §8 (8 tables, 11 `pgEnum`s built from the shared zod enums), one generated init migration, PGlite on disk for dev / in memory for tests / node-postgres when `DATABASE_URL` is set, `pnpm db:generate|migrate|reset`, idempotent repositories for teams, players (+ external IDs), games, stat lines, season stats and job runs, and `recomputeNationalities` with override warnings. Red/green: the test-writer's 89 tests (`827224a`, `3810d24`) failed on "not implemented", then passed unchanged.
-- **Branch / PR:** `s02b-database` → `main` (PR opened by this handoff). PR #6 (S02a) is merged.
-- **What works:** `pnpm verify` (14 test files, 209 tests, ~28 s — DB tests dominate). Server `src/db/`: `openDb()` / `openPglite(dir?)` / `openPostgres(url)` return `{ db, migrate, close }` (`migrate` = drizzle migrator over `apps/server/drizzle/` + league seed); `upsertTeams`, `upsertPlayers(db, players, overrides)`, `upsertGames`, `upsertStatLines(db, gamePublicId, lines)`, `upsertSeasonStats`, `startJobRun`/`finishJobRun`, `searchName`; `src/nationality/recompute.ts` `recomputeNationalities(db, overrides) → { updated, warnings }`. Test helper `apps/server/test/db.ts` `createTestDb()` (clone of a migrated template, ~0.5 s). Everything from S00–S02a still works.
+- **Last session:** Review fixes for PR #7 (2026-10-17), on top of S02b — Database schema and repositories: Drizzle schema for VISION §8 (8 tables, 11 `pgEnum`s built from the shared zod enums), one generated init migration, PGlite on disk for dev / in memory for tests / node-postgres when `DATABASE_URL` is set, `pnpm db:generate|migrate|reset`, idempotent repositories for teams, players (+ external IDs), games, stat lines, season stats and job runs, and `recomputeNationalities` with override warnings. Red/green: the test-writer's 89 tests (`827224a`, `3810d24`) failed on "not implemented", then passed unchanged. The review-fix pass fixed 2 of 9 `/code-review` findings (an empty stat-line batch is rejected; `finishJobRun` only finishes a running run), kept `fetched_at` and the database clock, and parked 5.
+- **Branch / PR:** `s02b-database` → `main` PR #7 (open; review fixes pushed). PR #6 (S02a) is merged.
+- **What works:** `pnpm verify` (14 test files, 210 tests, ~28 s — DB tests dominate). Server `src/db/`: `openDb()` / `openPglite(dir?)` / `openPostgres(url)` return `{ db, migrate, close }` (`migrate` = drizzle migrator over `apps/server/drizzle/` + league seed); `upsertTeams`, `upsertPlayers(db, players, overrides)`, `upsertGames`, `upsertStatLines(db, gamePublicId, lines)`, `upsertSeasonStats`, `startJobRun`/`finishJobRun`, `searchName`; `src/nationality/recompute.ts` `recomputeNationalities(db, overrides) → { updated, warnings }`. Test helper `apps/server/test/db.ts` `createTestDb()` (clone of a migrated template, ~0.5 s). Everything from S00–S02a still works.
 - **How to try it:** `pnpm install && pnpm verify`; `rm -rf apps/server/.data && pnpm db:migrate && pnpm db:generate` ("No schema changes"); `pnpm test repositories nationality-recompute`; read `docs/superpowers/specs/2026-10-17-s02b-database.md`.
 - **Next session:** S03 — NHL adapter.
 - **Notes for the next sessions:**
@@ -135,7 +135,7 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve; 0 findings; 3 minors (stale test count — fixed; design doc snippets — fixed; `?? message` fallback in the missing-file rethrow — left, `readFile` always sets `code`).
 - CI: re-run on push.
 
-### S02b — Database schema and repositories — 2026-10-17 — PR into `main` (`s02b-database`)
+### S02b — Database schema and repositories — 2026-10-17 — PR #7 (`s02b-database`)
 - Changed: `apps/server/src/db/` (`schema.ts`, `client.ts`, `cli.ts`, `upsert.ts`, `teams.ts`, `players.ts`, `games.ts`, `season-stats.ts`, `job-runs.ts`), `src/nationality/recompute.ts`, `drizzle/0000_init.sql` (generated), `drizzle.config.ts`, `test/db.ts`; root `db:*` scripts; `.gitattributes` (migration snapshots), Biome ignores `apps/server/drizzle`. Deps: drizzle-orm 0.45.4, @electric-sql/pglite 0.5.10, pg 8.23.1, drizzle-kit 0.31.11, @types/pg. +91 tests (209).
 - Decisions: D-032 (DB clients, own migrate CLI, leagues seeded in code, enums from shared), D-033 (no-op upserts; a game's lines as one set; nationality on write).
 - Read these: docs/superpowers/specs/2026-10-17-s02b-database.md, apps/server/src/db/schema.ts, apps/server/src/db/upsert.ts, apps/server/src/db/games.ts, apps/server/src/nationality/recompute.ts.
@@ -143,3 +143,11 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve; 0 Critical/Important; 4 optional minors parked with the task-review minors.
 - Rulings: 8 (clone-based test DBs, `games.league` FK, `stat_basis` tied to the model, init migration regenerated, warm-up hook, follow-up red tests, Tasks 3+4 in one commit, scope of "tests unchanged").
 - Follow-ups: release-age exemptions after 20:00 UTC; S04a settles PGlite sharing and must pass overrides to `upsertPlayers`.
+
+### Review fixes for PR #7 — 2026-10-17 — PR #7 (`s02b-database`)
+- Changed: `upsertStatLines` rejects an empty batch (`stat lines <game>: empty batch`) so a broken box score can't wipe a game; `finishJobRun` only finishes a `running` run (`job run <id> is not running`); why-comment on `season_stats.fetched_at`. The two empty-batch tests now pin the rejection (owner decision); +1 test (210).
+- Decisions: D-033 amended in place (empty batch rejected; `fetched_at` = when stored, freshness from `job_runs`).
+- Declined: injecting a clock for bookkeeping timestamps (owner: use the database clock); bumping `fetched_at` on every fetch (breaks the no-op rule).
+- Parked: FINAL-downgrade guard, game league/source/team checks and season-stats kind check (S04a); `teamIdLookup` source filter and batched recompute (already parked).
+- Reviewer: approve; 0 Critical/Important; 2 doc minors fixed (D-033 wording, test count).
+- Follow-ups: release-age exemptions after 20:00 UTC.
