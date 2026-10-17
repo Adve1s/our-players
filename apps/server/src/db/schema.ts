@@ -184,6 +184,7 @@ export const seasonStats = pgTable(
     kind: statKindEnum('kind').notNull(),
     basis: statBasisEnum('basis').notNull(),
     stats: jsonb('stats').notNull().$type<SeasonStats['stats']>(),
+    // When these values were stored, not the last fetch: a repeat write is a no-op; feed freshness is job_runs (D-033).
     fetchedAt: timestamp('fetched_at', tz).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.playerId, t.season, t.seasonType, t.kind] })],
