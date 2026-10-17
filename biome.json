@@ -12,7 +12,8 @@
       "!**/.data",
       "!**/.expo",
       "!**/dist",
-      "!apps/mobile/assets"
+      "!apps/mobile/assets",
+      "!apps/server/drizzle"
     ]
   },
   "formatter": {

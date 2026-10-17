@@ -7,16 +7,24 @@
     "dev": "tsx watch src/main.ts",
     "typecheck": "tsc --noEmit",
     "fixtures:record": "tsx scripts/fixtures-record.ts",
-    "spike": "tsx scripts/spike/spike.ts"
+    "spike": "tsx scripts/spike/spike.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/cli.ts migrate",
+    "db:reset": "tsx src/db/cli.ts reset"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "@hono/node-server": "^2.1.5",
     "@our-players/shared": "workspace:*",
+    "drizzle-orm": "0.45.4",
     "hono": "^4.13.13",
+    "pg": "8.23.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
     "tsx": "^4.23.15"
   }
 }
