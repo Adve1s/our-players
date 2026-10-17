@@ -53,7 +53,7 @@ export const countryCodeSchema = z.enum(COUNTRY_CODES, { error: 'unknown ISO 316
 export type CountryCode = z.infer<typeof countryCodeSchema>;   // literal union: a typo like 'LAV' fails typecheck
 
 // ids.ts — D-010
-export const publicIdSchema = z.string().regex(/^(nhl|nba)-\d+$/, 'expected a public ID like nhl-8478402');
+export const publicIdSchema = z.string().regex(/^(nhl|nba)-[1-9]\d*$/, 'expected a public ID like nhl-8478402');
 export type PublicId = string;
 
 // model.ts — what adapters (S03/S05) return and repositories (S02b) store; references by public ID
@@ -80,12 +80,14 @@ export type Game = {
 };
 type StatLineBase = {
   gamePublicId: PublicId; playerPublicId: PublicId; teamExternalId: string;
-  played: boolean; dnpReason: string | null; starter: boolean | null;
+  dnpReason: string | null; starter: boolean | null;
 };
+// PR #6 review: played decides whether stats exist, so a played line without stats doesn't compile.
+type KindLine<K extends StatKind, S> = { kind: K } & ({ played: true; stats: S } | { played: false; stats: null });
 export type StatLine = StatLineBase & (
-  | { kind: 'hockey_skater'; stats: HockeySkaterStats | null }   // null when played is false
-  | { kind: 'hockey_goalie'; stats: HockeyGoalieStats | null }
-  | { kind: 'basketball_player'; stats: BasketballPlayerStats | null });
+  | KindLine<'hockey_skater', HockeySkaterStats>
+  | KindLine<'hockey_goalie', HockeyGoalieStats>
+  | KindLine<'basketball_player', BasketballPlayerStats>);
 export type SeasonStats = {
   playerPublicId: PublicId; season: string; seasonType: SeasonType; kind: StatKind;
   basis: 'totals' | 'per_game';

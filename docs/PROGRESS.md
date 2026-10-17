@@ -3,14 +3,14 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** S02a — Domain model, selection rule, nationality (2026-10-17): `packages/shared` gains the domain enums, the 249 ISO alpha-3 codes, public IDs, the normalized model types, zod stat payload schemas, `isShown` and `resolveNationality`; `apps/server` gains the zod-validated nationality overrides loader. Red/green: the test-writer's 22 tests (`949b7a2`) failed on "not implemented", then passed unchanged.
-- **Branch / PR:** `s02a-domain-model` → `main` (PR opened by this handoff). PR #5 (S01) is merged.
-- **What works:** `pnpm verify` (10 test files, 114 tests). Shared exports from `packages/shared/src/index.ts`: `isShown(player, prefs)` (prefs are four `ReadonlySet`s), `resolveNationality({ publicId, birthCountry }, overrides)`, `parseStatPayload(kind, value)`, `countryCodeSchema`, `publicIdSchema`, model types `Team`/`Player`/`Game`/`StatLine`/`SeasonStats`. Server: `loadNationalityOverrides()` → `Map<PublicId, NationalityOverride>` that plugs straight into `resolveNationality`. Everything from S00/S01 still works.
+- **Last session:** Review fixes for PR #6 (2026-10-17), on top of S02a — Domain model, selection rule, nationality: `packages/shared` gains the domain enums, the 249 ISO alpha-3 codes, public IDs, the normalized model types, zod stat payload schemas, `isShown` and `resolveNationality`; `apps/server` gains the zod-validated nationality overrides loader. Red/green: the test-writer's 22 tests (`949b7a2`) failed on "not implemented", then passed unchanged. The review-fix pass fixed 5 `/code-review` findings (StatLine ties stats to `played`; `parseStatPayload` names an unknown kind; public IDs reject a leading zero; the missing-file error names the path once; the committed-file test no longer pins the count) and declined 4.
+- **Branch / PR:** `s02a-domain-model` → `main` PR #6 (open; review fixes pushed). PR #5 (S01) is merged.
+- **What works:** `pnpm verify` (11 test files, 118 tests). Shared exports from `packages/shared/src/index.ts`: `isShown(player, prefs)` (prefs are four `ReadonlySet`s), `resolveNationality({ publicId, birthCountry }, overrides)`, `parseStatPayload(kind, value)`, `countryCodeSchema`, `publicIdSchema` (`/^(nhl|nba)-[1-9]\d*$/`), model types `Team`/`Player`/`Game`/`StatLine`/`SeasonStats`. Server: `loadNationalityOverrides()` → `Map<PublicId, NationalityOverride>` that plugs straight into `resolveNationality`. Everything from S00/S01 still works.
 - **How to try it:** `pnpm install && pnpm verify`; `pnpm test selection nationality stats` (names state the behaviors); read `docs/superpowers/specs/2026-10-17-s02a-domain-model.md`.
 - **Next session:** S02b — Database schema and repositories, branch `s02b-database`.
 - **Notes for the next session:**
   - Nationality rule decided (D-030): override, else birth country, else `null` (source `null` too). VISION §7 and CLAUDE.md rule 6 are unchanged. S02b's recomputation feeds `resolveNationality` with stored `birth_country`; the override name-mismatch / missing-player warnings are S02b's (they need the DB).
-  - `parseStatPayload` throws `invalid <kind> stats:` + zod's prettified issues — use it on stat-line writes (S02b AC 3). Stat payloads are null when `played` is false.
+  - `parseStatPayload` throws `invalid <kind> stats:` + zod's prettified issues — use it on stat-line writes (S02b AC 3); a kind outside the three throws `invalid stat kind: <kind>`, so it is safe on kinds read from DB rows. `StatLine` is a union on `played`: `played: true` requires stats, `played: false` requires `null` (type test in `packages/shared/test/model.test.ts`).
   - `SeasonStats.stats` is an untyped number record (`shortcut:` in `model.ts`); S03/S05 type it.
   - For S03: `countries.ts` alpha-3 validation is done (moved here from S03); S03 only adds the ESPN alias scaffold. NHL stats `summary`/`bios` rows without `gameTypeId=2` sum regular season + playoffs; NHL boxscore has no period scores (`right-rail`); NHL preseason finals end in `FINAL`. See `docs/sources/*` Quirks.
   - zod: root `node_modules/zod` is 4.6.7; Expo's zod 3.25.76 is nested under `@expo/cli`. The mobile web export still bundles shared with zod.
@@ -119,3 +119,10 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve; 0 Critical/Important; 5 minors left (parked: 4 test/style minors; the design doc's zod-hoisting sentence fixed).
 - Rulings: none. CI: first run on this PR.
 - Follow-ups: release-age exemptions after 20:00 UTC; S03 skips the alpha-3 part of `countries.ts`.
+
+### Review fixes for PR #6 — 2026-10-17 — PR #6 (`s02a-domain-model`)
+- Changed: `StatLine` split on `played` (a played line needs stats, a DNP line has none; type test `packages/shared/test/model.test.ts`); `parseStatPayload` throws `invalid stat kind: <kind>` for a kind outside the three (`Object.hasOwn`, so `constructor` is caught too); `publicIdSchema` rejects leading zeros; missing overrides file → `<file>: cannot read (ENOENT)`, test anchored; committed-file test no longer pins the count. Design doc snippets updated to match. +4 tests (118).
+- Decisions: none new.
+- Declined: plain unions instead of the "unused" zod enums (§S02a asks for them; S02b/S03 use them); dropping the `firstIndex` map (a few lines); a subpath export to keep zod out of the mobile bundle (the API contract brings zod in anyway); `XKX` for Kosovo (real limit, no current player needs it).
+- Reviewer: approve; 0 findings; 3 minors (stale test count — fixed; design doc snippets — fixed; `?? message` fallback in the missing-file rethrow — left, `readFile` always sets `code`).
+- CI: re-run on push.
