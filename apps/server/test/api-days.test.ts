@@ -5,6 +5,7 @@ import {
   gameResponseSchema,
   type PlayerRow,
 } from '@our-players/shared';
+import { HTTPException } from 'hono/http-exception';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import { createApp } from '../src/api/app';
@@ -45,7 +46,7 @@ function setup(db = handle.db) {
     expect(res.status).toBe(status);
     return { body: schema.parse(await res.json()) as z.output<S>, res };
   }
-  return { get, lines };
+  return { app, get, lines };
 }
 
 const day = async (query: string) =>
@@ -319,5 +320,17 @@ describe('logs', () => {
     const failed = lines.filter((l) => l.includes('request failed'));
     expect(failed).toHaveLength(1);
     expect(failed[0]).not.toContain('?');
+  });
+
+  it('an HTTPException other than 400 answers the generic 500 and is logged', async () => {
+    const { app, get, lines } = setup();
+    app.get('/boom', () => {
+      throw new HTTPException(404, { message: 'internal detail' });
+    });
+
+    const { body } = await get('/boom', 500, errorResponseSchema);
+
+    expect(body.error).toEqual({ code: 'INTERNAL', message: 'internal error' });
+    expect(lines.filter((l) => l.includes('request failed'))).toHaveLength(1);
   });
 });

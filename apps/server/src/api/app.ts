@@ -58,8 +58,9 @@ export function createApp({ db, now, log }: ApiDeps): Hono {
   });
 
   app.onError((err, c) => {
-    if (err instanceof HTTPException) {
-      return errorBody(c, err.status, err.status === 400 ? 'BAD_REQUEST' : 'INTERNAL', err.message);
+    // Only our own 400s echo their message; any other status takes the generic, logged 500.
+    if (err instanceof HTTPException && err.status === 400) {
+      return errorBody(c, 400, 'BAD_REQUEST', err.message);
     }
     log.error('request failed', { method: c.req.method, path: c.req.path, error: err.message });
     return errorBody(c, 500, 'INTERNAL', 'internal error');
