@@ -55,6 +55,47 @@ describe('PGlite data-dir lock', () => {
   );
 
   it(
+    'an open that fails after taking the lock removes it',
+    async () => {
+      // The data dir path is a regular file, so creating the dir throws.
+      writeFileSync(dir, 'x');
+      expect(() => openPglite(dir)).toThrow();
+      expect(existsSync(`${dir}.lock`)).toBe(false);
+    },
+    BOOT,
+  );
+
+  it(
+    'a stale lock already being taken over is left alone',
+    async () => {
+      const guard = `${dir}.lock.999999999.takeover`;
+      writeFileSync(`${dir}.lock`, '999999999');
+      writeFileSync(guard, '');
+      let message = '';
+      try {
+        openPglite(dir);
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      expect(message).toMatch(/being taken over/);
+      expect(message).toContain(guard);
+      expect(readFileSync(`${dir}.lock`, 'utf8')).toBe('999999999');
+    },
+    BOOT,
+  );
+
+  it(
+    'a takeover leaves no guard behind',
+    async () => {
+      writeFileSync(`${dir}.lock`, '999999999');
+      handles.push(openPglite(dir));
+      expect(readFileSync(`${dir}.lock`, 'utf8')).toBe(String(process.pid));
+      expect(existsSync(`${dir}.lock.999999999.takeover`)).toBe(false);
+    },
+    BOOT,
+  );
+
+  it(
     'a reset while another handle holds the lock is refused and deletes nothing',
     async () => {
       const holder = openPglite(dir);
