@@ -1,5 +1,5 @@
 import type { League, PublicId } from '@our-players/shared';
-import { and, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { upsertGames, upsertStatLines } from '../db/games';
 import { upsertPlayers } from '../db/players';
 import { games, players, teams } from '../db/schema';
@@ -7,10 +7,15 @@ import { upsertTeams } from '../db/teams';
 import { fetchBoxscore, fetchPlayerLanding, fetchScore } from '../sources/nhl';
 import type { Job, JobContext, JobRun } from './runner';
 
+export const CORRECTION_DELAY_MS = 6 * 60 * 60 * 1000;
+// Regular-season games end within ~3.5 h, so a box score first fetched this long after the start is past CORRECTION_DELAY_MS.
+export const SETTLED_AFTER_START_MS = 12 * 60 * 60 * 1000;
+
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 // Without --date: the days of started games that aren't final, and of final games without a box score.
-// shortcut: a game that stays SCHEDULED/LIVE after its start keeps its day a candidate (PR #8), so each run re-fetches that score; the S04b scheduler can bound it
+// Then each final box score is re-fetched once, CORRECTION_DELAY_MS after the final horn, for stat corrections.
+// shortcut: a game that stays SCHEDULED/LIVE after its start keeps its day a candidate (PR #8), so each run re-fetches that score; the scheduler bounds the trigger to a 24 h window, a job-side cutoff if a stuck game ever costs too many calls
 export const resultsJob: Job = async (ctx, run, args) => {
   const days = args.date
     ? [args.date]
@@ -33,6 +38,27 @@ export const resultsJob: Job = async (ctx, run, args) => {
           .orderBy(games.gameDate)
       ).map((r) => r.day);
   for (const day of days) await ingestDay(ctx, run, args.league, day);
+
+  const due = await ctx.db
+    .select({ publicId: games.publicId, externalId: games.externalId })
+    .from(games)
+    .where(
+      and(
+        eq(games.league, args.league),
+        eq(games.status, 'FINAL'),
+        isNotNull(games.boxscoreFetchedAt),
+        isNull(games.correctedAt),
+        lte(games.finalAt, new Date(ctx.now().getTime() - CORRECTION_DELAY_MS)),
+      ),
+    );
+  for (const game of due) {
+    try {
+      await finalizeGame(ctx, run, game, 'correction');
+    } catch (e) {
+      // corrected_at stays null, so the next run retries this game.
+      run.fail(`correction ${game.publicId}: ${message(e)}`);
+    }
+  }
 };
 
 // One day is one unit: a failure is recorded and the caller moves on to the next day.
@@ -55,12 +81,17 @@ export async function ingestDay(
       .set({ finalAt: sql`now()` })
       .where(and(ofDay, isNull(games.finalAt)));
     const unfetched = await ctx.db
-      .select({ publicId: games.publicId, externalId: games.externalId })
+      .select({
+        publicId: games.publicId,
+        externalId: games.externalId,
+        startTimeUtc: games.startTimeUtc,
+      })
       .from(games)
       .where(and(ofDay, isNull(games.boxscoreFetchedAt)));
-    for (const game of unfetched) {
+    const settledBy = new Date(ctx.now().getTime() - SETTLED_AFTER_START_MS);
+    for (const { startTimeUtc, ...game } of unfetched) {
       try {
-        await finalizeGame(ctx, run, game);
+        await finalizeGame(ctx, run, game, startTimeUtc <= settledBy ? 'settled' : 'first');
       } catch (e) {
         // boxscore_fetched_at stays null, so the next run retries this game.
         run.fail(`game ${game.publicId}: ${message(e)}`);
@@ -75,6 +106,8 @@ async function finalizeGame(
   ctx: JobContext,
   run: JobRun,
   game: { publicId: PublicId; externalId: string },
+  // settled: a first fetch late enough after the start to stand as the correction too.
+  mode: 'first' | 'settled' | 'correction',
 ): Promise<void> {
   const box = await fetchBoxscore(ctx.client, game.externalId);
   await upsertTeams(ctx.db, box.teams);
@@ -129,7 +162,13 @@ async function finalizeGame(
   run.add('lines', await upsertStatLines(ctx.db, game.publicId, box.lines));
   await ctx.db
     .update(games)
-    .set({ boxscoreFetchedAt: sql`now()` })
+    .set(
+      mode === 'first'
+        ? { boxscoreFetchedAt: sql`now()` }
+        : mode === 'settled'
+          ? { boxscoreFetchedAt: sql`now()`, correctedAt: sql`now()` }
+          : { correctedAt: sql`now()` },
+    )
     .where(eq(games.publicId, game.publicId));
-  run.add('finalized');
+  run.add(mode === 'correction' ? 'corrected' : 'finalized');
 }
