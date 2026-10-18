@@ -88,7 +88,7 @@ describe('repository guards', () => {
       expect((await gameRow(db, nhlGame.publicId)).homeScore).toBe(4);
     });
 
-    it('a row without period scores never replaces stored ones', async () => {
+    it('a row without period scores never replaces stored ones, but the rest of it is written', async () => {
       const db = await open();
       await upsertGames(db, [live]);
       const moved = {
@@ -97,10 +97,33 @@ describe('repository guards', () => {
         startTimeUtc: '2026-10-08T00:00:00.000Z',
       } satisfies Game;
 
-      expect(await upsertGames(db, [moved])).toBe(0);
+      expect(await upsertGames(db, [moved])).toBe(1);
       const row = await gameRow(db, nhlGame.publicId);
       expect(row.periodScores).toHaveLength(4);
-      expect(row.startTimeUtc.toISOString()).toBe(nhlGame.startTimeUtc);
+      expect(row.startTimeUtc.toISOString()).toBe('2026-10-08T00:00:00.000Z');
+    });
+
+    it('a LIVE game with period scores can become POSTPONED', async () => {
+      const db = await open();
+      await upsertGames(db, [live]);
+      const postponed = { ...live, status: 'POSTPONED', periodScores: null } satisfies Game;
+
+      expect(await upsertGames(db, [postponed])).toBe(1);
+      const row = await gameRow(db, nhlGame.publicId);
+      expect(row.status).toBe('POSTPONED');
+      expect(row.periodScores).toHaveLength(4);
+    });
+
+    it('a repeat write without period scores is a no-op', async () => {
+      const db = await open();
+      await upsertGames(db, [live]);
+      const before = await gameRow(db, nhlGame.publicId);
+      await tick();
+
+      expect(await upsertGames(db, [{ ...live, periodScores: null }])).toBe(0);
+      expect((await gameRow(db, nhlGame.publicId)).updatedAt.getTime()).toBe(
+        before.updatedAt.getTime(),
+      );
     });
 
     it('a SCHEDULED game still takes a new start time', async () => {

@@ -53,7 +53,7 @@ PGlite has no lock of its own (no pid file in its dist), and two processes on on
 
 ## Repository carry-overs (S02b, S03)
 
-- **FINAL never downgraded / period scores kept** — in `upsertGames`, so every caller is covered: the conflict update's `setWhere` adds `not (stored status = FINAL and incoming status <> FINAL)` and `not (stored period_scores is not null and incoming period_scores is null)`. Such a row is skipped whole (no `updated_at` move, not counted). A FINAL → FINAL write (score change) still updates.
+- **FINAL never downgraded / period scores kept** — in `upsertGames`, so every caller is covered: the conflict update's `setWhere` adds `not (stored status = FINAL and incoming status <> FINAL)`; such a row is skipped whole (no `updated_at` move, not counted). Period scores are written as `coalesce(incoming, stored)`, so a feed without them keeps the stored ones and still updates the rest of the row (amended in PR #9 review; was: the row skipped whole). A FINAL → FINAL write (score change) still updates.
 - **Game checks** in `upsertGames`, before writing, any failure rejects the batch: league fits the source (`nhl` → NHL, `espn` → NBA), both teams are in the game's league, home ≠ away. Errors: `game <publicId>: …`.
 - **Season-stats check** in `upsertSeasonStats`: the row's `kind` starts with the player's league's sport (as `upsertStatLines` does). Error: `season stats <playerPublicId>/<season>: …`.
 - **Overrides on every player write:** jobs get `ctx.overrides` (loaded once by the CLI) and pass it to every `upsertPlayers`.

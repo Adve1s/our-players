@@ -7,7 +7,7 @@ import {
   type Source,
   type StatLine,
 } from '@our-players/shared';
-import { and, eq, notInArray, sql } from 'drizzle-orm';
+import { and, eq, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './client';
 import { playerIdLookup } from './players';
@@ -63,23 +63,23 @@ export async function upsertGames(db: Db, list: readonly Game[]): Promise<number
       'awayTeamId',
       'homeScore',
       'awayScore',
-      'periodScores',
       'endedIn',
     ],
     'updatedAt',
   );
+  // A feed without period scores (schedule, a postponed game) keeps the stored ones but updates the rest.
+  const periodScores = sql`coalesce(excluded.period_scores, ${games.periodScores})`;
   const written = await db
     .insert(games)
     .values(rows)
     .onConflictDoUpdate({
       target: games.publicId,
       // finalAt, boxscoreFetchedAt and correctedAt are the jobs' bookkeeping, not the model's.
-      set,
-      // A stale feed (a FINAL game listed as LIVE, a schedule without period scores) skips the row whole.
+      set: { ...set, periodScores },
+      // A stale feed (a FINAL game listed as LIVE) skips the row whole.
       setWhere: and(
-        setWhere,
+        or(setWhere, sql`${games.periodScores} is distinct from ${periodScores}`),
         sql`not (${games.status} = 'FINAL' and excluded.status <> 'FINAL')`,
-        sql`not (${games.periodScores} is not null and excluded.period_scores is null)`,
       ),
     })
     .returning({ id: games.id });
