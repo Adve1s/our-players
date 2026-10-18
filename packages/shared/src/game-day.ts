@@ -12,3 +12,31 @@ export function usGameDay(now: Date): string {
       .find((p) => p.type === type)?.value;
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
+
+// The game day the scheduler is "on": the latest one with a game that has started. ISO dates sort as strings.
+export function latestStartedGameDay(
+  games: readonly { gameDate: string; startTimeUtc: Date }[],
+  now: Date,
+): string | null {
+  let latest: string | null = null;
+  for (const g of games) {
+    if (g.startTimeUtc.getTime() <= now.getTime() && (latest === null || g.gameDate > latest)) {
+      latest = g.gameDate;
+    }
+  }
+  return latest;
+}
+
+export function previousGameDay(days: readonly string[], day: string): string | null {
+  return days.reduce<string | null>(
+    (best, d) => (d < day && (best === null || d > best) ? d : best),
+    null,
+  );
+}
+
+export function nextGameDay(days: readonly string[], day: string): string | null {
+  return days.reduce<string | null>(
+    (best, d) => (d > day && (best === null || d < best) ? d : best),
+    null,
+  );
+}
