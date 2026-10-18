@@ -9,12 +9,12 @@ import type { Job } from './runner';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-// The team list comes from the calendar, not stored teams: a missing team would wrongly deactivate its players.
+// The team list comes from the source (NHL calendar, ESPN teams), not stored teams: a missing team would wrongly deactivate its players.
 export const rosterJob: Job = async (ctx, run, args) => {
   const adapter = ADAPTERS[args.league];
   const date = args.date ?? usGameDay(ctx.now());
   const { teams } = await adapter.teams(ctx.client, date);
-  if (teams.length === 0) throw new Error(`schedule-calendar ${date}: no teams`);
+  if (teams.length === 0) throw new Error(`${args.league} teams ${date}: no teams`);
   await upsertTeams(ctx.db, teams);
   run.add('teams', teams.length);
 

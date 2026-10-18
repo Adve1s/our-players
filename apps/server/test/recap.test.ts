@@ -1,7 +1,9 @@
 import type { Prefs } from '@our-players/shared';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type DbHandle, openPglite } from '../src/db/client';
+import { upsertGames, upsertStatLines } from '../src/db/games';
 import { upsertPlayers } from '../src/db/players';
+import { upsertTeams } from '../src/db/teams';
 import {
   type DayGame,
   type DayLine,
@@ -14,9 +16,10 @@ import { resultsJob } from '../src/jobs/results';
 import { rosterJob } from '../src/jobs/roster';
 import { createLogger, type JobContext, runJob } from '../src/jobs/runner';
 import { formatRecap, loadRecap } from '../src/recap';
+import { espnUrls } from '../src/sources/espn-nba';
 import { nhlUrls } from '../src/sources/nhl';
 import { createTestDb } from './db';
-import { girgensons, NO_OVERRIDES } from './db-data';
+import { girgensons, merzlikinsLine, NO_OVERRIDES, nhlGame, nyi } from './db-data';
 import { fakeClient } from './fake-client';
 import { loadFixture } from './fixtures';
 
@@ -251,6 +254,37 @@ describe('loadRecap', () => {
         '  Zemgus Girgensons  CBJ  Not in lineup',
         '  Arturs Silovs      PIT  23/26 · .885 · 3 GA · OTL',
       ].join('\n'),
+    );
+  });
+
+  it('a day with NHL and NBA games shows a block per league, with Porziņģis in the NBA one', async () => {
+    const DAY = '2026-03-16';
+    // An NHL game on the NBA fixtures' date: Merzlikins (CBJ, stored by the roster run) in net.
+    await upsertTeams(handle.db, [nyi]);
+    await upsertGames(handle.db, [
+      { ...nhlGame, gameDate: DAY, startTimeUtc: '2026-03-16T23:00:00.000Z' },
+    ]);
+    await upsertStatLines(handle.db, nhlGame.publicId, [merzlikinsLine]);
+    const ctx: JobContext = {
+      db: handle.db,
+      client: fakeClient({
+        [espnUrls.scoreboard(DAY)]: loadFixture('espn-nba', 'scoreboard', DAY),
+        [espnUrls.summary('401810839')]: loadFixture('espn-nba', 'summary', '401810839'),
+        [espnUrls.athlete('3102531')]: loadFixture('espn-nba', 'athlete', '3102531'),
+      }),
+      now: () => new Date(`${ROSTER_DAY}T12:00:00Z`),
+      log: createLogger(() => {}),
+      overrides: NO_OVERRIDES,
+    };
+    await runJob(ctx, 'results', resultsJob, { league: 'NBA', date: DAY });
+
+    const text = formatRecap(DAY, ['LVA'], gameDayRows(await loadRecap(handle.db, DAY), lva));
+
+    const lines = text.split('\n');
+    expect(lines).toContain('NHL 2026-03-16');
+    expect(lines).toContain('NBA 2026-03-16');
+    expect(text).toContain(
+      'Kristaps Porzingis  GS  30 PTS · 5 REB · 4 AST · 26 MIN · FG 8-13 · 3PT 1-5 · FT 13-14',
     );
   });
 

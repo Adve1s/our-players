@@ -1,13 +1,25 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { DbHandle } from '../src/db/client';
-import { games, players, statLines } from '../src/db/schema';
+import { upsertGames } from '../src/db/games';
+import { upsertPlayers } from '../src/db/players';
+import {
+  games,
+  players,
+  seasonStats as seasonStatsTable,
+  statLines,
+  teams,
+} from '../src/db/schema';
+import { upsertTeams } from '../src/db/teams';
 import { resultsJob } from '../src/jobs/results';
+import { rosterJob } from '../src/jobs/roster';
 import { createLogger, type JobArgs, type JobContext, runJob } from '../src/jobs/runner';
 import { scheduleJob } from '../src/jobs/schedule';
-import { espnUrls, mapScoreboard } from '../src/sources/espn-nba';
+import { seasonStatsJob } from '../src/jobs/season-stats';
+import { loadNationalityOverrides } from '../src/nationality/overrides';
+import { espnUrls, mapAthlete, mapScoreboard, mapTeams } from '../src/sources/espn-nba';
 import { createTestDb } from './db';
-import { NO_OVERRIDES } from './db-data';
+import { bertans, celtics, NO_OVERRIDES, nbaGame, porzingis, sixers } from './db-data';
 import { fakeClient } from './fake-client';
 import { loadFixture } from './fixtures';
 
@@ -277,5 +289,162 @@ describe('NBA schedule', () => {
     expect(client.requests).toEqual(WEEK.map((d) => espnUrls.scoreboard(d)));
     expect(result.status).toBe('failed');
     expect(result.status === 'skipped' ? undefined : result.error).toContain('dates=20260320');
+  });
+});
+
+describe('NBA roster', () => {
+  type RawRoster = { team: { id: string }; athletes: { id: string }[] };
+  const teamsFixture = () => loadFixture('espn-nba', 'teams', '2026-10-18');
+  const teamIds = mapTeams(teamsFixture()).teams.map((t) => t.externalId);
+
+  // Roster 9 (GS) as recorded; every other team gets a copy under its own ID with offset athlete IDs,
+  // so no player is on two rosters.
+  function rosterOf(teamId: string): RawRoster {
+    const raw = loadFixture('espn-nba', 'roster', '9') as RawRoster;
+    if (teamId === '9') return raw;
+    raw.team.id = teamId;
+    for (const a of raw.athletes) a.id = String(Number(a.id) + Number(teamId) * 10_000_000);
+    return raw;
+  }
+
+  const rosterRoutes = (skip: string[] = []) => ({
+    [espnUrls.teams()]: teamsFixture(),
+    ...Object.fromEntries(
+      teamIds.filter((id) => !skip.includes(id)).map((id) => [espnUrls.roster(id), rosterOf(id)]),
+    ),
+  });
+  const roster = () => runJob(ctx, 'roster', rosterJob, { league: 'NBA' });
+
+  async function rosterRow(publicId: string) {
+    const [row] = await handle.db
+      .select({
+        active: players.active,
+        team: teams.abbrev,
+        nationality: players.nationality,
+        nationalitySource: players.nationalitySource,
+      })
+      .from(players)
+      .leftJoin(teams, eq(teams.id, players.currentTeamId))
+      .where(eq(players.publicId, publicId));
+    if (!row) throw new Error(`player ${publicId} not stored`);
+    return row;
+  }
+
+  it('stores every team and puts Porziņģis on GS as an active LVA player by birth', async () => {
+    useRoutes(rosterRoutes());
+    const result = await roster();
+
+    expect(result.status).toBe('succeeded');
+    expect(countOf(result, 'teams')).toBe(30);
+    expect(await rosterRow(PORZINGIS)).toEqual({
+      active: true,
+      team: 'GS',
+      nationality: 'LVA',
+      nationalitySource: 'birth',
+    });
+  });
+
+  it('a failed roster fetch records partial and changes no active flag', async () => {
+    // Bertāns is on no routed roster, so a complete run would deactivate him.
+    await upsertTeams(handle.db, [celtics]);
+    await upsertPlayers(handle.db, [bertans], NO_OVERRIDES);
+    useRoutes(rosterRoutes(['27']));
+    const result = await roster();
+
+    expect(result.status).toBe('partial');
+    expect(countOf(result, 'teamsFailed')).toBe(1);
+    expect(countOf(result, 'deactivated')).toBeUndefined();
+    const row = await rosterRow(bertans.publicId);
+    expect(row.active).toBe(true);
+    expect(row.team).toBe('BOS');
+  });
+});
+
+describe('NBA nationality overrides (AC4)', () => {
+  it('the committed overrides give Embiid USA and Towns DOM over their birth countries', async () => {
+    await upsertTeams(handle.db, mapTeams(loadFixture('espn-nba', 'teams', '2026-10-18')).teams);
+    const [embiid, towns] = ['3059318', '3136195'].map(
+      (id) => mapAthlete(loadFixture('espn-nba', 'athlete', id)).player,
+    );
+    if (!embiid || !towns) throw new Error('test setup: athletes not mapped');
+    await upsertPlayers(handle.db, [embiid, towns], await loadNationalityOverrides());
+
+    const embiidRow = await playerRow('nba-3059318');
+    expect(embiidRow.nationality).toBe('USA');
+    expect(embiidRow.nationalitySource).toBe('override');
+    expect(embiidRow.birthCountry).toBe('CMR');
+    const townsRow = await playerRow('nba-3136195');
+    expect(townsRow.nationality).toBe('DOM');
+    expect(townsRow.nationalitySource).toBe('override');
+    expect(townsRow.birthCountry).toBe('USA');
+  });
+});
+
+describe('NBA season stats', () => {
+  type RawByAthlete = { pagination: { pages: number; count: number } };
+  const DONCIC = 'nba-3945274';
+  const SGA = 'nba-4278073';
+  const PAGE_1 = espnUrls.byathlete('2026', 2, 1);
+
+  // Page 1 of the recorded 2025-26 regular season, with its pagination cut as given.
+  function pageOne(pagination: RawByAthlete['pagination']): unknown {
+    const raw = loadFixture('espn-nba', 'byathlete', '2026') as RawByAthlete;
+    raw.pagination = { ...raw.pagination, ...pagination };
+    return raw;
+  }
+
+  const athlete = (id: string, firstName: string, lastName: string) => ({
+    ...porzingis,
+    publicId: `nba-${id}`,
+    externalId: id,
+    firstName,
+    lastName,
+    currentTeamExternalId: null,
+  });
+
+  beforeEach(async () => {
+    await upsertTeams(handle.db, [celtics, sixers]);
+    await upsertGames(handle.db, [
+      {
+        ...nbaGame,
+        season: '2025-26',
+        gameDate: '2026-03-16',
+        startTimeUtc: '2026-03-16T23:30:00.000Z',
+      },
+    ]);
+    // Both on page 1; Porziņģis is not.
+    await upsertPlayers(
+      handle.db,
+      [athlete('3945274', 'Luka', 'Dončić'), athlete('4278073', 'Shai', 'Gilgeous-Alexander')],
+      NO_OVERRIDES,
+    );
+  });
+
+  const seasonStats = () => runJob(ctx, 'season-stats', seasonStatsJob, { league: 'NBA' });
+
+  it("stores the stored players' rows and counts the rest as skipped", async () => {
+    useRoutes({ [PAGE_1]: pageOne({ pages: 1, count: 50 }) });
+    const result = await seasonStats();
+
+    expect(result.status).toBe('succeeded');
+    expect(countOf(result, 'rows')).toBe(2);
+    expect(countOf(result, 'skipped')).toBe(48);
+    expect(countOf(result, 'requests')).toBe(1);
+    const stored = await handle.db
+      .select({ player: players.publicId })
+      .from(players)
+      .innerJoin(seasonStatsTable, eq(seasonStatsTable.playerId, players.id));
+    expect(stored.map((r) => r.player).sort()).toEqual([DONCIC, SGA]);
+  });
+
+  it('a page count over the budget fails the run after one request (AC7)', async () => {
+    useRoutes({ [PAGE_1]: pageOne({ pages: 21, count: 1050 }) });
+    const result = await seasonStats();
+
+    expect(result.status).toBe('failed');
+    expect(result.status === 'skipped' ? undefined : result.error).toContain(
+      'espn-nba byathlete: 21 pages exceeds the budget of 20',
+    );
+    expect(client.requests).toEqual([PAGE_1]);
   });
 });
