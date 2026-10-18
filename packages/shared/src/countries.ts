@@ -698,6 +698,24 @@ export const ESPN_COUNTRY_ALIASES: Readonly<Record<string, CountryCode>> = {
   Russia: 'RUS',
   'Bosnia & Herzegovina': 'BIH',
   'Democratic Republic of Congo': 'COD',
+  // Common English forms not yet seen live (PR #12 review); Kosovo has no ISO code, so it stays null.
+  Turkey: 'TUR',
+  'Ivory Coast': 'CIV',
+  'Cape Verde': 'CPV',
+  'Great Britain': 'GBR',
+  'DR Congo': 'COD',
+  Macedonia: 'MKD',
+  Swaziland: 'SWZ',
+  'St. Lucia': 'LCA',
+  'St. Vincent and the Grenadines': 'VCT',
+  'St. Kitts and Nevis': 'KNA',
+  'US Virgin Islands': 'VIR',
+  'U.S. Virgin Islands': 'VIR',
+  'The Bahamas': 'BHS',
+  'The Gambia': 'GMB',
+  'East Timor': 'TLS',
+  Burma: 'MMR',
+  Brunei: 'BRN',
 };
 
 // Exact match only, never a fuzzy guess; hasOwn so inherited keys like 'constructor' don't match.

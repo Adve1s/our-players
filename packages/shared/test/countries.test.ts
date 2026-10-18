@@ -55,3 +55,33 @@ describe('countryFromName, ESPN spellings seen live', () => {
     expect(countryFromName(name)).toBe(code);
   });
 });
+
+// Common English forms that iso-codes spells differently (PR #12 review); none is ambiguous.
+describe('countryFromName, English short forms', () => {
+  it.each([
+    ['Turkey', 'TUR'],
+    ['Ivory Coast', 'CIV'],
+    ['Cape Verde', 'CPV'],
+    ['Great Britain', 'GBR'],
+    ['DR Congo', 'COD'],
+    ['Macedonia', 'MKD'],
+    ['Swaziland', 'SWZ'],
+    ['St. Lucia', 'LCA'],
+    ['St. Vincent and the Grenadines', 'VCT'],
+    ['St. Kitts and Nevis', 'KNA'],
+    ['US Virgin Islands', 'VIR'],
+    ['U.S. Virgin Islands', 'VIR'],
+    ['The Bahamas', 'BHS'],
+    ['The Gambia', 'GMB'],
+    ['East Timor', 'TLS'],
+    ['Burma', 'MMR'],
+    ['Brunei', 'BRN'],
+  ])('maps "%s" to %s', (name, code) => {
+    expect(countryFromName(name)).toBe(code);
+  });
+
+  // Kosovo has no ISO 3166-1 code; "Korea" and "Virgin Islands" name two countries each.
+  it.each(['Kosovo', 'Korea', 'Virgin Islands'])('leaves "%s" unmapped', (name) => {
+    expect(countryFromName(name)).toBeNull();
+  });
+});
