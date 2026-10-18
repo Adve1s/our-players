@@ -24,7 +24,17 @@ describe('inspectFixture', () => {
     );
   });
 
-  it('says espn-nba arrives in S05', async () => {
-    await expect(inspectFixture('espn-nba', 'scoreboard', 'x')).rejects.toThrow(/S05/);
+  it('maps espn-nba summary 401810839 (Porziņģis scored 30)', async () => {
+    const result = (await inspectFixture('espn-nba', 'summary', '401810839')) as {
+      lines: StatLine[];
+    };
+    const line = only(result.lines, (l) => l.playerPublicId === 'nba-3102531', 'line nba-3102531');
+    expect(line.stats).toMatchObject({ points: 30 });
+  });
+
+  it('rejects an espn-nba endpoint without a mapper, listing the valid ones', async () => {
+    await expect(inspectFixture('espn-nba', 'overview', '3102531')).rejects.toThrow(
+      'unknown endpoint "overview" for espn-nba; valid: scoreboard, summary, teams, roster, athlete, byathlete',
+    );
   });
 });

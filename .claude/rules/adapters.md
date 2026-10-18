@@ -7,7 +7,7 @@ paths:
 
 - Layout per source: `client.ts` (URL builders + fetching through the injected polite client), `schemas.ts` (raw zod schemas: only fields we use, unknown fields allowed), `map-*.ts` (pure functions raw → normalized model), `index.ts` (the adapter's public surface).
 - Mappers are pure and synchronous: no fetching, no DB, no clock reads (pass "now" in when needed).
-- Units: box-score TOI and minutes → integer seconds (season stats keep the source's values, e.g. a float TOI per game — rule 5, D-035); percentages → numbers from 0 to 1; dates → the `YYYY-MM-DD` game day plus UTC ISO timestamps.
+- Units: box-score TOI and minutes → integer seconds, but the NBA box score keeps ESPN's whole minutes (`minutes`, VISION §8 basketball payload); season stats keep the source's values (e.g. a float TOI per game — rule 5, D-035); percentages → numbers from 0 to 1; dates → the `YYYY-MM-DD` game day plus UTC ISO timestamps.
 - Statuses, seasons and positions map through explicit tables with a test per row. An unknown value throws with source, endpoint and value, so upstream changes surface immediately — except where D-035 skips one item with a returned warning (NHL game schedule states, birth countries).
 - ESPN box scores: map stats by `labels`, never by array position; parse "8-15" shooting splits into made/attempted.
 - Country names and codes go through `packages/shared/src/countries.ts`; never inline a name → code mapping.
