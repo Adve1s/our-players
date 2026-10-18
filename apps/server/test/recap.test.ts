@@ -1,6 +1,6 @@
 import type { Prefs } from '@our-players/shared';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { DbHandle } from '../src/db/client';
+import { type DbHandle, openPglite } from '../src/db/client';
 import { upsertPlayers } from '../src/db/players';
 import {
   type DayGame,
@@ -252,5 +252,16 @@ describe('loadRecap', () => {
         '  Arturs Silovs      PIT  23/26 · .885 · 3 GA · OTL',
       ].join('\n'),
     );
+  });
+
+  it('a database that was never migrated says to run a job first', async () => {
+    const fresh = openPglite();
+    try {
+      await expect(loadRecap(fresh.db, DATE)).rejects.toThrow(
+        'the database has no tables yet: run `pnpm job` (any job migrates it) first',
+      );
+    } finally {
+      await fresh.close();
+    }
   });
 });

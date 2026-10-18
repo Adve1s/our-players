@@ -8,6 +8,10 @@ import type { DayGame, DayLine, DayPlayer, DayRow, gameDayRows } from './game-da
 const homeTeam = alias(teams, 'home_team');
 const awayTeam = alias(teams, 'away_team');
 
+// 42P01 undefined_table; drizzle wraps the driver's error in `cause`.
+const neverMigrated = (e: unknown) =>
+  e instanceof Error && (e.cause as { code?: unknown } | undefined)?.code === '42P01';
+
 // The day's games, their lines, and the players involved: those with a line plus those whose current team plays.
 export async function loadRecap(
   db: Db,
@@ -32,7 +36,14 @@ export async function loadRecap(
     .from(games)
     .innerJoin(homeTeam, eq(homeTeam.id, games.homeTeamId))
     .innerJoin(awayTeam, eq(awayTeam.id, games.awayTeamId))
-    .where(eq(games.gameDate, date));
+    .where(eq(games.gameDate, date))
+    .catch((e: unknown) => {
+      throw neverMigrated(e)
+        ? new Error('the database has no tables yet: run `pnpm job` (any job migrates it) first', {
+            cause: e,
+          })
+        : e;
+    });
   if (gameRows.length === 0) return { games: [], lines: [], players: [] };
   const gameIds = gameRows.map((g) => g.id);
   const teamIds = gameRows.flatMap((g) => [g.awayId, g.homeId]);
