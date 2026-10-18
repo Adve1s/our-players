@@ -227,4 +227,4 @@ One entry per session, newest last, at most ~12 lines. Format:
 ### Release-age cleanup — 2026-10-18 — PR (`chore-release-age`)
 - Changed: `pnpm-workspace.yaml` loses the S00 `minimumReleaseAgeExclude` block (9 Expo SDK 58 exemptions, inert since 2026-10-17 20:00 UTC); `pnpm install --frozen-lockfile` passes without it. Known issues now empty.
 - Decisions: D-041 amended in place (owner: UTC daily slots shifting an hour in Riga with DST is fine).
-- Housekeeping: merged local branches `s04a-jobs-recap`/`s04b-scheduler` deleted, stale remote-tracking refs pruned.
+- Housekeeping: merged local branches `s04a-jobs-recap`/`s04b-scheduler` deleted, stale remote-tracking refs pruned; `main` now requires `verify (22)`/`verify (24)` (strict), set by the owner. The remote `slice-0-setup` (closed PR #2, the pre-plugin workflow) stays on purpose as a v2 to try that workflow again — don't delete it.
