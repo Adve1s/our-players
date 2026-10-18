@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { leagueSchema } from '@our-players/shared';
-import { app } from './app';
+import { createApp } from './api/app';
 import { loadConfig } from './config';
 import { openDb } from './db/client';
 import { createPoliteClient, userAgent } from './http/polite-client';
@@ -11,25 +11,30 @@ import { startScheduler } from './scheduler/scheduler';
 
 const { port, contactUrl, schedulerEnabled } = loadConfig(process.env);
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`API listening on http://localhost:${info.port}`);
-});
+// The API reads the DB, so the dev server always holds the PGlite lock (stop it before `pnpm job`).
+const handle = openDb();
+try {
+  await handle.migrate();
+} catch (e) {
+  await handle.close(); // releases the PGlite lock
+  throw e;
+}
 
-// Only with the scheduler on does the dev server open the DB, so `pnpm job` works alongside it otherwise.
-async function runScheduler(): Promise<void> {
+serve(
+  { fetch: createApp({ db: handle.db, now: () => new Date(), log: createLogger() }).fetch, port },
+  (info) => {
+    console.log(`API listening on http://localhost:${info.port}`);
+  },
+);
+
+let scheduler: ReturnType<typeof startScheduler> | undefined;
+if (schedulerEnabled) {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
     version: string;
   };
   const client = createPoliteClient({ userAgent: userAgent(pkg.version, contactUrl) });
   const overrides = await loadNationalityOverrides();
-  const handle = openDb();
-  try {
-    await handle.migrate();
-  } catch (e) {
-    await handle.close(); // releases the PGlite lock
-    throw e;
-  }
-  const scheduler = startScheduler(
+  scheduler = startScheduler(
     {
       db: handle.db,
       client,
@@ -40,34 +45,27 @@ async function runScheduler(): Promise<void> {
     leagueSchema.options,
   );
   console.log('scheduler on');
-  // shortcut: under tsx watch a tick longer than 5 s is SIGKILLed mid-job (job_runs row left running, lock taken over on the next start); run without watch, or make jobs abortable, if that bites
-  let stopping = false;
-  const shutdown = () => {
-    if (stopping) return;
-    stopping = true;
-    console.log('stopping scheduler: waiting for the running tick');
-    scheduler
-      .stop()
-      .then(() => handle.close())
-      .then(
-        () => process.exit(0),
-        (e: unknown) => {
-          console.error(e instanceof Error ? e.message : String(e));
-          process.exit(1);
-        },
-      );
-  };
-  // `on`, not `once`: tsx watch relays Ctrl-C, so a second SIGINT arrives mid-close, and with no
-  // listener left Node's default action kills the process and leaves the PGlite lock behind.
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-}
-
-if (schedulerEnabled) {
-  runScheduler().catch((e: unknown) => {
-    console.error(e instanceof Error ? e.message : String(e));
-    process.exit(1);
-  });
 } else {
   console.log('scheduler off (set SCHEDULER_ENABLED=1)');
 }
+
+// shortcut: under tsx watch a tick longer than 5 s is SIGKILLed mid-job (job_runs row left running, lock taken over on the next start); run without watch, or make jobs abortable, if that bites
+let stopping = false;
+const shutdown = () => {
+  if (stopping) return;
+  stopping = true;
+  if (scheduler) console.log('stopping scheduler: waiting for the running tick');
+  Promise.resolve(scheduler?.stop())
+    .then(() => handle.close())
+    .then(
+      () => process.exit(0),
+      (e: unknown) => {
+        console.error(e instanceof Error ? e.message : String(e));
+        process.exit(1);
+      },
+    );
+};
+// `on`, not `once`: tsx watch relays Ctrl-C, so a second SIGINT arrives mid-close, and with no
+// listener left Node's default action kills the process and leaves the PGlite lock behind.
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

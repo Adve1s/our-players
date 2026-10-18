@@ -78,7 +78,7 @@ These rules configure the superpowers skills; where a skill says otherwise, this
 - I develop on Arch Linux (Omarchy); CI runs on Ubuntu. Scripts must work on both — no macOS-only commands or flags (`open`, `pbcopy`, `sed -i ''`).
 - Cloud sessions (`CLAUDE_CODE_REMOTE=true`) start without `node_modules`; a SessionStart hook installs them. They run Node 22 (code must work on Node 22 and 24), and can't reach the NHL/ESPN APIs — tests don't need them.
 - Expo + pnpm: keep `nodeLinker: hoisted` in `pnpm-workspace.yaml`; some React Native libraries break with isolated installs.
-- The dev PGlite (`apps/server/.data/pglite`) is one process at a time (pid lock `.data/pglite.lock`). `pnpm dev:server` holds it only with `SCHEDULER_ENABLED=1`: stop that server before `pnpm job`, `pnpm recap` or `pnpm db:*`, or you get "in use by process N".
+- The dev PGlite (`apps/server/.data/pglite`) is one process at a time (pid lock `.data/pglite.lock`). `pnpm dev:server` always holds it (the API reads the DB): stop the dev server before `pnpm job`, `pnpm recap`, `pnpm latency` or `pnpm db:*`, or you get "in use by process N".
 - pnpm 12 refuses package versions published less than a day ago (`minimumReleaseAge`). If a fresh release fails the install, wait or ask me; an exact-version `minimumReleaseAgeExclude` entry needs a dated `shortcut:` comment.
 - NHL `birthCountry` is already alpha-3. ESPN `birthPlace.country` is a name ("Cameroon"; US-born players show "USA") — map it in `packages/shared/src/countries.ts` (ESPN spellings as aliases; England/Scotland/Wales → GBR). Unknown → `null` plus a warning, never a guess.
 - NHL season IDs look like `20262027`; ESPN labels a season by its end year (`2027`). Store `"2026-27"`.
