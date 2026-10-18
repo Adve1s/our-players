@@ -1,11 +1,12 @@
-import type {
-  Game,
-  League,
-  Player,
-  SeasonStats,
-  SeasonType,
-  StatLine,
-  Team,
+import {
+  addDays,
+  type Game,
+  type League,
+  type Player,
+  type SeasonStats,
+  type SeasonType,
+  type StatLine,
+  type Team,
 } from '@our-players/shared';
 import type { PoliteClient } from '../http/polite-client';
 import * as espn from '../sources/espn-nba';
@@ -27,12 +28,6 @@ export type LeagueAdapter = {
   roster(client: Client, team: Team): Promise<{ players: Player[]; warnings: string[] }>;
   seasonStats(client: Client, season: string, seasonType: SeasonType): Promise<SeasonStats[]>;
 };
-
-function addDays(day: string, n: number): string {
-  const d = new Date(`${day}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
 
 // ESPN has no week endpoint that keeps the game day, so a week is seven scoreboards.
 async function espnWeek(client: Client, date: string): Promise<DayGames> {

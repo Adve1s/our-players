@@ -1,5 +1,6 @@
 import { type SeasonStats, type SeasonType, seasonLabel, type Team } from '@our-players/shared';
 import type { PoliteClient } from '../../http/polite-client';
+import { getJson as getSourceJson } from '../common';
 import { mapBoxscore } from './boxscore';
 import { mapSchedule, mapScore } from './games';
 import { mapPlayerLanding, mapRoster } from './players';
@@ -25,14 +26,8 @@ export const nhlUrls = {
 
 type Client = Pick<PoliteClient, 'get'>;
 
-async function getJson(client: Client, endpoint: string, url: string): Promise<unknown> {
-  const { text } = await client.get(url);
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`nhl ${endpoint}: response is not JSON (${url})`);
-  }
-}
+const getJson = (client: Client, endpoint: string, url: string) =>
+  getSourceJson('nhl', client, endpoint, url);
 
 export const fetchScore = async (client: Client, date: string) =>
   mapScore(await getJson(client, 'score', nhlUrls.score(date)));

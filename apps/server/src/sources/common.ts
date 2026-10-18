@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { PoliteClient } from '../http/polite-client';
 
 // Helpers every adapter shares; `source` is the message prefix ("nhl", "espn-nba").
 
@@ -18,4 +19,18 @@ export function parsePayload<T>(
 // hasOwn, so inherited keys like 'constructor' are not table rows.
 export function lookup<V>(table: Readonly<Record<string, V>>, key: string | number): V | undefined {
   return Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
+export async function getJson(
+  source: string,
+  client: Pick<PoliteClient, 'get'>,
+  endpoint: string,
+  url: string,
+): Promise<unknown> {
+  const { text } = await client.get(url);
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${source} ${endpoint}: response is not JSON (${url})`);
+  }
 }
