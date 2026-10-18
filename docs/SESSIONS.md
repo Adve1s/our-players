@@ -413,7 +413,7 @@ Then plan and build, red/green; check Hono and zod APIs with context7. Prove eac
 ```text
 Session S07 — API: players, search, countries (slice 3). Create branch `s07-api-players` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S07 (the contract), docs/VISION.md §4.3, §4.4 and §10, and the S06 routes for the established pattern. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S07 (the contract), docs/VISION.md §4.3, §4.4 and §10, and the S06 routes for the established pattern (reuse `parseQuery`, `badRequest` and the `test/api-seed.ts` seed). First run the tests.
 
 Brainstorm with §S07 as the spec. The design must cover: the contract additions; the search query and ranking (and how diacritics are handled); the player-detail assembly; CORS config; the typed client's shape and where it lives; and the test list mapped to the acceptance criteria.
 
