@@ -36,11 +36,19 @@ async function runScheduler(): Promise<void> {
     overrides,
   });
   console.log('scheduler on');
-  const shutdown = async () => {
+  // shortcut: under tsx watch a tick longer than 5 s is SIGKILLed mid-job (job_runs row left running, lock taken over on the next start); run without watch, or make jobs abortable, if that bites
+  const shutdown = () => {
     console.log('stopping scheduler: waiting for the running tick');
-    await scheduler.stop();
-    await handle.close();
-    process.exit(0);
+    scheduler
+      .stop()
+      .then(() => handle.close())
+      .then(
+        () => process.exit(0),
+        (e: unknown) => {
+          console.error(e instanceof Error ? e.message : String(e));
+          process.exit(1);
+        },
+      );
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
