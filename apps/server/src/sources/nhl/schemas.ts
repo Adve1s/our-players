@@ -18,6 +18,10 @@ const scheduleTeam = gameTeam
   .extend({ commonName: localized })
   .transform(({ commonName, ...t }) => ({ ...t, name: commonName.default }));
 
+export const scheduleCalendarSchema = z.object({
+  teams: z.array(z.object({ id: z.int(), abbrev: z.string(), commonName: localized })),
+});
+
 // gameState and gameScheduleState stay strings: the mapper's tables reject unknown values by name.
 const game = z.object({
   id: z.int(),

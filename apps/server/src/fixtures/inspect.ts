@@ -7,6 +7,7 @@ import {
   mapPlayerLanding,
   mapRoster,
   mapSchedule,
+  mapScheduleCalendar,
   mapScore,
   mapSkaterSummary,
 } from '../sources/nhl';
@@ -22,6 +23,7 @@ const nhl: Record<string, (raw: unknown, id: string) => unknown> = {
   'player-landing': mapPlayerLanding,
   'skater-summary-reg': (raw) => mapSkaterSummary(raw, 'REG'),
   'goalie-summary-reg': (raw) => mapGoalieSummary(raw, 'REG'),
+  'schedule-calendar': mapScheduleCalendar,
 };
 
 export async function inspectFixture(

@@ -25,6 +25,7 @@ export {
   sportSchema,
   statKindSchema,
 } from './enums';
+export { usGameDay } from './game-day';
 export { type PublicId, publicIdSchema } from './ids';
 export type {
   Game,

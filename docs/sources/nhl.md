@@ -8,6 +8,7 @@ Unofficial, keyless, undocumented. Verified against fixtures recorded 2026-10-16
 |---|---|---|
 | score | `https://api-web.nhle.com/v1/score/{YYYY-MM-DD}` | `nhl/score/2026-01-17.json`, `nhl/score/2026-03-14.json`, `nhl/score/2026-03-16.json`, `nhl/score/2026-03-23.json`, `nhl/score/2026-03-24.json`, `nhl/score/2026-10-16-states.json` |
 | schedule | `https://api-web.nhle.com/v1/schedule/{YYYY-MM-DD}` (7-day `gameWeek`) | `nhl/schedule/2026-03-24.json`, `nhl/schedule/2026-09-25.json` |
+| schedule-calendar | `https://api-web.nhle.com/v1/schedule-calendar/{YYYY-MM-DD}` (`teams[]`: the 32 current-season teams, `id`, `abbrev`, `commonName.default`, `seasonId` per team) | `nhl/schedule-calendar/2026-10-18.json` |
 | boxscore | `https://api-web.nhle.com/v1/gamecenter/{gameId}/boxscore` | `nhl/boxscore/2025020760.json` (SO), `nhl/boxscore/2025021064.json` (OT), `nhl/boxscore/2025021127.json` (REG), `nhl/boxscore/2026010059.json` (preseason, SO) |
 | right-rail | `https://api-web.nhle.com/v1/gamecenter/{gameId}/right-rail` | `nhl/right-rail/2025020760.json` |
 | roster | `https://api-web.nhle.com/v1/roster/{teamAbbrev}/current` | `nhl/roster/CBJ.json` (no Latvian), `nhl/roster/FLA.json`, `nhl/roster/PIT.json` |
@@ -143,4 +144,4 @@ In each case `nationalityCode` appears to be the national team the player repres
 - Goalie `toi` in a shootout game differs between goalies (`"65:00"` vs `"64:26"` in `nhl/boxscore/2025020760.json`).
 - Preseason games stay `FINAL`, never `OFF`; preseason boxscores lack `starter` and set `savePctg` 0 for unused goalies.
 - The regular season 2026-27 started 2026-09-29 (`gameType` 2 games from that date in `nhl/schedule/2026-09-25.json`).
-- **Spike limits** (`apps/server/scripts/spike/spike.ts`, throwaway): it fetches every game's boxscore without checking `gameState`, so a `FUT` game's boxscore is unguarded (shape not recorded); NBA Latvians come from current rosters (see `espn-nba.md`). Live run 2026-03-16 printed `NHL  Arturs Silovs  PIT  SV 25/27 DEC W`.
+- A `FUT` game's boxscore shape is not recorded. A live S01 run on 2026-03-16 gave Arturs Silovs (PIT) 25 saves on 27 shots and the win.

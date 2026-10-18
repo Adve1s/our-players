@@ -8,10 +8,11 @@
     "typecheck": "tsc --noEmit",
     "fixtures:record": "tsx scripts/fixtures-record.ts",
     "inspect": "tsx scripts/inspect.ts",
-    "spike": "tsx scripts/spike/spike.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/cli.ts migrate",
-    "db:reset": "tsx src/db/cli.ts reset"
+    "db:reset": "tsx src/db/cli.ts reset",
+    "job": "tsx scripts/job.ts",
+    "recap": "tsx scripts/recap.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.10",

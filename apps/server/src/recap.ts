@@ -1,0 +1,197 @@
+import { type CountryCode, leagueSchema, parseStatPayload } from '@our-players/shared';
+import { eq, inArray, or } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import type { Db } from './db/client';
+import { games, players, statLines, teams } from './db/schema';
+import type { DayGame, DayLine, DayPlayer, DayRow, gameDayRows } from './game-day-rows';
+
+const homeTeam = alias(teams, 'home_team');
+const awayTeam = alias(teams, 'away_team');
+
+// 42P01 undefined_table; drizzle wraps the driver's error in `cause`.
+const neverMigrated = (e: unknown) =>
+  e instanceof Error && (e.cause as { code?: unknown } | undefined)?.code === '42P01';
+
+// The day's games, their lines, and the players involved: those with a line plus those whose current team plays.
+export async function loadRecap(
+  db: Db,
+  date: string,
+): Promise<{ games: DayGame[]; lines: DayLine[]; players: DayPlayer[] }> {
+  const gameRows = await db
+    .select({
+      id: games.id,
+      publicId: games.publicId,
+      league: games.league,
+      status: games.status,
+      startTimeUtc: games.startTimeUtc,
+      awayId: awayTeam.id,
+      awayAbbrev: awayTeam.abbrev,
+      homeId: homeTeam.id,
+      homeAbbrev: homeTeam.abbrev,
+      awayScore: games.awayScore,
+      homeScore: games.homeScore,
+      endedIn: games.endedIn,
+      boxscoreFetchedAt: games.boxscoreFetchedAt,
+    })
+    .from(games)
+    .innerJoin(homeTeam, eq(homeTeam.id, games.homeTeamId))
+    .innerJoin(awayTeam, eq(awayTeam.id, games.awayTeamId))
+    .where(eq(games.gameDate, date))
+    .catch((e: unknown) => {
+      throw neverMigrated(e)
+        ? new Error('the database has no tables yet: run `pnpm job` (any job migrates it) first', {
+            cause: e,
+          })
+        : e;
+    });
+  if (gameRows.length === 0) return { games: [], lines: [], players: [] };
+  const gameIds = gameRows.map((g) => g.id);
+  const teamIds = gameRows.flatMap((g) => [g.awayId, g.homeId]);
+
+  const lineRows = await db
+    .select({
+      gamePublicId: games.publicId,
+      playerPublicId: players.publicId,
+      teamExternalId: teams.externalId,
+      teamId: statLines.teamId,
+      kind: statLines.kind,
+      played: statLines.played,
+      dnpReason: statLines.dnpReason,
+      starter: statLines.starter,
+      stats: statLines.stats,
+    })
+    .from(statLines)
+    .innerJoin(games, eq(games.id, statLines.gameId))
+    .innerJoin(players, eq(players.id, statLines.playerId))
+    .innerJoin(teams, eq(teams.id, statLines.teamId))
+    .where(inArray(statLines.gameId, gameIds));
+
+  const playerRows = await db
+    .select({
+      publicId: players.publicId,
+      league: players.league,
+      nationality: players.nationality,
+      firstName: players.firstName,
+      lastName: players.lastName,
+      currentTeamId: players.currentTeamId,
+    })
+    .from(players)
+    .where(
+      or(
+        inArray(players.currentTeamId, teamIds),
+        inArray(
+          players.id,
+          db
+            .select({ id: statLines.playerId })
+            .from(statLines)
+            .where(inArray(statLines.gameId, gameIds)),
+        ),
+      ),
+    );
+
+  return {
+    games: gameRows.map((g) => ({
+      publicId: g.publicId,
+      league: g.league,
+      status: g.status,
+      startTimeUtc: g.startTimeUtc.toISOString(),
+      away: { id: g.awayId, abbrev: g.awayAbbrev },
+      home: { id: g.homeId, abbrev: g.homeAbbrev },
+      awayScore: g.awayScore,
+      homeScore: g.homeScore,
+      endedIn: g.endedIn,
+      boxScoreStored: g.boxscoreFetchedAt !== null,
+    })),
+    // TS can't tie a row's kind to its parsed stats through the spread, so the union is asserted.
+    lines: lineRows.map(
+      ({ stats, ...l }) =>
+        (l.played
+          ? { ...l, stats: parseStatPayload(l.kind, stats) }
+          : { ...l, stats: null }) as DayLine,
+    ),
+    players: playerRows,
+  };
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+const dnp = (reason: string | null) => (reason === null ? 'DNP' : `DNP — ${reason}`);
+
+// Card text per VISION §4.1.
+function card(line: DayLine): string {
+  if (!line.played) return dnp(line.dnpReason);
+  switch (line.kind) {
+    case 'hockey_skater': {
+      const s = line.stats;
+      const toi = `${Math.floor(s.toiSeconds / 60)}:${pad2(s.toiSeconds % 60)}`;
+      return `${s.goals} G · ${s.assists} A · ${signed(s.plusMinus)} · ${s.shots} SOG · ${toi}`;
+    }
+    case 'hockey_goalie': {
+      const s = line.stats;
+      const pct = s.savePct === null ? null : s.savePct.toFixed(3).replace(/^0/, '');
+      return [`${s.saves}/${s.shotsAgainst}`, pct, `${s.goalsAgainst} GA`, s.decision]
+        .filter((part) => part !== null)
+        .join(' · ');
+    }
+    case 'basketball_player': {
+      const s = line.stats;
+      return [
+        `${s.points} PTS · ${s.rebounds} REB · ${s.assists} AST · ${s.minutes} MIN`,
+        `FG ${s.fgMade}-${s.fgAttempted} · 3PT ${s.threeMade}-${s.threeAttempted} · FT ${s.ftMade}-${s.ftAttempted}`,
+      ].join(' · ');
+    }
+  }
+}
+
+function rowText(row: DayRow): string {
+  if (row.kind === 'line') return card(row.line);
+  return row.kind === 'dnp' ? dnp(row.reason) : 'Not in lineup';
+}
+
+function statusLabel(game: DayGame): string {
+  switch (game.status) {
+    case 'FINAL':
+      return game.endedIn === 'OT' || game.endedIn === 'SO' ? `Final/${game.endedIn}` : 'Final';
+    case 'LIVE':
+      return 'Live';
+    // The terminal has no viewer time zone to honor, so a start time reads in UTC.
+    case 'SCHEDULED':
+      return `${new Date(game.startTimeUtc).toISOString().slice(11, 16)} UTC`;
+    case 'POSTPONED':
+      return 'Postponed';
+    case 'CANCELLED':
+      return 'Cancelled';
+  }
+}
+
+function header(game: DayGame): string {
+  const { away, home, awayScore, homeScore } = game;
+  const teamsText =
+    awayScore === null || homeScore === null
+      ? `${away.abbrev} @ ${home.abbrev}`
+      : `${away.abbrev} ${awayScore} – ${homeScore} ${home.abbrev}`;
+  return `${teamsText}  ${statusLabel(game)}`;
+}
+
+export function formatRecap(
+  date: string,
+  countries: readonly CountryCode[],
+  groups: ReturnType<typeof gameDayRows>,
+): string {
+  if (groups.length === 0) return `No players from ${countries.join(', ')} on ${date}.`;
+  const name = (row: DayRow) => `${row.player.firstName} ${row.player.lastName}`;
+  const width = Math.max(...groups.flatMap((g) => g.rows.map((r) => name(r).length)));
+  return leagueSchema.options
+    .flatMap((league) => {
+      const ofLeague = groups.filter((g) => g.game.league === league);
+      if (ofLeague.length === 0) return [];
+      return [
+        `${league} ${date}`,
+        ...ofLeague.flatMap((g) => [
+          header(g.game),
+          ...g.rows.map((r) => `  ${name(r).padEnd(width)}  ${r.team.abbrev}  ${rowText(r)}`),
+        ]),
+      ];
+    })
+    .join('\n');
+}

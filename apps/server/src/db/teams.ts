@@ -1,4 +1,4 @@
-import type { Source, Team } from '@our-players/shared';
+import type { League, Source, Team } from '@our-players/shared';
 import { inArray } from 'drizzle-orm';
 import type { Db } from './client';
 import { teams } from './schema';
@@ -21,23 +21,36 @@ export async function upsertTeams(db: Db, list: readonly Team[]): Promise<number
 }
 
 // One query for a batch's teams; the returned lookup throws on a team that isn't stored.
-export async function teamIdLookup(
+export async function teamLookup(
   db: Db,
   refs: readonly { source: Source; externalId: string }[],
-): Promise<(source: Source, externalId: string) => number> {
+): Promise<(source: Source, externalId: string) => { id: number; league: League }> {
   const externalIds = [...new Set(refs.map((r) => r.externalId))];
   const found =
     externalIds.length === 0
       ? []
       : await db
-          .select({ id: teams.id, source: teams.source, externalId: teams.externalId })
+          .select({
+            id: teams.id,
+            league: teams.league,
+            source: teams.source,
+            externalId: teams.externalId,
+          })
           .from(teams)
           .where(inArray(teams.externalId, externalIds));
   // External IDs repeat across sources (NYI and the Celtics are both '2'), so key by both.
-  const ids = new Map(found.map((t) => [teamKey(t.source, t.externalId), t.id]));
+  const rows = new Map(found.map((t) => [teamKey(t.source, t.externalId), t]));
   return (source, externalId) => {
-    const id = ids.get(teamKey(source, externalId));
-    if (id === undefined) throw new Error(`unknown team ${teamKey(source, externalId)}`);
-    return id;
+    const row = rows.get(teamKey(source, externalId));
+    if (row === undefined) throw new Error(`unknown team ${teamKey(source, externalId)}`);
+    return row;
   };
+}
+
+export async function teamIdLookup(
+  db: Db,
+  refs: readonly { source: Source; externalId: string }[],
+): Promise<(source: Source, externalId: string) => number> {
+  const team = await teamLookup(db, refs);
+  return (source, externalId) => team(source, externalId).id;
 }
