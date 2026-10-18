@@ -12,9 +12,6 @@ const e = encodeURIComponent;
 
 type GameTypeId = 1 | 2 | 3;
 
-const summaryUrl = (kind: 'skater' | 'goalie', seasonId: string, gameTypeId: GameTypeId) =>
-  `${STATS}/${kind}/summary?limit=-1&cayenneExp=${e(`seasonId=${seasonId} and gameTypeId=${gameTypeId}`)}`;
-
 export const nhlUrls = {
   score: (date: string) => `${WEB}/score/${e(date)}`,
   schedule: (date: string) => `${WEB}/schedule/${e(date)}`,
@@ -22,6 +19,8 @@ export const nhlUrls = {
   boxscore: (gameId: string) => `${WEB}/gamecenter/${e(gameId)}/boxscore`,
   roster: (teamAbbrev: string) => `${WEB}/roster/${e(teamAbbrev)}/current`,
   playerLanding: (playerId: string) => `${WEB}/player/${e(playerId)}/landing`,
+  summary: (kind: 'skater' | 'goalie', seasonId: string, gameTypeId: GameTypeId) =>
+    `${STATS}/${kind}/summary?limit=-1&cayenneExp=${e(`seasonId=${seasonId} and gameTypeId=${gameTypeId}`)}`,
 };
 
 type Client = Pick<PoliteClient, 'get'>;
@@ -73,7 +72,7 @@ async function fetchSummary(
   seasonType: SeasonType,
 ): Promise<SeasonStats[]> {
   const endpoint = `${kind}-summary`;
-  const url = summaryUrl(kind, toSeasonId(season, endpoint), GAME_TYPE_IDS[seasonType]);
+  const url = nhlUrls.summary(kind, toSeasonId(season, endpoint), GAME_TYPE_IDS[seasonType]);
   const map = kind === 'skater' ? mapSkaterSummary : mapGoalieSummary;
   const { seasonStats, total } = map(await getJson(client, endpoint, url), seasonType);
   // limit=-1 returned every row in live probes; a short page means it silently stopped doing so.
