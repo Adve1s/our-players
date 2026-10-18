@@ -50,8 +50,9 @@ function playerRow(game: DayGame, row: DayRow): PlayerRow {
 // Games with shown rows first, then the rest by start time, so the app splits one list on rows.length.
 export function dayGames(data: Recap, prefs: Prefs): DayGameResponse[] {
   const shown = gameDayRows(data, prefs);
+  const shownIds = new Set(shown.map((s) => s.game.publicId));
   const rest = data.games
-    .filter((g) => !shown.some((s) => s.game === g))
+    .filter((g) => !shownIds.has(g.publicId))
     .sort(byStartTime)
     .map((game) => ({ game, rows: [] }));
   return [...shown, ...rest].map(({ game, rows }) => ({
