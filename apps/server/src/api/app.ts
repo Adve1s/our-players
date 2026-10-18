@@ -12,7 +12,7 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import type { Logger } from '../jobs/runner';
 import { loadDay, loadGame } from './day';
-import { loadHealth } from './meta';
+import { loadHealth, loadMeta } from './meta';
 
 export type ApiDeps = { db: Db; now: () => Date; log: Logger };
 
@@ -42,7 +42,7 @@ const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);
 
-export function createApp({ db, log }: ApiDeps): Hono {
+export function createApp({ db, now, log }: ApiDeps): Hono {
   const app = new Hono();
 
   // c.req.path has no query string, so preferences (countries, favorites) never reach the logs.
@@ -75,6 +75,8 @@ export function createApp({ db, log }: ApiDeps): Hono {
       return errorBody(c, 503, 'UNAVAILABLE', 'database unavailable');
     }
   });
+
+  app.get('/v1/meta', async (c) => c.json(await loadMeta(db, now())));
 
   app.get('/v1/days/:gameDate', async (c) => {
     const { gameDate } = parse(dateParam, c.req.param());
