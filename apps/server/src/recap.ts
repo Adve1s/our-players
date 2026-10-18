@@ -23,6 +23,8 @@ export async function loadRecap(
       publicId: games.publicId,
       league: games.league,
       status: games.status,
+      seasonType: games.seasonType,
+      gameDate: games.gameDate,
       startTimeUtc: games.startTimeUtc,
       awayId: awayTeam.id,
       awayAbbrev: awayTeam.abbrev,
@@ -31,6 +33,7 @@ export async function loadRecap(
       awayScore: games.awayScore,
       homeScore: games.homeScore,
       endedIn: games.endedIn,
+      periodScores: games.periodScores,
       boxscoreFetchedAt: games.boxscoreFetchedAt,
     })
     .from(games)
@@ -94,12 +97,15 @@ export async function loadRecap(
       publicId: g.publicId,
       league: g.league,
       status: g.status,
+      seasonType: g.seasonType,
+      gameDate: g.gameDate,
       startTimeUtc: g.startTimeUtc.toISOString(),
       away: { id: g.awayId, abbrev: g.awayAbbrev },
       home: { id: g.homeId, abbrev: g.homeAbbrev },
       awayScore: g.awayScore,
       homeScore: g.homeScore,
       endedIn: g.endedIn,
+      periodScores: g.periodScores,
       boxScoreStored: g.boxscoreFetchedAt !== null,
     })),
     // TS can't tie a row's kind to its parsed stats through the spread, so the union is asserted.
