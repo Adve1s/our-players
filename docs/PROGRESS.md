@@ -17,11 +17,10 @@ Read this first in every session. **Current state** is rewritten at each `/hando
   - Daily jobs (09/10/11 UTC) count any run status: a failed roster waits until tomorrow (or a manual `pnpm job`).
   - A box-score newcomer whose landing fetch fails stays a stub and is never retried; `roster --date` only moves the calendar date (parking lot, PR #9).
   - The live runs saw only FINAL/OFF (and now in-progress) games; PRE/CRIT/OVER/PPD/CNCL and null-vs-absent fields are still unseen.
-  - Still pending from S00: delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` (its date passed) and confirm `pnpm install --frozen-lockfile`.
   - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
 
 ## Known issues
-- `pnpm-workspace.yaml` exempts 9 Expo SDK 58 packages from pnpm's 1-day release-age check until 2026-10-17 20:00 UTC; delete the block after that.
+- none
 
 ## Parking lot
 Ideas that came up but are out of scope for now.
@@ -55,7 +54,7 @@ Ideas that came up but are out of scope for now.
 - S04b shortcuts: `apps/server/src/scheduler/decide.ts:26` `lastRuns` per job, not per league (S05); `apps/server/src/main.ts:39` tsx watch SIGKILLs a tick longer than 5 s; `apps/server/src/jobs/results.ts:21` stuck-game re-fetch now bounded by the scheduler's 24 h window only.
 - S04b deferred minors (task and final reviews): `game-day.test.ts` `latestStartedGameDay` cases not an `it.each`; `db-lock.test.ts` "takeover leaves no guard" overlaps the dead-pid test, the loser test doesn't assert the guard survives; `current-season.test.ts` lacks the fallback's league filter, a future POSTPONED game in the fallback, start == now; `jobs-season-stats` "no games" doesn't assert its log; `results` can fetch one box score twice in a run (first fetch 8.5–12 h after start, > 6 h after final), nested ternary in `finalizeGame`, failed-correction test doesn't assert the error text; `scheduler-decide.test.ts` `uncorrected()` builds finals before their start, the 24 h window edges are untested, `noFuture` helper overwrites `games`; no test for `loadState` ignoring an unknown `job_runs.job` or `stop()` with no tick in flight; PGlite integrity after a SIGKILL mid-write unverified; a crash between the lock's tmp write and link leaves a `.tmp` file.
 - Full `pnpm verify` showed PGlite boot timeouts (30 s hooks, 5 s default tests) when the machine's load average was 11–15; one recap test got a 30 s timeout. Revisit (fewer parallel workers, or longer hook timeouts) if CI flakes.
-- S04b handoff review minors: after the first Ctrl-C further signals are ignored (outside tsx watch a hung close needs SIGKILL); a signal during `migrate()` comes before the handlers (lock left, taken over next start); a failed `close()` on the migrate-failure path hides the migrate error; a manual `pnpm job schedule` after 09:00 UTC counts as the day's run; daily slots are UTC, so they shift an hour in Riga with DST (owner question).
+- S04b handoff review minors: after the first Ctrl-C further signals are ignored (outside tsx watch a hung close needs SIGKILL); a signal during `migrate()` comes before the handlers (lock left, taken over next start); a failed `close()` on the migrate-failure path hides the migrate error; a manual `pnpm job schedule` after 09:00 UTC counts as the day's run. Daily slots are UTC and shift an hour in Riga with DST: owner accepted, 2026-10-18 (D-041).
 - PR #10 review, deferred:
   - `jobs/results.ts` a DB with finals stored before S04b (e.g. a big backfill made with S04a) re-fetches each of them once on the first startup catch-up (~1 request per game). The owner's DB already did (16 corrections); fix only if someone restores an old backfill: mark rows with `boxscore_fetched_at` ≥ 12 h after the start as corrected.
   - `scheduler/decide.ts:35` any `job_runs` row of a daily job counts, including a manual `--date` run (already parked above) and, from S05, another league's run (`shortcut:`).
@@ -224,3 +223,8 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Declined: bounding `loadState`'s future games (a few ms per tick on local PGlite).
 - Reviewer: approve-with-fixes; fixed 1 Important (no test that a later tick runs results without `catchUp`) and stale PROGRESS line refs; left 2 minors (the `cli-args` catch-up test repeats an expectation; an NBA run logs "arrives in S05" per day and for corrections).
 - CI: re-run on push.
+
+### Release-age cleanup — 2026-10-18 — PR (`chore-release-age`)
+- Changed: `pnpm-workspace.yaml` loses the S00 `minimumReleaseAgeExclude` block (9 Expo SDK 58 exemptions, inert since 2026-10-17 20:00 UTC); `pnpm install --frozen-lockfile` passes without it. Known issues now empty.
+- Decisions: D-041 amended in place (owner: UTC daily slots shifting an hour in Riga with DST is fine).
+- Housekeeping: merged local branches `s04a-jobs-recap`/`s04b-scheduler` deleted, stale remote-tracking refs pruned.
