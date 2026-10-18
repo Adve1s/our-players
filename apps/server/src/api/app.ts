@@ -1,9 +1,17 @@
-import type { ErrorResponse } from '@our-players/shared';
+import {
+  type ErrorResponse,
+  gameDateSchema,
+  type Prefs,
+  prefsQuerySchema,
+  publicIdSchema,
+} from '@our-players/shared';
 import { type Context, Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import { z } from 'zod';
 import type { Db } from '../db/client';
 import type { Logger } from '../jobs/runner';
+import { loadDay, loadGame } from './day';
 import { loadHealth } from './meta';
 
 export type ApiDeps = { db: Db; now: () => Date; log: Logger };
@@ -11,6 +19,24 @@ export type ApiDeps = { db: Db; now: () => Date; log: Logger };
 export function badRequest(message: string): HTTPException {
   return new HTTPException(400, { message });
 }
+
+function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
+  const result = schema.safeParse(input);
+  if (!result.success) throw badRequest(z.prettifyError(result.error));
+  return result.data;
+}
+
+// A repeated parameter is a client bug; taking one of the values would silently drop the other.
+export function parseQuery(c: Context): Prefs {
+  for (const [name, values] of Object.entries(c.req.queries())) {
+    if (values.length > 1) throw badRequest(`${name}: given more than once`);
+  }
+  return parse(prefsQuerySchema, c.req.query());
+}
+
+const dateParam = z.object({ gameDate: gameDateSchema });
+const gameParam = z.object({ gameId: publicIdSchema });
+const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);
@@ -47,6 +73,21 @@ export function createApp({ db, log }: ApiDeps): Hono {
       log.error('health check failed', { error: e instanceof Error ? e.message : String(e) });
       return errorBody(c, 503, 'UNAVAILABLE', 'database unavailable');
     }
+  });
+
+  app.get('/v1/days/:gameDate', async (c) => {
+    const { gameDate } = parse(dateParam, c.req.param());
+    const body = await loadDay(db, gameDate, parseQuery(c));
+    c.header('Cache-Control', CACHE_CONTROL);
+    return c.json(body);
+  });
+
+  app.get('/v1/games/:gameId', async (c) => {
+    const { gameId } = parse(gameParam, c.req.param());
+    const body = await loadGame(db, gameId, parseQuery(c));
+    if (!body) return errorBody(c, 404, 'NOT_FOUND', `no game ${gameId}`);
+    c.header('Cache-Control', CACHE_CONTROL);
+    return c.json(body);
   });
 
   return app;
