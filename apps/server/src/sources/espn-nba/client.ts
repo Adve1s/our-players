@@ -1,5 +1,6 @@
 import { type SeasonStats, type SeasonType, seasonLabel, type Team } from '@our-players/shared';
 import type { PoliteClient } from '../../http/polite-client';
+import { getJson as getSourceJson } from '../common';
 import { mapSummary } from './boxscore';
 import { mapScoreboard } from './games';
 import { mapAthlete, mapRoster } from './players';
@@ -29,14 +30,8 @@ export const BYATHLETE_MAX_PAGES = 20;
 
 type Client = Pick<PoliteClient, 'get'>;
 
-async function getJson(client: Client, endpoint: string, url: string): Promise<unknown> {
-  const { text } = await client.get(url);
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`espn-nba ${endpoint}: response is not JSON (${url})`);
-  }
-}
+const getJson = (client: Client, endpoint: string, url: string) =>
+  getSourceJson('espn-nba', client, endpoint, url);
 
 // The scoreboard carries no game day, so the requested date becomes gameDate.
 export const fetchScoreboard = async (client: Client, date: string) =>
@@ -87,6 +82,12 @@ export async function fetchSeasonStats(
     const url = espnUrls.byathlete(endYear, typeId, page);
     const result = mapByAthlete(await getJson(client, 'byathlete', url));
     if (page === 1) {
+      // Rows are labelled from the response, so a fallback season would be stored as success.
+      if (result.season !== season || result.seasonType !== seasonType) {
+        throw new Error(
+          `espn-nba byathlete: asked for ${season} ${seasonType}, got ${result.season} ${result.seasonType}`,
+        );
+      }
       if (result.pages > BYATHLETE_MAX_PAGES) {
         throw new Error(
           `espn-nba byathlete: ${result.pages} pages exceeds the budget of ${BYATHLETE_MAX_PAGES}`,

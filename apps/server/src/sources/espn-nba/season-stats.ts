@@ -1,4 +1,4 @@
-import type { SeasonStats } from '@our-players/shared';
+import type { SeasonStats, SeasonType } from '@our-players/shared';
 import { lookup, parsePayload, SEASON_TYPES, seasonFromYear } from './common';
 import { byAthleteSchema } from './schemas';
 
@@ -30,6 +30,8 @@ const PERCENTAGES = {
 // Season and season type are read from the response's requestedSeason.
 export function mapByAthlete(raw: unknown): {
   seasonStats: SeasonStats[];
+  season: string;
+  seasonType: SeasonType;
   page: number;
   pages: number;
   count: number;
@@ -66,5 +68,12 @@ export function mapByAthlete(raw: unknown): {
       stats,
     };
   });
-  return { seasonStats, page: pagination.page, pages: pagination.pages, count: pagination.count };
+  return {
+    seasonStats,
+    season,
+    seasonType,
+    page: pagination.page,
+    pages: pagination.pages,
+    count: pagination.count,
+  };
 }

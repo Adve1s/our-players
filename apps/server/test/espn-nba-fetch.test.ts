@@ -168,4 +168,18 @@ describe('fetchSeasonStats', () => {
     );
     expect(client.requests).toEqual([]);
   });
+
+  // The recorded page is 2025-26 REG; ESPN answering another season or type must not pass as success.
+  it.each([
+    ['2026-27', 'REG', espnUrls.byathlete('2027', 2, 1), '2026-27 REG'],
+    ['2025-26', 'PRE', espnUrls.byathlete('2026', 1, 1), '2025-26 PRE'],
+  ] as const)(
+    'throws when a request for %s %s gets another season back',
+    async (season, type, url, asked) => {
+      const client = fakeClient({ [url]: page1(1, 50) });
+      await expect(fetchSeasonStats(client, season, type)).rejects.toThrow(
+        `espn-nba byathlete: asked for ${asked}, got 2025-26 REG`,
+      );
+    },
+  );
 });
