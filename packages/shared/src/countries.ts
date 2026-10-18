@@ -267,3 +267,7 @@ export const ESPN_COUNTRY_ALIASES: Readonly<Record<string, CountryCode>> = {
   Scotland: 'GBR',
   Wales: 'GBR',
 };
+
+export function countryFromName(name: string): CountryCode | null {
+  throw new Error('not implemented');
+}

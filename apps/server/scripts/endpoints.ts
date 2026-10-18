@@ -40,6 +40,8 @@ export const endpoints = {
     scoreboard: (date) => `${ESPN}/scoreboard?dates=${e(date.replaceAll('-', ''))}`,
     summary: (eventId) => `${ESPN}/summary?event=${e(eventId)}`,
     roster: (teamId) => `${ESPN}/teams/${e(teamId)}/roster`,
+    // The id is ignored; it only names the fixture file.
+    teams: () => `${ESPN}/teams`,
     athlete: (athleteId) =>
       `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/${e(athleteId)}`,
     overview: (athleteId) =>

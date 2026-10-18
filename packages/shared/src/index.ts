@@ -2,6 +2,7 @@ export {
   COUNTRY_CODES,
   type CountryCode,
   countryCodeSchema,
+  countryFromName,
   ESPN_COUNTRY_ALIASES,
 } from './countries';
 export {
