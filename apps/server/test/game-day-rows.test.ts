@@ -202,6 +202,42 @@ describe('gameDayRows', () => {
     );
   });
 
+  it('no not-in-lineup row for a player with a line in another game that day (traded since)', () => {
+    const p = player('nhl-10', TBL.id);
+    const newTeamGame = game(G2, TBL, BOS);
+    const day = { games: [one, newTeamGame], lines: [skaterLine(G1, p, CBJ, 1)], players: [p] };
+    expect(rowsOf(day)).toEqual([{ game: G1, rows: ['line:nhl-10'] }]);
+  });
+
+  it('games with the same start time are ordered by public ID', () => {
+    const p = player('nhl-10', CBJ.id);
+    const q = player('nhl-11', TBL.id);
+    const day = {
+      games: [game(G2, TBL, BOS), one],
+      lines: [skaterLine(G1, p, CBJ, 1), skaterLine(G2, q, TBL, 1)],
+      players: [p, q],
+    };
+    expect(rowsOf(day).map((g) => g.game)).toEqual([G1, G2]);
+  });
+
+  it('rows that rank the same are ordered by public ID', () => {
+    const [a, b, c, d] = ['nhl-10', 'nhl-11', 'nhl-12', 'nhl-13'].map((id) => player(id, CBJ.id));
+    if (!a || !b || !c || !d) throw new Error('test setup');
+    const day = {
+      games: [one],
+      lines: [
+        goalieLine(G1, d, CBJ),
+        goalieLine(G1, c, CBJ),
+        skaterLine(G1, b, CBJ, 1),
+        skaterLine(G1, a, CBJ, 1),
+      ],
+      players: [d, c, b, a],
+    };
+    expect(rowsOf(day)).toEqual([
+      { game: G1, rows: ['line:nhl-10', 'line:nhl-11', 'line:nhl-12', 'line:nhl-13'] },
+    ]);
+  });
+
   it('no row for a player with no current team', () => {
     const p = player('nhl-10', null);
     expect(rowsOf({ games: [one], lines: [], players: [p] })).toEqual([]);
