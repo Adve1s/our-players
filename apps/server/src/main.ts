@@ -37,7 +37,10 @@ async function runScheduler(): Promise<void> {
   });
   console.log('scheduler on');
   // shortcut: under tsx watch a tick longer than 5 s is SIGKILLed mid-job (job_runs row left running, lock taken over on the next start); run without watch, or make jobs abortable, if that bites
+  let stopping = false;
   const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
     console.log('stopping scheduler: waiting for the running tick');
     scheduler
       .stop()
@@ -50,8 +53,10 @@ async function runScheduler(): Promise<void> {
         },
       );
   };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
+  // `on`, not `once`: tsx watch relays Ctrl-C, so a second SIGINT arrives mid-close, and with no
+  // listener left Node's default action kills the process and leaves the PGlite lock behind.
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 if (schedulerEnabled) {
