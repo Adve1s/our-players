@@ -4,19 +4,19 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 
 ## Current state
 - **Last session:** S05 — ESPN NBA adapter + jobs, 2026-10-18. NBA data flows from ESPN through the same jobs and scheduler as the NHL: `sources/espn-nba/` (scoreboard, summary, teams, roster, athlete, byathlete; pure mappers + fetchers), one adapter per league in `src/jobs/adapters.ts` (every `arrives in S05` guard gone), `--league nba`, `pnpm inspect espn-nba …`, ESPN country names → alpha-3 via iso-codes names + aliases, and a scheduler that keys daily runs by league and runs both leagues.
-- **Branch / PR:** `s05-nba` → `main` (PR opened by this handoff). PR #11 (release-age cleanup) is merged.
-- **What works:** `pnpm verify` (44 test files, 880 tests). Owner's live runs 2026-10-18: `pnpm job roster --league nba` → 30 teams, 539 players, 31 requests; Embiid USA/override, Towns DOM/override, Porziņģis LVA/birth in the DB; `backfill --league nba` and `--league nhl` for 2026-03-16 (40 + 27 requests); `pnpm recap --date 2026-03-16` shows NHL (Silovs W) and NBA (Porziņģis 30 PTS) blocks; `pnpm job season-stats --league nba` → 474 rows, 104 skipped, 12 requests (a re-run is a no-op).
+- **Branch / PR:** `s05-nba` → `main`, PR #12 (review fixes pushed; owner merges once CI passes). PR #11 (release-age cleanup) is merged.
+- **What works:** `pnpm verify` (44 test files, 909 tests). Owner's live runs 2026-10-18: `pnpm job roster --league nba` → 30 teams, 539 players, 31 requests; Embiid USA/override, Towns DOM/override, Porziņģis LVA/birth in the DB; `backfill --league nba` and `--league nhl` for 2026-03-16 (40 + 27 requests); `pnpm recap --date 2026-03-16` shows NHL (Silovs W) and NBA (Porziņģis 30 PTS) blocks; `pnpm job season-stats --league nba` → 474 rows, 104 skipped, 12 requests (a re-run is a no-op).
 - **How to try it:** `pnpm job roster --league nba`; `pnpm job backfill --league nba --from 2026-03-16 --to 2026-03-16`; `pnpm recap --date 2026-03-16`; `pnpm job season-stats --league nba`; `pnpm inspect espn-nba summary 401810839`; `SCHEDULER_ENABLED=1 pnpm dev:server` (ticks now list NHL and NBA decisions); `pnpm test espn-nba jobs-nba countries scheduler`.
 - **Next session:** S06 — API: days, games, meta.
 - **Notes for the next sessions:**
   - S06's `/v1/meta` reuses `currentSeason(db, league, now)` (`src/db/games.ts`, D-039) — works per league now; the main page's default day and prev/next navigation use `latestStartedGameDay`/`previousGameDay`/`nextGameDay` (shared `game-day.ts`; `latestStartedGameDay` needs each game's `status`). `gameDayRows` already renders basketball lines (DNP reasons are ESPN's verbatim upper case, e.g. `COACH'S DECISION` — S09 decides display case).
   - NBA period labels are `Q1…Q4`, `OT`, `2OT`; NHL's are `1…3`, `OT`, `SO`. A LIVE NBA game with no linescores yet has `periodScores: []` (not `null`).
   - `season-stats` stores totals only for players already in the DB (D-039); NBA rows are `totals` + `fgPct`/`threePct`/`ftPct` (0–1), no per-game averages (D-043; S13 can add them, the job re-fetches daily).
-  - NBA preseason season stats (`byathlete seasontype=1`) are still unverified live: the first scheduler day with a started 2026-27 preseason game stored will try them. `fetchSeasonStats` throws when the response's `requestedSeason` isn't the one requested (PR #12 review), so an ESPN fallback shows as a failed `season-stats` run.
+  - NBA preseason season stats (`byathlete seasontype=1`) are still unverified live: the first scheduler day with a started 2026-27 preseason game stored will try them. `fetchSeasonStats` throws when the response's `requestedSeason` isn't the one requested (PR #12 review), The job fetches each season type on its own: one failing type (e.g. an ESPN PRE fallback) marks the run `partial` and the other types still land; all failing marks it `failed`.
   - The NBA `schedule` is 7 scoreboard requests (one per day; D-042); an unknown ESPN status or season type (play-in, All-Star) skips the game with a warning.
   - Corrections (D-040) and the 24 h window apply to both leagues. Daily jobs (09/10/11 UTC) count any run status per league: a failed roster waits until tomorrow (or a manual `pnpm job`).
   - The dev server holds the PGlite lock only with `SCHEDULER_ENABLED=1`; stop it before `pnpm job`/`recap`/`db:*`. Under `tsx watch` a tick longer than 5 s is SIGKILLed on Ctrl-C or an edit-triggered restart (`main.ts` `shortcut:`, D-041) — more likely now that ticks run both leagues.
-  - Six NBA players born in Russia, Bosnia & Herzegovina or DR Congo got a null birth country in the owner's DB before the aliases landed; the next roster run fixes them.
+  - Six NBA players born in Russia, Bosnia & Herzegovina or DR Congo got a null birth country in the owner's DB before the aliases landed; the next roster run fixes them. `ESPN_COUNTRY_ALIASES` now also holds 17 unambiguous English short forms (Turkey, Ivory Coast, Cape Verde, …) not yet seen live.
   - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
 
 ## Known issues
@@ -243,3 +243,9 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Rulings: 7 (in the PR briefing).
 - Live (owner): roster nba (31 req), overrides in the DB, backfill + recap NHL + NBA for 2026-03-16, season-stats nba 474 rows / 12 req; follow-up aliases for 3 live spellings.
 
+### Review fixes for PR #12 — 2026-10-18 — PR #12 (`s05-nba`)
+- Changed: `countries.ts` (17 English short-form aliases; Kosovo/Korea/Virgin Islands stay null), `espn-nba` byathlete throws when the response's season or type isn't the one requested, `season-stats` job fetches each season type on its own (`partial` when some fail, `failed` when all do), `addDays` in shared `game-day.ts` (backfill's `nextDay` gone), one `getJson` in `sources/common.ts`. +29 tests (909).
+- Review input: `/code-review` (8 comments) + an ultra review (4): fixed 4, deferred 3 (parking lot, "PR #12 review, deferred"), rejected 2 (NBA week all-or-nothing, a ruling; `SEASON_TYPE_IDS` kept, owner).
+- Red/green: each fix red first for the right reason (null country, rows resolved instead of a throw, `addDays` not a function, PRE 404 stopping REG).
+- Reviewer: approve-with-fixes; 1 Important fixed (the new season check would have stopped REG season stats all season behind a failing PRE); 2 minors left (check season on every byathlete page; a `countries.ts` comment overlaps its test's).
+- Note: full `pnpm verify` timed out in PGlite hooks twice at load average ~20 (reviewer running tests in parallel); green when idle (parked flake).
