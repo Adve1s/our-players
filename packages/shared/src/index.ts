@@ -1,3 +1,4 @@
+export * from './contract';
 export {
   COUNTRY_CODES,
   COUNTRY_NAMES,
