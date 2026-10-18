@@ -45,6 +45,12 @@ Ideas that came up but are out of scope for now.
 - `apps/server/src/game-day-rows.ts:72` — `shortcut:` "Not in lineup" uses the current team, so older dates can be wrong after a trade (VISION §4.1).
 - `apps/server/src/jobs/runner.ts:63` — `shortcut:` in-process job lock; a second process on the same Postgres isn't locked out (S10).
 - S06: `gameDayRows` drops games without shown players; §4.1's "Other games (n)" = the day's games minus its output.
+- PR #9 review, deferred (owner decision):
+  - `db/client.ts:77` PGlite stale-lock takeover is racy: ENOENT if the holder releases between `openSync('wx')` and `readFileSync`; two processes taking over the same stale lock can both "hold" it (the second `rmSync` deletes the first's live lock); a reused pid keeps a stale lock alive; the error doesn't say to delete the `.lock` file. Fix before S04b's long-lived dev server opens the DB.
+  - `jobs/results.ts:124` a failed-enrichment stub is never retried: `boxscore_fetched_at` is set, so re-running results/backfill skips him and no roster lists a retired/AHL player, so he never shows in a recap. Needs a retry path (e.g. stubs with no birth country) and a `shortcut:` comment until then.
+  - `jobs/roster.ts:15` `--date` changes only the calendar's team list; rosters are always `/roster/{abbrev}/current`, so a past date mixes seasons (ARI → 404, `partial`, no deactivation). Reject `--date` for roster in `parseJobArgs`, or drop the flag.
+  - `jobs/results.ts:103` each unknown box-score player costs one team SELECT and one `upsertPlayers` transaction (~40 per first game); batch per game before a season backfill.
+  - `jobs/backfill.ts:15` date validation duplicated from `parseJobArgs` (its DAY regex accepts 2026-02-30, `realDate` doesn't); the `message(e)` helper is copied into results, roster and runner. One module, or validate `JobArgs` once in `runJob`.
 
 ## Session log
 <!--
