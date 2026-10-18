@@ -4,7 +4,7 @@ import { upsertGames, upsertStatLines } from '../db/games';
 import { upsertPlayers } from '../db/players';
 import { games, players, teams } from '../db/schema';
 import { upsertTeams } from '../db/teams';
-import { fetchBoxscore, fetchPlayerLanding, fetchScore } from '../sources/nhl';
+import { ADAPTERS } from './adapters';
 import type { Job, JobContext, JobRun } from './runner';
 
 export const CORRECTION_DELAY_MS = 6 * 60 * 60 * 1000;
@@ -42,9 +42,6 @@ export const resultsJob: Job = async (ctx, run, args) => {
       ).map((r) => r.day);
   for (const day of days) await ingestDay(ctx, run, args.league, day);
 
-  // finalizeGame fetches NHL box scores only.
-  if (args.league !== 'NHL')
-    return run.fail(`corrections: ${args.league.toLowerCase()} arrives in S05`);
   const now = ctx.now().getTime();
   const due = await ctx.db
     .select({ publicId: games.publicId, externalId: games.externalId })
@@ -61,7 +58,7 @@ export const resultsJob: Job = async (ctx, run, args) => {
     );
   for (const game of due) {
     try {
-      await finalizeGame(ctx, run, game, 'correction');
+      await finalizeGame(ctx, run, args.league, game, 'correction');
     } catch (e) {
       // corrected_at stays null, so the next run retries this game.
       run.fail(`correction ${game.publicId}: ${message(e)}`);
@@ -78,8 +75,7 @@ export async function ingestDay(
 ): Promise<void> {
   run.add('days');
   try {
-    if (league !== 'NHL') throw new Error(`${league.toLowerCase()} arrives in S05`);
-    const score = await fetchScore(ctx.client, day);
+    const score = await ADAPTERS[league].day(ctx.client, day);
     for (const w of score.warnings) run.log.warn(w);
     await upsertTeams(ctx.db, score.teams);
     run.add('games', await upsertGames(ctx.db, score.games));
@@ -99,7 +95,7 @@ export async function ingestDay(
     const settledBy = new Date(ctx.now().getTime() - SETTLED_AFTER_START_MS);
     for (const { startTimeUtc, ...game } of unfetched) {
       try {
-        await finalizeGame(ctx, run, game, startTimeUtc <= settledBy ? 'settled' : 'first');
+        await finalizeGame(ctx, run, league, game, startTimeUtc <= settledBy ? 'settled' : 'first');
       } catch (e) {
         // boxscore_fetched_at stays null, so the next run retries this game.
         run.fail(`game ${game.publicId}: ${message(e)}`);
@@ -113,11 +109,13 @@ export async function ingestDay(
 async function finalizeGame(
   ctx: JobContext,
   run: JobRun,
+  league: League,
   game: { publicId: PublicId; externalId: string },
   // settled: a first fetch late enough after the start to stand as the correction too.
   mode: 'first' | 'settled' | 'correction',
 ): Promise<void> {
-  const box = await fetchBoxscore(ctx.client, game.externalId);
+  const adapter = ADAPTERS[league];
+  const box = await adapter.boxscore(ctx.client, game.externalId);
   await upsertTeams(ctx.db, box.teams);
   const stored = new Set(
     (
@@ -135,7 +133,7 @@ async function finalizeGame(
   // A stored player is never overwritten by a stub: stub first names are initials ("E.").
   for (const stub of box.players.filter((p) => !stored.has(p.publicId))) {
     try {
-      const { player, warnings } = await fetchPlayerLanding(ctx.client, stub.externalId);
+      const { player, warnings } = await adapter.player(ctx.client, stub.externalId);
       for (const w of warnings) run.log.warn(w);
       const team = player.currentTeamExternalId;
       const teamStored =

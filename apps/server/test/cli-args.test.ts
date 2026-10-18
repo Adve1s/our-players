@@ -16,6 +16,10 @@ describe('parseJobArgs', () => {
     });
   });
 
+  it('takes --league nba', () => {
+    expect(parseJobArgs(['schedule', '--league', 'nba']).args.league).toBe('NBA');
+  });
+
   // Only the scheduler's 10-minute ticks need the 24 h bound; a manual run is rare and deliberate.
   it('a manual results run catches up corrections of any age', () => {
     expect(parseJobArgs(['results']).args.catchUp).toBe(true);
@@ -38,7 +42,7 @@ describe('parseJobArgs', () => {
   it.each([
     [[], 'unknown job'],
     [['nope'], 'unknown job'],
-    [['results', '--league', 'nba'], 'nba arrives in S05'],
+    [['results', '--league', 'nfl'], 'unknown league "nfl"; valid: nhl, nba'],
     [['results', '--date', '2026-02-30'], 'invalid date'],
     [['backfill', '--from', '2026-03-24', '--to', '2026-03-23'], '--from is after --to'],
     [['backfill', '--from', '2026-03-23'], 'backfill needs --from and --to'],

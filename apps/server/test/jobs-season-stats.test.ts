@@ -174,8 +174,3 @@ it('fails, naming the URL, when a summary fetch fails', async () => {
   if (result.status === 'skipped') throw new Error('unexpected skip');
   expect(result.error).toContain(nhlUrls.summary('skater', '20252026', 2));
 });
-
-it('rejects a league that has no adapter yet', async () => {
-  const result = await runJob(ctx, 'season-stats', seasonStatsJob, { league: 'NBA' });
-  expect(result).toMatchObject({ status: 'failed', error: 'nba arrives in S05' });
-});

@@ -3,13 +3,12 @@ import { and, eq, lte } from 'drizzle-orm';
 import { currentSeason, playedOrPlaying } from '../db/games';
 import { games, players } from '../db/schema';
 import { upsertSeasonStats } from '../db/season-stats';
-import { fetchGoalieSummary, fetchSkaterSummary } from '../sources/nhl';
+import { ADAPTERS } from './adapters';
 import type { Job } from './runner';
 
 // Rows are kept for every stored player of the league, active or not: a player waived or sent down
 // mid-season still has real totals. The rest of the league's rows are counted as skipped.
 export const seasonStatsJob: Job = async (ctx, run, args) => {
-  if (args.league !== 'NHL') throw new Error(`${args.league.toLowerCase()} arrives in S05`);
   const now = ctx.now();
   const season = await currentSeason(ctx.db, args.league, now);
   if (season === null) {
@@ -43,10 +42,7 @@ export const seasonStatsJob: Job = async (ctx, run, args) => {
     ).map((p) => p.publicId),
   );
   for (const seasonType of types) {
-    const rows = [
-      ...(await fetchSkaterSummary(ctx.client, season, seasonType)),
-      ...(await fetchGoalieSummary(ctx.client, season, seasonType)),
-    ];
+    const rows = await ADAPTERS[args.league].seasonStats(ctx.client, season, seasonType);
     const kept = rows.filter((r) => stored.has(r.playerPublicId));
     run.add('rows', await upsertSeasonStats(ctx.db, kept));
     run.add('skipped', rows.length - kept.length);

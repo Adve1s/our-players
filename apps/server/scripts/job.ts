@@ -8,7 +8,7 @@ import { createLogger, runJob } from '../src/jobs/runner';
 import { loadNationalityOverrides } from '../src/nationality/overrides';
 
 const USAGE =
-  'usage: pnpm job schedule|results|roster|season-stats|backfill [--league nhl] [--date YYYY-MM-DD] [--from YYYY-MM-DD --to YYYY-MM-DD]';
+  'usage: pnpm job schedule|results|roster|season-stats|backfill [--league nhl|nba] [--date YYYY-MM-DD] [--from YYYY-MM-DD --to YYYY-MM-DD]';
 
 async function main(): Promise<number> {
   let parsed: ReturnType<typeof parseJobArgs>;
