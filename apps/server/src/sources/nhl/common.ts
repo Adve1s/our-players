@@ -5,17 +5,16 @@ import {
   seasonLabel,
   type Team,
 } from '@our-players/shared';
-import { z } from 'zod';
+import type { z } from 'zod';
+import { lookup, parsePayload as parseSourcePayload } from '../common';
+
+export { lookup };
 
 // `where` in the helpers below is the message prefix naming source, endpoint and the game or
 // player ("nhl score: game 2025020760"), so a mapping failure is traceable from one log line.
 
 export function parsePayload<T>(schema: z.ZodType<T>, endpoint: string, raw: unknown): T {
-  const result = schema.safeParse(raw);
-  if (!result.success) {
-    throw new Error(`nhl ${endpoint}: invalid payload\n${z.prettifyError(result.error)}`);
-  }
-  return result.data;
+  return parseSourcePayload('nhl', schema, endpoint, raw);
 }
 
 // 20252026 → "2025-26"; anything else is a season ID we don't understand, not a guess.
@@ -33,11 +32,6 @@ export function toiSeconds(toi: string, where: string): number {
   const match = /^(\d+):([0-5]\d)$/.exec(toi);
   if (!match) throw new Error(`${where}: malformed toi "${toi}"`);
   return Number(match[1]) * 60 + Number(match[2]);
-}
-
-// hasOwn, so inherited keys like 'constructor' are not table rows.
-export function lookup<V>(table: Readonly<Record<string, V>>, key: string | number): V | undefined {
-  return Object.hasOwn(table, key) ? table[key] : undefined;
 }
 
 const POSITION_GROUPS: Readonly<Record<string, PositionGroup>> = {

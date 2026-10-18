@@ -1,5 +1,6 @@
 export {
   COUNTRY_CODES,
+  COUNTRY_NAMES,
   type CountryCode,
   countryCodeSchema,
   countryFromName,
