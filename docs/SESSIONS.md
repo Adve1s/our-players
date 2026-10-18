@@ -314,7 +314,7 @@ Session S04b — Season stats, corrections, scheduler (slice 1). Create branch `
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S04b (the contract), docs/VISION.md §6 and §8, and the job runner and jobs from S04a. First run the tests.
 
-Brainstorm with §S04b as the spec. The design must cover: the season-stats job and how the current season is derived; how corrections fit into results; the scheduler's pure "what should run now?" function and its test cases; the game-day helpers; corrections for backfilled games (their `final_at` is the ingestion time, so the 6 h rule would re-fetch each once); catching a rejected `runJob` (a failed `job_runs` write) in the scheduler; releasing the PGlite lock when opening fails in the long-lived dev server; and the live commands I'll run at the end.
+Brainstorm with §S04b as the spec. The design must cover: the season-stats job and how the current season is derived; how corrections fit into results; the scheduler's pure "what should run now?" function and its test cases; the game-day helpers; corrections for backfilled games (their `final_at` is the ingestion time, so the 6 h rule would re-fetch each once); catching a rejected `runJob` (a failed `job_runs` write) in the scheduler; releasing the PGlite lock when opening fails in the long-lived dev server, together with the stale-lock takeover race (PR #9 parking lot); the run order of schedule vs results (a stale schedule can set a LIVE game back to SCHEDULED until results runs); and the live commands I'll run at the end.
 
 Then plan and build: red/green for the decision logic, corrections and season stats. Prove each criterion with output. For criterion 5, give me the exact commands and wait for my result. Then tell me it's ready for /handoff.
 ```
