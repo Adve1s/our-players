@@ -1,0 +1,6 @@
+{
+  "url": "https://api.nhle.com/stats/rest/en/goalie/summary?limit=-1&cayenneExp=seasonId%3D20252026%20and%20gameTypeId%3D2",
+  "fetchedAt": "2026-10-18T11:30:44.743Z",
+  "status": 200,
+  "bytes": 38937
+}

@@ -30,6 +30,8 @@ export const endpoints = {
       `${NHL_STATS}/skater/summary?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and gameTypeId=2`)}`,
     'goalie-summary-reg': (seasonId) =>
       `${NHL_STATS}/goalie/summary?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and gameTypeId=2`)}`,
+    'skater-summary-reg-all': (seasonId) => nhlUrls.summary('skater', seasonId, 2),
+    'goalie-summary-reg-all': (seasonId) => nhlUrls.summary('goalie', seasonId, 2),
     'goalie-bios-lva': (seasonId) =>
       `${NHL_STATS}/goalie/bios?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
   },

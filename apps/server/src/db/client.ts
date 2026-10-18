@@ -1,4 +1,12 @@
-import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
+import {
+  closeSync,
+  linkSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
@@ -51,10 +59,16 @@ function openLocked(dataDir: string, wipe: boolean): DbHandle {
   // PGlite has no lock of its own and two processes on one dir corrupt it; a sibling file survives the wipe.
   const lock = `${dataDir}.lock`;
   takeLock(lock, dataDir);
-  if (wipe) rmSync(dataDir, { recursive: true, force: true });
-  // PGlite creates only the last directory of the path.
-  mkdirSync(dataDir, { recursive: true });
-  const handle = pgliteHandle(new PGlite(dataDir));
+  let handle: DbHandle;
+  try {
+    if (wipe) rmSync(dataDir, { recursive: true, force: true });
+    // PGlite creates only the last directory of the path.
+    mkdirSync(dataDir, { recursive: true });
+    handle = pgliteHandle(new PGlite(dataDir));
+  } catch (err) {
+    rmSync(lock, { force: true });
+    throw err;
+  }
   return {
     ...handle,
     close: async () => {
@@ -67,23 +81,67 @@ function openLocked(dataDir: string, wipe: boolean): DbHandle {
   };
 }
 
-function takeLock(lock: string, dataDir: string, retry = true): void {
+// Exported so a test can reach the no-retry branch, which otherwise needs a rival takeover mid-call.
+export function takeLock(lock: string, dataDir: string, retry = true): void {
   try {
-    const fd = openSync(lock, 'wx');
-    writeSync(fd, String(process.pid));
-    closeSync(fd);
+    createLock(lock);
   } catch (err) {
-    if (!retry || (err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-    const pid = Number(readFileSync(lock, 'utf8'));
-    // An empty or garbled file (crash mid-write) counts as stale.
-    if (Number.isInteger(pid) && pid > 0 && isAlive(pid)) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+    const held = readFileSync(lock, 'utf8');
+    const pid = pidOf(held);
+    // No retry: a rival takeover just wrote this lock, so its holder is live.
+    if (!retry || (pid && isAlive(pid))) throw inUse(dataDir, pid);
+    // An empty or garbled file (a crash, or older code that wrote the pid after creating the file) counts as stale.
+    // Only one process can create the guard, so two openers can't both delete the stale lock and the second one
+    // delete the first one's fresh lock.
+    const guard = `${lock}.${pid ?? 'stale'}.takeover`;
+    try {
+      closeSync(openSync(guard, 'wx'));
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
       throw new Error(
-        `PGlite ${dataDir} is in use by process ${pid} (is pnpm dev:server running?) — stop it, or set DATABASE_URL`,
+        `PGlite ${dataDir} is being taken over by another process (stale lock of ${pid ?? 'a crashed process'}); if none is running, delete ${guard}`,
       );
     }
-    rmSync(lock, { force: true });
-    takeLock(lock, dataDir, false);
+    try {
+      // Another takeover finished between our read and our guard: the lock is someone else's now.
+      if (readFileSync(lock, 'utf8') !== held) {
+        takeLock(lock, dataDir, false);
+        return;
+      }
+      rmSync(lock, { force: true });
+      try {
+        createLock(lock);
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+        throw inUse(dataDir, pidOf(readFileSync(lock, 'utf8')));
+      }
+    } finally {
+      rmSync(guard, { force: true });
+    }
   }
+}
+
+// link() publishes the lock with its pid already inside, so no opener ever reads it empty and takes it as stale.
+function createLock(lock: string): void {
+  const tmp = `${lock}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tmp, String(process.pid));
+    linkSync(tmp, lock);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+}
+
+function pidOf(held: string): number | undefined {
+  const pid = Number(held);
+  return Number.isInteger(pid) && pid > 0 ? pid : undefined;
+}
+
+function inUse(dataDir: string, pid: number | undefined): Error {
+  return new Error(
+    `PGlite ${dataDir} is in use by ${pid ? `process ${pid}` : 'another process'} (is pnpm dev:server running?) — stop it, or set DATABASE_URL`,
+  );
 }
 
 function isAlive(pid: number): boolean {

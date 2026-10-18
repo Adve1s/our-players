@@ -13,10 +13,10 @@ Unofficial, keyless, undocumented. Verified against fixtures recorded 2026-10-16
 | right-rail | `https://api-web.nhle.com/v1/gamecenter/{gameId}/right-rail` | `nhl/right-rail/2025020760.json` |
 | roster | `https://api-web.nhle.com/v1/roster/{teamAbbrev}/current` | `nhl/roster/CBJ.json` (no Latvian), `nhl/roster/FLA.json`, `nhl/roster/PIT.json` |
 | player-landing | `https://api-web.nhle.com/v1/player/{playerId}/landing` | `nhl/player-landing/8476878.json` (Girgensons), `nhl/player-landing/8478007.json` (Merzļikins) |
-| skater/goalie summary | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/summary?cayenneExp=seasonId=20252026` | `nhl/skater-summary/20252026.json`, `nhl/goalie-summary/20252026.json`, `nhl/skater-summary-lva/20252026.json`, `nhl/skater-summary-reg/20252026.json`, `nhl/goalie-summary-reg/20252026.json` |
+| skater/goalie summary | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/summary?cayenneExp=seasonId=20252026` | `nhl/skater-summary/20252026.json`, `nhl/goalie-summary/20252026.json`, `nhl/skater-summary-lva/20252026.json`, `nhl/skater-summary-reg/20252026.json`, `nhl/goalie-summary-reg/20252026.json`, `nhl/skater-summary-reg-all/20252026.json`, `nhl/goalie-summary-reg-all/20252026.json` |
 | skater/goalie bios | `https://api.nhle.com/stats/rest/en/{skater\|goalie}/bios?cayenneExp=seasonId=20252026` | `nhl/skater-bios/20252026.json`, `nhl/goalie-bios/20252026.json`, `nhl/skater-bios-lva/20252026.json`, `nhl/goalie-bios-lva/20252026.json` |
 
-The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded); the `-reg` variants add `and gameTypeId=2`. Stats REST returns `{data[], total}` with 50 rows by default (`nhl/skater-summary/20252026.json`: `total` 977, 50 rows); `limit=-1` returns every row in one request (live probes 2026-10-17, 2025-26 `gameTypeId=2`: skater summary 940 of 940, goalie summary 98 of 98), so the adapter requests `limit=-1` and throws when rows < `total`; `start` paging is not tested.
+The `-lva` variants add `and nationalityCode="LVA"` to `cayenneExp` (URL-encoded); the `-reg` variants add `and gameTypeId=2`; the `-reg-all` variants are the adapter's own URL (`nhlUrls.summary`: `limit=-1`, `gameTypeId=2`), recorded 2026-10-18 with every row (940 of 940, 98 of 98) because the 50-row `-reg` pages trip the truncation guard. Stats REST returns `{data[], total}` with 50 rows by default (`nhl/skater-summary/20252026.json`: `total` 977, 50 rows); `limit=-1` returns every row in one request (live probes 2026-10-17, 2025-26 `gameTypeId=2`: skater summary 940 of 940, goalie summary 98 of 98), so the adapter requests `limit=-1` and throws when rows < `total`; `start` paging is not tested.
 
 ## Field paths for VISION §8
 
@@ -85,6 +85,8 @@ Not an NHL field. Goalies who didn't play appear with `toi` `"00:00"` and no `de
 
 | Fixture | Upstream bytes | On disk |
 |---|---:|---:|
+| `nhl/skater-summary-reg-all/20252026.json` | 430505 | 631564 |
+| `nhl/goalie-summary-reg-all/20252026.json` | 38937 | 57920 |
 | `nhl/score/2026-03-24.json` | 117608 | 190465 |
 | `nhl/score/2026-01-17.json` | 109630 | 178646 |
 | `nhl/schedule/2026-03-24.json` | 109455 | 191685 |
@@ -111,7 +113,7 @@ Not an NHL field. Goalies who didn't play appear with `toi` `"00:00"` and no `de
 | `nhl/skater-summary-lva/20252026.json` | 2317 | 3411 |
 | `nhl/goalie-bios-lva/20252026.json` | 1382 | 1977 |
 
-Max 117608 bytes: no NHL fixture needs pruning. Pruning rule (proposal, shared with `espn-nba.md`): see there.
+Max 430505 bytes (632 KB on disk): no NHL fixture needs pruning. Pruning rule (proposal, shared with `espn-nba.md`): see there.
 
 ## Nationality
 

@@ -254,6 +254,7 @@ describe('loadRecap', () => {
     );
   });
 
+  // A fresh PGlite boots cold, slowly under a full parallel run.
   it('a database that was never migrated says to run a job first', async () => {
     const fresh = openPglite();
     try {
@@ -263,5 +264,5 @@ describe('loadRecap', () => {
     } finally {
       await fresh.close();
     }
-  });
+  }, 30_000);
 });

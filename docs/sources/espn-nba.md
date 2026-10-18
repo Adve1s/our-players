@@ -91,7 +91,7 @@ A player can also be **absent** from the box score: Porziņģis is not in `boxsc
 | `espn-nba/scoreboard/2026-04-13.json` | 5489 | 8082 |
 | `espn-nba/athlete/3102531.json` | 4945 | 6651 |
 
-No upstream body is over 1 MB; only `byathlete` is over 1 MB on disk (pretty-printed). NHL sizes are in `nhl.md` (max 117608). Largest parts: summary `plays` ~248 KB of `401810839`; byathlete `athletes[].athlete.{teams,teamLogos,links}` ~577 KB of 665 KB.
+No upstream body is over 1 MB; only `byathlete` is over 1 MB on disk (pretty-printed). NHL sizes are in `nhl.md` (max 430505). Largest parts: summary `plays` ~248 KB of `401810839`; byathlete `athletes[].athlete.{teams,teamLogos,links}` ~577 KB of 665 KB.
 
 **Pruning rule (proposal, nothing pruned):** a fixture whose pretty-printed file is near or over 1 MB may be pruned only by the recorder (`pnpm fixtures:record`, a per-endpoint list of JSON paths to drop), never by hand, and only of paths no adapter reads; the dropped paths are written to the `.meta.json`. Candidates: byathlete `athletes[].athlete.{teams,teamLogos,links}`; summary `plays`, `winprobability`, `news` if summaries grow.
 

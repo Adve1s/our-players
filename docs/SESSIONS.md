@@ -330,6 +330,7 @@ Then plan and build: red/green for the decision logic, corrections and season st
 **In scope**
 - `apps/server/src/sources/espn-nba/`: scoreboard → games; summary → stat lines mapped **by label** (DNP + reason, starter, shooting splits like "8-15"), period scores; roster/athlete → players with `birthPlace.country` → alpha-3 via `countries.ts` aliases; season stats per S01's decision (bulk endpoint, or per-athlete calls within the budget written in `docs/sources/espn-nba.md`).
 - Season-label and status mapping per VISION; plug the adapter into all jobs; extend `pnpm inspect` and `pnpm recap`.
+- Scheduler for two leagues: key `job_runs`/`lastRuns` by league (the `decide.ts` `shortcut:`), replace both `arrives in S05` guards in `results` (the day loop and the corrections pass) with dispatch by source, and pass `['NHL','NBA']` to `startScheduler` in `main.ts`.
 
 **Out of scope:** API, app.
 
@@ -341,14 +342,15 @@ Then plan and build: red/green for the decision logic, corrections and season st
 5. NBA ingestion keeps the idempotency and stub/enrichment guarantees (tests).
 6. Live, run by you: backfill a date Porziņģis played; `pnpm recap` shows NHL and NBA Latvians.
 7. The season-stats job stays within the documented request budget (logged count).
-8. `pnpm verify` green.
+8. The scheduler runs both leagues: a daily job that ran today for NHL is still due for NBA, and an NBA results run (day loop and corrections) fetches only ESPN URLs (tests).
+9. `pnpm verify` green.
 
 ```text
 Session S05 — ESPN NBA adapter + jobs (slice 2). Create branch `s05-nba` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S05 (the contract), docs/VISION.md §7–§9, docs/sources/espn-nba.md, and skim apps/server/src/sources/nhl/ for the established adapter pattern. First run the tests.
 
-Brainstorm with §S05 as the spec. The design must cover: module layout mirroring the NHL adapter; raw zod schemas; label-based stat mapping; DNP handling; country-name mapping and aliases; the season-stats strategy with its request budget; how the adapter plugs into the jobs; and the fixture test cases.
+Brainstorm with §S05 as the spec. The design must cover: module layout mirroring the NHL adapter; raw zod schemas; label-based stat mapping; DNP handling; country-name mapping and aliases; the season-stats strategy with its request budget; how the adapter plugs into the jobs and the scheduler (per-league `job_runs`, dispatch by source in `results`); and the fixture test cases.
 
 Then plan and build, red/green: mapper stubs → the test-writer agent writes the fixture tests (hand-read values) → confirm red → commit `test: NBA mapper spec from fixtures` → implement until green without changing those tests. Then wire up the jobs, with tests. Give me the live commands for criteria 4 and 6 and wait for my results. Then tell me it's ready for /handoff.
 ```

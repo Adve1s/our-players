@@ -3,22 +3,20 @@
 Read this first in every session. **Current state** is rewritten at each `/handoff`; the sections below it are append-only.
 
 ## Current state
-- **Last session:** Review fixes for PR #9 (S04a — Ingestion jobs + recap CLI), 2026-10-18. Five `/code-review` findings fixed: no duplicate "Not in lineup" row for a player traded since; stable tie order in `gameDayRows`; `schedule`/`roster` default to the US game day (`usGameDay`, Pacific date, `packages/shared/src/game-day.ts`); `pnpm recap` on a never-migrated DB says to run a job first; a feed without period scores keeps the stored ones but updates the rest of the game (a LIVE game can become POSTPONED). Five findings deferred to the parking lot.
-- **Branch / PR:** `s04a-jobs-recap` → `main`, PR #9. PR #8 (S03) is merged.
-- **What works:** `pnpm verify` (33 test files, 520 tests, ~65 s). Everything from S04a: the owner's live run on 2026-10-18 (roster + backfill 2026-10-15..16) matched nhl.com. Every job writes a `job_runs` row; a second start of a running job is skipped and logged; `pnpm job` exits 1 unless `succeeded`.
-- **How to try it:** `pnpm db:reset && pnpm job roster --league nhl && pnpm job backfill --league nhl --from 2026-10-15 --to 2026-10-16 && pnpm recap --date 2026-10-15 --countries LVA`; `pnpm test game-day jobs- recap repository-guards`.
-- **Next session:** S04b — Season stats, corrections, scheduler.
+- **Last session:** S04b — Season stats, corrections, scheduler, 2026-10-18. The pipeline runs on its own: `season-stats` job (current season derived from the stored schedule), one box-score correction per game ≥ 6 h after final inside `results`, a pure `decide()` driving a 10-minute dev-server scheduler (`SCHEDULER_ENABLED=1`), game-day helpers in shared, a race-free PGlite lock. Then review fixes for PR #10: corrections bounded to finals of the last 24 h (any age on the startup tick and manual runs), NBA guard on the corrections pass, startup catch-up survives a failed first tick, `latestStartedGameDay` skips postponed/cancelled games.
+- **Branch / PR:** `s04b-scheduler` → `main`, PR #10. PR #9 (S04a) is merged.
+- **What works:** `pnpm verify` (37 test files, 653 tests, ~85 s). Owner's live run 2026-10-18: `pnpm job season-stats --league nhl` → 742 rows, 14 skipped, 2 requests; `SCHEDULER_ENABLED=1 pnpm dev:server` first tick ran schedule (`daily 09:00`), results (`games in progress`; 11 finalized, 16 corrected, 29 requests), roster (`daily 10:00`), later ticks `decisions: []`; Ctrl-C releases the lock.
+- **How to try it:** `pnpm job season-stats --league nhl`; `SCHEDULER_ENABLED=1 pnpm dev:server` (watch the `tick` lines, Ctrl-C to stop); `pnpm test game-day db-lock current-season jobs-season-stats jobs-results scheduler cli-args`.
+- **Next session:** S05 — ESPN NBA adapter + jobs.
 - **Notes for the next sessions:**
-  - `usGameDay(now)` (shared) is the league's schedule date for "now": the Pacific date, so a run in the US evening still asks for tonight. S04b's game-day helpers (latest started game day, prev/next) belong next to it.
-  - `upsertGames` now writes `period_scores = coalesce(incoming, stored)` and the rest of the row; only the FINAL-downgrade guard skips a row. So a stale schedule can set a LIVE game back to SCHEDULED or older scores until the next results run (a started SCHEDULED game is a results candidate, so it heals) — the S04b scheduler should run results after schedule.
-  - The dev PGlite (`apps/server/.data/pglite`) is one process at a time: `openPglite` holds `.data/pglite.lock` (pid) until `close()`; a second opener fails with "in use by process N (is pnpm dev:server running?)", a dead pid's lock is taken over. Once the dev server opens the DB (S04b scheduler), stop it before `pnpm job`/`pnpm recap`/`pnpm db:reset`. The lock leaks if `new PGlite` throws after it's taken, and the takeover is racy (parking lot, PR #9) — fix both before a long-lived process retries opens (S04b).
-  - `runJob` never rethrows a job's error, but a DB error in `startJobRun`/`finishJobRun` rejects it (the row may stay `running`): the scheduler must catch it. A job that `fail()`s then throws records only the thrown message.
-  - `final_at` is the time results first saw the game FINAL, so backfilled games get the ingestion time — S04b's "corrections ≥ 6 h after final" would re-fetch every backfilled box score once; decide whether backfill marks them corrected.
-  - results picks days with a started SCHEDULED/LIVE game or a FINAL game without a box score; a game stuck SCHEDULED/LIVE (vanished from the payload) re-fetches its day's score every run (`results.ts:13` `shortcut:`) — the scheduler should bound it.
-  - A box-score newcomer whose landing fetch fails stays a stub (initial first name, no nationality, no team) and is never retried (parking lot, PR #9).
-  - The roster job only changes `active` when every calendar team's roster came back non-empty; an empty or failed roster makes the run `partial`. `schedule-calendar` in the off-season (which season's teams?) is unverified; `roster --date` only moves the calendar date (parking lot).
-  - `pnpm recap` on a fresh checkout still creates an empty `.data/pglite` and takes the lock before it says "run `pnpm job` first".
-  - The live run saw only FINAL/OFF games; PRE/LIVE/CRIT/OVER/PPD/CNCL and null-vs-absent fields are still unseen.
+  - S05: `decide()` takes `leagues`, but `job_runs` has no league column, so `lastRuns` is per job (`decide.ts:26` `shortcut:`) — key it by league when NBA joins, or a daily NHL run will count for NBA. `startScheduler` defaults to `['NHL']`; every job still throws `arrives in S05` for NBA.
+  - S06's `/v1/meta` reuses `currentSeason(db, league, now)` (`src/db/games.ts`, D-039); the main page's default day and prev/next navigation use `latestStartedGameDay`/`previousGameDay`/`nextGameDay` (shared `game-day.ts`; `latestStartedGameDay` needs each game's `status`).
+  - `season-stats` stores totals only for players already in the DB (D-039: "rostered" = stored); unknown players are counted `skipped`. Summer re-fetches the finished season daily (2–6 requests).
+  - Corrections (D-040): a box score first fetched ≥ 12 h after the start counts as corrected, so backfills are never re-fetched; DB games from before S04b got one correction each on the first results run. Corrections reach only finals of the last 24 h, except on the scheduler's startup tick and a manual `pnpm job results` (`catchUp`).
+  - The dev server holds the PGlite lock only with `SCHEDULER_ENABLED=1`; stop it before `pnpm job`/`recap`/`db:*`. Under `tsx watch` a tick longer than 5 s is SIGKILLed on Ctrl-C or an edit-triggered restart: its `job_runs` row stays `running` and the next start takes over the dead pid's lock (`main.ts:39` `shortcut:`, D-041).
+  - Daily jobs (09/10/11 UTC) count any run status: a failed roster waits until tomorrow (or a manual `pnpm job`).
+  - A box-score newcomer whose landing fetch fails stays a stub and is never retried; `roster --date` only moves the calendar date (parking lot, PR #9).
+  - The live runs saw only FINAL/OFF (and now in-progress) games; PRE/CRIT/OVER/PPD/CNCL and null-vs-absent fields are still unseen.
   - Still pending from S00: delete the `minimumReleaseAgeExclude` block in `pnpm-workspace.yaml` (its date passed) and confirm `pnpm install --frozen-lockfile`.
   - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
 
@@ -34,7 +32,7 @@ Ideas that came up but are out of scope for now.
 - `docs/sources/nhl.md` size table lacks rows for `skater-summary-reg`/`goalie-summary-reg` (~20 KB each).
 - `apps/server/test/config.test.ts`: add `' 8080'`, `'1e3'`, `'0x10'`, `'+80'` to the invalid-PORT cases (the inputs its regex exists to reject).
 - Nationality upgrade (D-030): NHL stats `bios` `nationalityCode` as a source value between the override and the birth country (override → source → birth; `nationality_source` gains `source`). Backward-compatible: an optional resolver input. Needs the bios pages (~20 requests a season) in the season-stats job.
-- `packages/shared/src/model.ts:84` — `shortcut:` `SeasonStats.stats` is an untyped number record; S03 maps it (`gamesPlayed`, `goals`, … / `wins`, `savePct`, …) without a schema — S04b's season-stats job decides whether to type it (and update the comment's trigger).
+- `packages/shared/src/model.ts:84` — `shortcut:` `SeasonStats.stats` is an untyped number record; S04b's season-stats job stores it as mapped, untyped — S07 (player detail) decides whether to type it.
 - S02a deferred test minors: `stats.test.ts` never pins the exact `invalid <kind> stats:` prefix and has no goalie `savePct` < 0 case; `nationality.ts` checks `birthCountry` by truthiness where `selection.ts` uses `!== null`.
 - S02b deferred minors (task and final reviews): the stat-payload error drops the zod error as `cause` (`games.ts`); one line-deletion test asserts `≥ 1` where the count is known; the played/sport/team rejection tests match only the `stat line <game>/<player>` prefix; the sport check is tested one direction only; "migrating twice" checks only `leagues` rows; `STAT_BASES` `satisfies` is one-way; `teamIdLookup` filters by `external_id` only (the map keys by source); a line for an unstored team reports "is not the home or away team" rather than "unknown team"; a line's player from the other league isn't rejected.
 - `recomputeNationalities` runs one UPDATE per changed row — fine at override scale; batch it if a mass change ever happens.
@@ -49,11 +47,22 @@ Ideas that came up but are out of scope for now.
 - `apps/server/src/jobs/runner.ts:63` — `shortcut:` in-process job lock; a second process on the same Postgres isn't locked out (S10).
 - S06: `gameDayRows` drops games without shown players; §4.1's "Other games (n)" = the day's games minus its output.
 - PR #9 review, deferred (owner decision):
-  - `db/client.ts:77` PGlite stale-lock takeover is racy: ENOENT if the holder releases between `openSync('wx')` and `readFileSync`; two processes taking over the same stale lock can both "hold" it (the second `rmSync` deletes the first's live lock); a reused pid keeps a stale lock alive; the error doesn't say to delete the `.lock` file. Fix before S04b's long-lived dev server opens the DB.
+  - ~~`db/client.ts:77` PGlite stale-lock takeover race~~ fixed in S04b (guard file + link-created lock, D-041); still open: pid reuse keeps a stale lock alive, a raw ENOENT if the holder releases between EEXIST and the read.
   - `jobs/results.ts:124` a failed-enrichment stub is never retried: `boxscore_fetched_at` is set, so re-running results/backfill skips him and no roster lists a retired/AHL player, so he never shows in a recap. Needs a retry path (e.g. stubs with no birth country) and a `shortcut:` comment until then.
   - `jobs/roster.ts:15` `--date` changes only the calendar's team list; rosters are always `/roster/{abbrev}/current`, so a past date mixes seasons (ARI → 404, `partial`, no deactivation). Reject `--date` for roster in `parseJobArgs`, or drop the flag.
   - `jobs/results.ts:103` each unknown box-score player costs one team SELECT and one `upsertPlayers` transaction (~40 per first game); batch per game before a season backfill.
   - `jobs/backfill.ts:15` date validation duplicated from `parseJobArgs` (its DAY regex accepts 2026-02-30, `realDate` doesn't); the `message(e)` helper is copied into results, roster and runner. One module, or validate `JobArgs` once in `runJob`.
+- S04b shortcuts: `apps/server/src/scheduler/decide.ts:26` `lastRuns` per job, not per league (S05); `apps/server/src/main.ts:39` tsx watch SIGKILLs a tick longer than 5 s; `apps/server/src/jobs/results.ts:21` stuck-game re-fetch now bounded by the scheduler's 24 h window only.
+- S04b deferred minors (task and final reviews): `game-day.test.ts` `latestStartedGameDay` cases not an `it.each`; `db-lock.test.ts` "takeover leaves no guard" overlaps the dead-pid test, the loser test doesn't assert the guard survives; `current-season.test.ts` lacks the fallback's league filter, a future POSTPONED game in the fallback, start == now; `jobs-season-stats` "no games" doesn't assert its log; `results` can fetch one box score twice in a run (first fetch 8.5–12 h after start, > 6 h after final), nested ternary in `finalizeGame`, failed-correction test doesn't assert the error text; `scheduler-decide.test.ts` `uncorrected()` builds finals before their start, the 24 h window edges are untested, `noFuture` helper overwrites `games`; no test for `loadState` ignoring an unknown `job_runs.job` or `stop()` with no tick in flight; PGlite integrity after a SIGKILL mid-write unverified; a crash between the lock's tmp write and link leaves a `.tmp` file.
+- Full `pnpm verify` showed PGlite boot timeouts (30 s hooks, 5 s default tests) when the machine's load average was 11–15; one recap test got a 30 s timeout. Revisit (fewer parallel workers, or longer hook timeouts) if CI flakes.
+- S04b handoff review minors: after the first Ctrl-C further signals are ignored (outside tsx watch a hung close needs SIGKILL); a signal during `migrate()` comes before the handlers (lock left, taken over next start); a failed `close()` on the migrate-failure path hides the migrate error; a manual `pnpm job schedule` after 09:00 UTC counts as the day's run; daily slots are UTC, so they shift an hour in Riga with DST (owner question).
+- PR #10 review, deferred:
+  - `jobs/results.ts` a DB with finals stored before S04b (e.g. a big backfill made with S04a) re-fetches each of them once on the first startup catch-up (~1 request per game). The owner's DB already did (16 corrections); fix only if someone restores an old backfill: mark rows with `boxscore_fetched_at` ≥ 12 h after the start as corrected.
+  - `scheduler/decide.ts:35` any `job_runs` row of a daily job counts, including a manual `--date` run (already parked above) and, from S05, another league's run (`shortcut:`).
+  - `db/client.ts:90` raw ENOENT when the holder releases between EEXIST and the read (already parked under PR #9).
+  - `main.ts` repeats `scripts/job.ts`'s bootstrap (package version, User-Agent, overrides, open + migrate); extract one `createJobContext()` when S10 rewires the server for deploy.
+- Late NHL stat fixes: each game is re-fetched once, ≥ 6 h after the final (D-040), so a fix the NHL makes days later is never picked up. If it matters, add a second re-fetch a few days later (one request per game) (owner question, PR #10).
+- `roster` prints each nationality-override warning twice (plain line and JSON log) — seen in the S04b live run.
 
 ## Session log
 <!--
@@ -197,4 +206,21 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Decisions: D-037, D-038 amended in place; S04a spec amended.
 - Deferred (parking lot): PGlite stale-lock race, failed-enrichment stubs never retried, `roster --date`, per-newcomer queries, duplicated date validation.
 - Reviewer: approve; 0 findings; 2 doc minors fixed (stale line ref, spec roster default), 2 left as notes (a stale schedule can move a LIVE game back to SCHEDULED or older scores until the next results run).
+- CI: re-run on push.
+
+### S04b — Season stats, corrections, scheduler — 2026-10-18 — PR (`s04b-scheduler`)
+- Changed: `src/jobs/season-stats.ts` + `currentSeason` (`db/games.ts`); corrections pass in `jobs/results.ts`; `src/scheduler/decide.ts` (pure) + `scheduler.ts` (`loadState`, `tick`, `startScheduler`); `main.ts`/`config.ts` (`SCHEDULER_ENABLED`); shared `latestStartedGameDay`/`previousGameDay`/`nextGameDay`; PGlite lock (no leak on a failed open, guard-file takeover, link-created lock); two `-reg-all` fixtures (`limit=-1`, 2 live requests). +120 tests (640).
+- Decisions: D-039 (current season, stored players), D-040 (corrections, 12 h settled rule), D-041 (scheduler, no croner — owner ruling). 
+- Read these: `docs/superpowers/specs/2026-10-18-s04b-scheduler.md`, `src/scheduler/decide.ts`, `src/scheduler/scheduler.ts`, `src/jobs/results.ts`, `src/jobs/season-stats.ts`, `src/db/client.ts`.
+- Red/green per task (implementers); 6 tasks, one fix round (Task 6: D-041 claimed a graceful stop under tsx watch's 5 s kill).
+- Reviewer: approve-with-fixes; fixed 2 Important in the final wave (lock appears with its pid in one step; the race loser reports "in use"), minors parked.
+- Live (owner): season-stats 742 rows / 2 requests; scheduler ticks logged; found Ctrl-C leaving the lock (`process.once` + tsx's relayed second SIGINT) — fixed (`process.on` + guard), confirmed by the owner's Ctrl-C.
+- Rulings: 7 (in the PR briefing).
+
+### Review fixes for PR #10 — 2026-10-18 — PR #10 (`s04b-scheduler`)
+- Changed: `results` corrections only for finals of the last 24 h (`RESULTS_WINDOW_MS`, moved to `jobs/results.ts`) unless `JobArgs.catchUp` — set by the scheduler's startup tick and by every manual `pnpm job results` (owner-agreed); a non-NHL run fails `corrections: … arrives in S05` with no request; ticks stay startup ticks until one completes; `latestStartedGameDay` takes `status` and skips POSTPONED/CANCELLED. "A correction happens only once" now runs its second pass with `catchUp` (the window would make it pass trivially). +13 tests (653).
+- Decisions: D-040, D-041 amended in place.
+- Deferred (parking lot): pre-S04b finals re-fetched once at startup (owner: note, not fix); daily slot counting any `job_runs` row; ENOENT lock race; `main.ts`/`job.ts` bootstrap; late NHL stat fixes (owner question).
+- Declined: bounding `loadState`'s future games (a few ms per tick on local PGlite).
+- Reviewer: approve-with-fixes; fixed 1 Important (no test that a later tick runs results without `catchUp`) and stale PROGRESS line refs; left 2 minors (the `cli-args` catch-up test repeats an expectation; an NBA run logs "arrives in S05" per day and for corrections).
 - CI: re-run on push.

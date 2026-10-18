@@ -17,7 +17,7 @@ import {
 } from '../src/jobs/runner';
 import { mapBoxscore, mapScore, nhlUrls } from '../src/sources/nhl';
 import { createTestDb } from './db';
-import { NO_OVERRIDES } from './db-data';
+import { celtics, NO_OVERRIDES, nbaGame, sixers } from './db-data';
 import { fakeClient } from './fake-client';
 import { loadFixture } from './fixtures';
 
@@ -292,5 +292,161 @@ describe('backfillJob', () => {
     expect(await linesOf('nhl-2025021127')).toHaveLength(box.lines.length);
     expect(result.status).toBe('partial');
     expect(result.status === 'skipped' ? undefined : result.error).toContain('2026-03-23');
+  });
+});
+
+describe('corrections', () => {
+  const START = new Date(
+    (
+      loadFixture('nhl', 'score', '2026-01-17') as {
+        games: { id: number; startTimeUTC: string }[];
+      }
+    ).games.find((g) => String(g.id) === GAME)?.startTimeUTC ?? 'missing',
+  ).getTime();
+  const H = 60 * 60 * 1000;
+  const at = (ms: number) => {
+    ctx.now = () => new Date(START + ms);
+  };
+  const countOf = (r: Awaited<ReturnType<typeof results>>, key: string) =>
+    r.status === 'skipped' ? undefined : r.counts[key];
+
+  // The box score as re-published after the game: Merzļikins credited with one more save.
+  function correctedBoxRoute() {
+    const box = loadFixture('nhl', 'boxscore', GAME) as {
+      playerByGameStats: {
+        awayTeam: { goalies: { playerId: number; saves: number; shotsAgainst: number }[] };
+        homeTeam: { goalies: { playerId: number; saves: number; shotsAgainst: number }[] };
+      };
+    };
+    const { awayTeam, homeTeam } = box.playerByGameStats;
+    const merz = [...awayTeam.goalies, ...homeTeam.goalies].find((g) => g.playerId === 8478007);
+    if (!merz) throw new Error('test setup: Merzļikins not in the box score');
+    merz.saves += 1;
+    merz.shotsAgainst += 1;
+    return { [nhlUrls.boxscore(GAME)]: box };
+  }
+
+  // First fetched 4 h after the start, final since START + 3 h.
+  async function seedFetchedEarly() {
+    at(4 * H);
+    useRoutes(fullRoutes());
+    await results({ date: '2026-01-17' });
+    await handle.db
+      .update(games)
+      .set({ finalAt: new Date(START + 3 * H) })
+      .where(eq(games.publicId, `nhl-${GAME}`));
+  }
+
+  const merzStats = async () =>
+    (await linesOf(`nhl-${GAME}`)).find((l) => l.player === MERZLIKINS)?.stats;
+
+  it('a first fetch soon after the start leaves the game uncorrected', async () => {
+    at(4 * H);
+    useRoutes(fullRoutes());
+    await results({ date: '2026-01-17' });
+
+    const game = await gameRow(`nhl-${GAME}`);
+    expect(game.boxscoreFetchedAt).toBeInstanceOf(Date);
+    expect(game.correctedAt).toBeNull();
+  });
+
+  it('a first fetch 12 h or more after the start counts as corrected', async () => {
+    at(12 * H);
+    useRoutes(fullRoutes());
+    await results({ date: '2026-01-17' });
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
+  });
+
+  it('a backfilled game counts as corrected', async () => {
+    useRoutes(fullRoutes());
+    await backfill('2026-01-17', '2026-01-17');
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
+  });
+
+  it('a correction re-fetch 6 h after final updates changed numbers', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(9 * H);
+    const result = await results();
+
+    expect(await merzStats()).toMatchObject({ saves: 31, shotsAgainst: 34 });
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
+    expect(countOf(result, 'corrected')).toBe(1);
+    expect(client.requests).toEqual([nhlUrls.boxscore(GAME)]);
+  });
+
+  it('not yet 6 h after final, nothing is re-fetched', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(3 * H + 5 * H + 59 * 60 * 1000);
+    await results();
+
+    expect(client.requestCount).toBe(0);
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
+  });
+
+  it('a correction happens only once', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(9 * H);
+    await results();
+    const corrected = await merzStats();
+
+    useRoutes(fullRoutes());
+    at(30 * H);
+    await results({ catchUp: true });
+    expect(client.requestCount).toBe(0);
+    expect(await merzStats()).toEqual(corrected);
+  });
+
+  it('a correction more than 24 h after the final is left to a catch-up run', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(3 * H + 24 * H + 60 * 1000);
+    await results();
+
+    expect(client.requestCount).toBe(0);
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
+  });
+
+  it('a catch-up run corrects a final of any age', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(30 * 24 * H);
+    await results({ catchUp: true });
+
+    expect(await merzStats()).toMatchObject({ saves: 31 });
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
+  });
+
+  it('an NBA run sends no NBA final to the NHL box score endpoint', async () => {
+    await upsertTeams(handle.db, [celtics, sixers]);
+    await upsertGames(handle.db, [nbaGame]);
+    await handle.db
+      .update(games)
+      .set({
+        finalAt: new Date('2026-10-22T02:00:00Z'),
+        boxscoreFetchedAt: new Date('2026-10-22T02:00:00Z'),
+      })
+      .where(eq(games.publicId, nbaGame.publicId));
+    ctx.now = () => new Date('2026-10-22T12:00:00Z');
+    const result = await runJob(ctx, 'results', resultsJob, { league: 'NBA' });
+
+    expect(client.requests).toEqual([]);
+    expect(result.status === 'skipped' ? undefined : result.error).toContain('nba arrives in S05');
+  });
+
+  it('a failed correction is retried next run', async () => {
+    await seedFetchedEarly();
+    useRoutes({});
+    at(9 * H);
+    const failed = await results();
+    expect(failed.status).toBe('partial');
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
+
+    useRoutes(correctedBoxRoute());
+    await results();
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
+    expect(await merzStats()).toMatchObject({ saves: 31 });
   });
 });
