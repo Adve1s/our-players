@@ -44,3 +44,14 @@ describe('countryFromName', () => {
     expect(countryFromName(name)).toBeNull();
   });
 });
+
+// Spellings the first live NBA roster run (2026-10-18) warned about.
+describe('countryFromName, ESPN spellings seen live', () => {
+  it.each([
+    ['Russia', 'RUS'],
+    ['Bosnia & Herzegovina', 'BIH'],
+    ['Democratic Republic of Congo', 'COD'],
+  ])('maps "%s" to %s', (name, code) => {
+    expect(countryFromName(name)).toBe(code);
+  });
+});

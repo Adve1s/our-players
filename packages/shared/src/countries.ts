@@ -695,6 +695,9 @@ export const ESPN_COUNTRY_ALIASES: Readonly<Record<string, CountryCode>> = {
   England: 'GBR',
   Scotland: 'GBR',
   Wales: 'GBR',
+  Russia: 'RUS',
+  'Bosnia & Herzegovina': 'BIH',
+  'Democratic Republic of Congo': 'COD',
 };
 
 // Exact match only, never a fuzzy guess; hasOwn so inherited keys like 'constructor' don't match.
