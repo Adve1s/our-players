@@ -53,7 +53,7 @@ export function parseRecapArgs(argv: string[]): { date: string; countries: Count
     args: argv,
     options: { date: { type: 'string' }, countries: { type: 'string', default: 'LVA' } },
   });
-  if (values.date === undefined) throw new Error('recap needs --date YYYY-MM-DD');
+  if (values.date === undefined) throw new Error('missing --date YYYY-MM-DD');
   const countries = values.countries.split(',').map((c) => {
     const parsed = countryCodeSchema.safeParse(c.trim().toUpperCase());
     if (!parsed.success) throw new Error(`unknown country code ${c}`);
