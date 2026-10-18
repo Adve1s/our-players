@@ -1,4 +1,4 @@
-import type { Player } from '@our-players/shared';
+import { type Player, usGameDay } from '@our-players/shared';
 import { and, eq, inArray, isNotNull, notInArray, or, sql } from 'drizzle-orm';
 import { upsertPlayers } from '../db/players';
 import { players } from '../db/schema';
@@ -12,7 +12,7 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 // The team list comes from the calendar, not stored teams: a missing team would wrongly deactivate its players.
 export const rosterJob: Job = async (ctx, run, args) => {
   if (args.league !== 'NHL') throw new Error(`${args.league.toLowerCase()} arrives in S05`);
-  const date = args.date ?? ctx.now().toISOString().slice(0, 10);
+  const date = args.date ?? usGameDay(ctx.now());
   const { teams } = await fetchScheduleCalendar(ctx.client, date);
   if (teams.length === 0) throw new Error(`schedule-calendar ${date}: no teams`);
   await upsertTeams(ctx.db, teams);

@@ -119,7 +119,15 @@ describe('scheduleJob', () => {
     expect((await gameRow(`nhl-${GAME}`)).periodScores).toEqual(before.periodScores);
   });
 
-  it("schedule uses today's UTC date by default", async () => {
+  it('schedule asks for the US game day still being played, not the UTC date', async () => {
+    ctx.now = () => new Date('2026-03-25T03:00:00Z');
+    useRoutes({ [nhlUrls.schedule('2026-03-24')]: loadFixture('nhl', 'schedule', '2026-03-24') });
+    await schedule();
+
+    expect(client.requests).toEqual([nhlUrls.schedule('2026-03-24')]);
+  });
+
+  it("schedule uses today's US date by default", async () => {
     ctx.now = () => new Date('2026-03-24T09:00:00Z');
     useRoutes({ [nhlUrls.schedule('2026-03-24')]: loadFixture('nhl', 'schedule', '2026-03-24') });
     await schedule();

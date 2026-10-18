@@ -120,6 +120,14 @@ describe('rosterJob', () => {
     expect(result.counts.teams).toBe(3);
   });
 
+  it('roster asks the calendar for the US game day, not the UTC date', async () => {
+    ctx.now = () => new Date('2026-10-19T03:00:00Z');
+    const result = await rosterRun();
+
+    expect(result.status).toBe('succeeded');
+    expect(result.counts.teams).toBe(3);
+  });
+
   it('a player missing from every roster becomes inactive with no team', async () => {
     const result = await rosterRun();
 

@@ -63,7 +63,7 @@ PGlite has no lock of its own (no pid file in its dist), and two processes on on
 
 All take `--league nhl` (the only league; `nba` → "nba arrives in S05").
 
-**schedule** (`--date`, default: today's UTC date from `ctx.now`)
+**schedule** (`--date`, default: the US game day of `ctx.now` — the Pacific date, `usGameDay`; amended in PR #9 review, was the UTC date)
 1. `fetchSchedule(date)` (the 7-day `gameWeek`). Log warnings.
 2. `upsertTeams`, then `upsertGames` (the guards above keep stored FINAL games and score-derived period scores).
 3. Counts: `games`, `teams` (rows written).
