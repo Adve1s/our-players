@@ -26,10 +26,11 @@ function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
   return result.data;
 }
 
-// A repeated parameter is a client bug; taking one of the values would silently drop the other.
+// A repeated preference is a client bug; taking one of the values would silently drop the other.
+// Other parameters are ignored, repeated or not, so cache-busters still work.
 export function parseQuery(c: Context): Prefs {
-  for (const [name, values] of Object.entries(c.req.queries())) {
-    if (values.length > 1) throw badRequest(`${name}: given more than once`);
+  for (const name of Object.keys(prefsQuerySchema.in.shape)) {
+    if ((c.req.queries(name)?.length ?? 0) > 1) throw badRequest(`${name}: given more than once`);
   }
   return parse(prefsQuerySchema, c.req.query());
 }

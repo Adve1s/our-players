@@ -281,6 +281,10 @@ describe('bad requests', () => {
     expect(body.error.code).toBe('BAD_REQUEST');
     expect(body.error.message).toContain(param);
   });
+
+  it('a repeated unknown parameter (a cache-buster) is ignored', async () => {
+    await setup().get('/v1/days/2026-01-17?countries=LVA&_=1&_=2', 200, dayResponseSchema);
+  });
 });
 
 describe('logs', () => {
