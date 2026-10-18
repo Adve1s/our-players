@@ -6,6 +6,8 @@ import { upsertSeasonStats } from '../db/season-stats';
 import { ADAPTERS } from './adapters';
 import type { Job } from './runner';
 
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
 // Rows are kept for every stored player of the league, active or not: a player waived or sent down
 // mid-season still has real totals. The rest of the league's rows are counted as skipped.
 export const seasonStatsJob: Job = async (ctx, run, args) => {
@@ -41,10 +43,18 @@ export const seasonStatsJob: Job = async (ctx, run, args) => {
         .where(eq(players.league, args.league))
     ).map((p) => p.publicId),
   );
+  // Each type on its own: a type the source can't serve (an ESPN PRE fallback) must not block REG all season.
+  const failures: string[] = [];
   for (const seasonType of types) {
-    const rows = await ADAPTERS[args.league].seasonStats(ctx.client, season, seasonType);
-    const kept = rows.filter((r) => stored.has(r.playerPublicId));
-    run.add('rows', await upsertSeasonStats(ctx.db, kept));
-    run.add('skipped', rows.length - kept.length);
+    try {
+      const rows = await ADAPTERS[args.league].seasonStats(ctx.client, season, seasonType);
+      const kept = rows.filter((r) => stored.has(r.playerPublicId));
+      run.add('rows', await upsertSeasonStats(ctx.db, kept));
+      run.add('skipped', rows.length - kept.length);
+    } catch (e) {
+      failures.push(`${seasonType}: ${message(e)}`);
+    }
   }
+  if (failures.length === types.length) throw new Error(failures.join('; '));
+  for (const f of failures) run.fail(f);
 };
