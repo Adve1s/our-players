@@ -12,7 +12,7 @@ export type SchedulerGame = {
 };
 export type SchedulerState = {
   games: readonly SchedulerGame[];
-  lastRuns: Partial<Record<JobName, Date>>;
+  lastRuns: Partial<Record<League, Partial<Record<JobName, Date>>>>;
   startup: boolean;
 };
 export type Decision = { league: League; job: Exclude<JobName, 'backfill'>; reason: string };
@@ -23,15 +23,14 @@ export const DAILY_SLOTS = { schedule: 9, roster: 10, 'season-stats': 11 } as co
 export function decide(now: Date, leagues: readonly League[], state: SchedulerState): Decision[] {
   const t = now.getTime();
   // Any run counts, failed or not: a failing daily job waits for tomorrow instead of re-firing every tick.
-  // shortcut: lastRuns is per job, not per league; key job_runs by league when S05 adds NBA
-  const dailyDue = (job: keyof typeof DAILY_SLOTS) => {
+  const dailyDue = (league: League, job: keyof typeof DAILY_SLOTS) => {
     const slot = Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
       DAILY_SLOTS[job],
     );
-    const last = state.lastRuns[job];
+    const last = state.lastRuns[league]?.[job];
     return t >= slot && (last === undefined || last.getTime() < slot);
   };
 
@@ -42,11 +41,11 @@ export function decide(now: Date, leagues: readonly League[], state: SchedulerSt
 
     if (state.startup && !games.some((g) => g.startTimeUtc.getTime() > t))
       add('schedule', 'no future games');
-    else if (dailyDue('schedule')) add('schedule', 'daily 09:00');
+    else if (dailyDue(league, 'schedule')) add('schedule', 'daily 09:00');
     const results = resultsReason(t, games, state.startup);
     if (results) add('results', results);
-    if (dailyDue('roster')) add('roster', 'daily 10:00');
-    if (dailyDue('season-stats')) add('season-stats', 'daily 11:00');
+    if (dailyDue(league, 'roster')) add('roster', 'daily 10:00');
+    if (dailyDue(league, 'season-stats')) add('season-stats', 'daily 11:00');
     return decisions;
   });
 }

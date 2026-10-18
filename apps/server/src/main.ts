@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
+import { leagueSchema } from '@our-players/shared';
 import { app } from './app';
 import { loadConfig } from './config';
 import { openDb } from './db/client';
@@ -28,13 +29,16 @@ async function runScheduler(): Promise<void> {
     await handle.close(); // releases the PGlite lock
     throw e;
   }
-  const scheduler = startScheduler({
-    db: handle.db,
-    client,
-    now: () => new Date(),
-    log: createLogger(),
-    overrides,
-  });
+  const scheduler = startScheduler(
+    {
+      db: handle.db,
+      client,
+      now: () => new Date(),
+      log: createLogger(),
+      overrides,
+    },
+    leagueSchema.options,
+  );
   console.log('scheduler on');
   // shortcut: under tsx watch a tick longer than 5 s is SIGKILLed mid-job (job_runs row left running, lock taken over on the next start); run without watch, or make jobs abortable, if that bites
   let stopping = false;
