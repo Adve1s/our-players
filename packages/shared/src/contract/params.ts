@@ -31,3 +31,8 @@ export const prefsQuerySchema = z
   );
 
 export const gameDateSchema = z.iso.date();
+
+// Leagues come from prefsQuerySchema.
+export const searchQuerySchema = z.object({ q: z.string().trim().min(1).max(50) });
+
+export const idsQuerySchema = z.object({ ids: csv(publicIdSchema) });

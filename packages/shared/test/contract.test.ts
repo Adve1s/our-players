@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { dayResponseSchema, gameDateSchema, prefsQuerySchema } from '../src/index';
+import {
+  countriesResponseSchema,
+  dayResponseSchema,
+  gameDateSchema,
+  idsQuerySchema,
+  playerSummarySchema,
+  prefsQuerySchema,
+  searchQuerySchema,
+  seasonStatsEntrySchema,
+} from '../src/index';
 
 describe('prefsQuerySchema', () => {
   it('defaults to every league and empty countries, favorites and hidden', () => {
@@ -131,5 +140,138 @@ describe('dayResponseSchema', () => {
       shots: 3,
       toiSeconds: 1200,
     });
+  });
+});
+
+describe('idsQuerySchema', () => {
+  it('splits comma-separated IDs into an array', () => {
+    expect(idsQuerySchema.parse({ ids: 'nhl-1,nba-2' }).ids).toEqual(['nhl-1', 'nba-2']);
+  });
+
+  it('reads an empty ids as no IDs', () => {
+    expect(idsQuerySchema.parse({ ids: '' }).ids).toEqual([]);
+  });
+
+  it('requires ids', () => {
+    expect(idsQuerySchema.safeParse({}).success).toBe(false);
+  });
+
+  it('rejects an ID that is not a public ID', () => {
+    expect(idsQuerySchema.safeParse({ ids: 'x-1' }).success).toBe(false);
+  });
+
+  it('rejects 201 IDs', () => {
+    const ids = Array.from({ length: 201 }, (_, i) => `nhl-${i + 1}`).join(',');
+    expect(idsQuerySchema.safeParse({ ids }).success).toBe(false);
+  });
+});
+
+describe('searchQuerySchema', () => {
+  it('trims the query', () => {
+    expect(searchQuerySchema.parse({ q: '  porz ' }).q).toBe('porz');
+  });
+
+  it('accepts a 50-character query', () => {
+    expect(searchQuerySchema.safeParse({ q: 'a'.repeat(50) }).success).toBe(true);
+  });
+
+  it.each([
+    ['an empty query', { q: '' }],
+    ['a blank query', { q: '   ' }],
+    ['a missing query', {}],
+    ['a 51-character query', { q: 'a'.repeat(51) }],
+  ])('rejects %s', (_, query) => {
+    expect(searchQuerySchema.safeParse(query).success).toBe(false);
+  });
+});
+
+describe('seasonStatsEntrySchema', () => {
+  const goalie = {
+    kind: 'hockey_goalie',
+    season: '2025-26',
+    seasonType: 'REG',
+    basis: 'totals',
+    stats: {
+      gamesPlayed: 2,
+      gamesStarted: 2,
+      wins: 1,
+      losses: 1,
+      otLosses: 0,
+      saves: 0,
+      shotsAgainst: 0,
+      goalsAgainst: 0,
+      goalsAgainstAverage: 0,
+      shutouts: 0,
+      toiSeconds: 7200,
+    },
+  };
+
+  it('parses a goalie entry without savePct', () => {
+    expect(seasonStatsEntrySchema.safeParse(goalie).success).toBe(true);
+  });
+
+  it('rejects a skater entry missing goals', () => {
+    const skater = {
+      kind: 'hockey_skater',
+      season: '2025-26',
+      seasonType: 'REG',
+      basis: 'totals',
+      stats: {
+        gamesPlayed: 10,
+        assists: 3,
+        points: 5,
+        plusMinus: 1,
+        shots: 20,
+        pim: 2,
+        powerPlayGoals: 1,
+        toiPerGameSeconds: 1000,
+      },
+    };
+    expect(seasonStatsEntrySchema.safeParse(skater).success).toBe(false);
+  });
+
+  it('rejects an unknown kind', () => {
+    expect(seasonStatsEntrySchema.safeParse({ ...goalie, kind: 'soccer_player' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('countriesResponseSchema', () => {
+  it('parses a country with only one league counted', () => {
+    const parsed = countriesResponseSchema.parse({
+      countries: [{ code: 'LVA', counts: { NHL: 6 } }],
+    });
+    expect(parsed.countries[0]?.counts).toEqual({ NHL: 6 });
+  });
+
+  it('rejects a zero count', () => {
+    const result = countriesResponseSchema.safeParse({
+      countries: [{ code: 'LVA', counts: { NHL: 0 } }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an unknown country code', () => {
+    const result = countriesResponseSchema.safeParse({
+      countries: [{ code: 'XX', counts: { NHL: 1 } }],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('playerSummarySchema', () => {
+  it('keeps a summary that gained an unknown key, without the key', () => {
+    const summary = {
+      id: 'nba-3102531',
+      league: 'NBA',
+      firstName: 'Kristaps',
+      lastName: 'Porziņģis',
+      position: 'C',
+      team: { abbrev: 'BOS', name: 'Boston Celtics' },
+      nationality: 'LVA',
+      active: true,
+    };
+    expect(playerSummarySchema.parse({ ...summary, extra: 1 })).toEqual(summary);
   });
 });
