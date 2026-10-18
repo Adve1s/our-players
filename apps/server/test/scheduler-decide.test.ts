@@ -29,11 +29,13 @@ const TOMORROW = game({
   boxscoreFetchedAt: null,
   correctedAt: null,
 });
-const RAN_TODAY: SchedulerState['lastRuns'] = {
+type LeagueRuns = NonNullable<SchedulerState['lastRuns']['NHL']>;
+const RAN_TODAY_NHL: LeagueRuns = {
   schedule: at('2026-10-18T09:05:00Z'),
   roster: at('2026-10-18T10:05:00Z'),
   'season-stats': at('2026-10-18T11:05:00Z'),
 };
+const RAN_TODAY: SchedulerState['lastRuns'] = { NHL: RAN_TODAY_NHL };
 const state = (games: SchedulerGame[], over: Partial<SchedulerState> = {}): SchedulerState => ({
   games: [...games, TOMORROW],
   lastRuns: RAN_TODAY,
@@ -232,7 +234,7 @@ describe('decide — schedule at startup', () => {
   });
 
   it('gives one schedule decision when the daily slot is also due', () => {
-    const lastRuns = { ...RAN_TODAY, schedule: at('2026-10-17T09:05:00Z') };
+    const lastRuns = { NHL: { ...RAN_TODAY_NHL, schedule: at('2026-10-17T09:05:00Z') } };
     expect(decide(NOW, ['NHL'], noFuture({ startup: true, lastRuns }))).toEqual([
       { league: 'NHL', job: 'schedule', reason: 'no future games' },
     ]);
@@ -251,8 +253,8 @@ describe('decide — daily slots', () => {
   const only = (job: JobName, now: Date, lastRuns: SchedulerState['lastRuns']) =>
     decide(now, ['NHL'], state([game()], { lastRuns })).filter((d) => d.job === job);
   const runs = (job: JobName, run: Date | undefined): SchedulerState['lastRuns'] => {
-    const { [job]: _, ...rest } = RAN_TODAY;
-    return run ? { ...rest, [job]: run } : rest;
+    const { [job]: _, ...rest } = RAN_TODAY_NHL;
+    return { NHL: run ? { ...rest, [job]: run } : rest };
   };
   const slot = (hour: number, minutes = 0) => new Date(Date.UTC(2026, 9, 18, hour, minutes));
   const yesterday = (d: Date) => ago(24 * H, d);
@@ -284,6 +286,20 @@ describe('decide — daily slots', () => {
       // job_runs start times are all the state carries, so a failed run counts like any other.
       expect(only(job, slot(hour, 20), runs(job, slot(hour, 10)))).toEqual([]);
     });
+  });
+});
+
+describe('decide — daily slots per league', () => {
+  it.each<[JobName, string, string]>([
+    ['schedule', '09', 'daily 09:00'],
+    ['roster', '10', 'daily 10:00'],
+    ['season-stats', '11', 'daily 11:00'],
+  ])('an NHL %s run today does not count for the NBA', (job, hour, reason) => {
+    const now = at(`2026-10-18T${hour}:30:00Z`);
+    const lastRuns = { NHL: { [job]: at(`2026-10-18T${hour}:05:00Z`) } };
+    const decisions = decide(now, ['NHL', 'NBA'], state([game()], { lastRuns }));
+    expect(decisions).toContainEqual({ league: 'NBA', job, reason });
+    expect(decisions.filter((d) => d.league === 'NHL' && d.job === job)).toEqual([]);
   });
 });
 

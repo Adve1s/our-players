@@ -1,6 +1,6 @@
 # ESPN NBA source notes
 
-Unofficial, keyless. Verified against fixtures recorded 2026-10-16/17 (S01). Community docs: https://github.com/pseudo-r/Public-ESPN-API. Fixture paths are relative to `apps/server/test/fixtures/`; URL builders live in `apps/server/scripts/endpoints.ts`. ESPN labels a season by its end year (`2026` = 2025-26).
+Unofficial, keyless. Verified against fixtures recorded 2026-10-16/17 (S01). Community docs: https://github.com/pseudo-r/Public-ESPN-API. Fixture paths are relative to `apps/server/test/fixtures/`; URL builders live in `apps/server/src/sources/espn-nba/client.ts` (`espnUrls`); `apps/server/scripts/endpoints.ts` reuses them for recording. ESPN labels a season by its end year (`2026` = 2025-26).
 
 ## Endpoints
 
@@ -8,6 +8,7 @@ Unofficial, keyless. Verified against fixtures recorded 2026-10-16/17 (S01). Com
 |---|---|---|
 | scoreboard | `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD` | `espn-nba/scoreboard/2026-03-14.json`, `espn-nba/scoreboard/2026-03-16.json`, `espn-nba/scoreboard/2026-03-23.json`, `espn-nba/scoreboard/2026-03-24.json`, `espn-nba/scoreboard/2026-04-13.json` (empty), `espn-nba/scoreboard/2026-10-10.json` (preseason) |
 | summary | `.../nba/summary?event={eventId}` | `espn-nba/summary/401810839.json`, `espn-nba/summary/401810899.json` (OT), `espn-nba/summary/401898399.json` (preseason) |
+| teams | `.../nba/teams` | `espn-nba/teams/2026-10-18.json` (30 teams; recorded in S05) |
 | roster | `.../nba/teams/{teamId}/roster` | `espn-nba/roster/9.json` (GS) |
 | athlete | `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/{id}` | `espn-nba/athlete/3102531.json` (Porziņģis), `espn-nba/athlete/3059318.json` (Embiid), `espn-nba/athlete/3136195.json` (Towns) |
 | overview | `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/{id}/overview` | `espn-nba/overview/3102531.json` |
@@ -57,6 +58,8 @@ Same as NHL: a game is listed under the US schedule date. `scoreboard?dates=2026
 ### Q5 Bulk season stats
 Bulk exists: `statistics/byathlete?season=2026&seasontype=2&limit=50&page=N` (`espn-nba/byathlete/2026.json`). `pagination` `{"count":578,"limit":50,"page":1,"pages":12,...}` → 12 requests per season at 50/page (higher `limit` not tested). `categories[]` `general`/`offensive`/`defensive`, each with `names` and per-athlete `athletes[].categories[].totals` (strings) / `values` (numbers), e.g. Dončić `"3945274"` offensive `avgPoints` 33.484375, `points` 2143. Labels repeat (`MIN`, `PTS` appear twice: average and total) — map by `names`, not `labels`. Gives both averages and totals.
 Per athlete: `overview` `statistics.labels` `["GP","MIN","FG%","3P%","FT%","REB","AST","BLK","STL","PF","TO","PTS"]`, `splits[]` `"Regular Season"` `["32","24.0","44.6","33.8","84.2","5.2","2.5","1.2","0.6","2.9","1.3","16.7"]` and `"Career"` (`espn-nba/overview/3102531.json`) — per-game averages only.
+
+**Request budget (S05):** the season-stats job fetches page 1, then pages 2…`pagination.pages`, for each started season type of the current season. That is ~12 pages per season type at `limit=50`, capped at 20 (`BYATHLETE_MAX_PAGES`: more pages throws before page 2), and at most 3 season types: ≤ 60 requests a day, ~12–25 normally. Rows are keyed by player across pages; fewer unique rows than `pagination.count` throws (truncated). `seasontype=1` (preseason) is unverified until the S05 live run.
 
 ### Q6 DNP
 `boxscore.players[].statistics[0].athletes[]`: `didNotPlay` `true`, `stats` `[]`, `active` false, `reason` e.g. `"NOT WITH TEAM"`, `"RIGHT FOOT"`, `"RIGHT WRIST SPRAIN"`, `"COACH'S DECISION"` (`espn-nba/summary/401810839.json`, 4 DNP rows). **`reason` is also `"COACH'S DECISION"` on every player who played** (22/22 in `401810839`, 21/21 in `401810899`, 29/29 in `401898399`) — read it only when `didNotPlay` is true.

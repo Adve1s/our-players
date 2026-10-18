@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { latestStartedGameDay, nextGameDay, previousGameDay, usGameDay } from '../src/index';
+import {
+  addDays,
+  latestStartedGameDay,
+  nextGameDay,
+  previousGameDay,
+  usGameDay,
+} from '../src/index';
 
 describe('usGameDay', () => {
   it.each([
@@ -69,5 +75,18 @@ describe.each(['UTC', 'Europe/Riga', 'Pacific/Honolulu'])('host TZ %s', (tz) => 
     ])('next from %s (%s) → %s', (_, day, expected) =>
       expect(nextGameDay(days, day)).toBe(expected),
     );
+  });
+});
+
+describe('addDays', () => {
+  it.each([
+    ['2026-03-16', 1, '2026-03-17'],
+    ['2026-02-28', 1, '2026-03-01'],
+    ['2028-02-28', 1, '2028-02-29'],
+    ['2026-12-31', 1, '2027-01-01'],
+    ['2026-10-18', 6, '2026-10-24'],
+    ['2026-03-08', 1, '2026-03-09'],
+  ])('%s + %i days is %s', (day, n, expected) => {
+    expect(addDays(day, n)).toBe(expected);
   });
 });

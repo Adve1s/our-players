@@ -15,7 +15,7 @@ import {
 import type { Decision } from '../src/scheduler/decide';
 import { loadState, startScheduler, TICK_MS, tick } from '../src/scheduler/scheduler';
 import { createTestDb } from './db';
-import { cbj, NO_OVERRIDES, nhlGame, nyi } from './db-data';
+import { cbj, celtics, NO_OVERRIDES, nbaGame, nhlGame, nyi, sixers } from './db-data';
 import { fakeClient } from './fake-client';
 
 const NOW = new Date('2026-10-18T14:00:00Z');
@@ -53,12 +53,14 @@ async function storeGame(
   start: Date,
   status: Game['status'],
   bookkeeping: { finalAt?: Date; boxscoreFetchedAt?: Date; correctedAt?: Date } = {},
+  base: Game = nhlGame,
 ) {
   const iso = start.toISOString();
+  const publicId = `${base.league.toLowerCase()}-${id}`;
   await upsertGames(handle.db, [
     {
-      ...nhlGame,
-      publicId: `nhl-${id}`,
+      ...base,
+      publicId,
       externalId: id,
       gameDate: iso.slice(0, 10),
       startTimeUtc: iso,
@@ -66,24 +68,25 @@ async function storeGame(
     },
   ]);
   if (Object.keys(bookkeeping).length > 0)
-    await handle.db
-      .update(games)
-      .set(bookkeeping)
-      .where(eq(games.publicId, `nhl-${id}`));
+    await handle.db.update(games).set(bookkeeping).where(eq(games.publicId, publicId));
 }
 
 const TOMORROW = new Date('2026-10-19T23:00:00Z');
 
-async function storeRun(job: string, startedAt: string) {
+async function storeRun(
+  job: string,
+  startedAt: string,
+  args: Record<string, unknown> = { league: 'NHL' },
+) {
   await handle.db
     .insert(jobRuns)
-    .values({ job, args: { league: 'NHL' }, status: 'succeeded', startedAt: new Date(startedAt) });
+    .values({ job, args, status: 'succeeded', startedAt: new Date(startedAt) });
 }
 
-async function ranAllDailyJobsToday() {
-  await storeRun('schedule', '2026-10-18T09:05:00Z');
-  await storeRun('roster', '2026-10-18T10:05:00Z');
-  await storeRun('season-stats', '2026-10-18T11:05:00Z');
+async function ranAllDailyJobsToday(league = 'NHL') {
+  await storeRun('schedule', '2026-10-18T09:05:00Z', { league });
+  await storeRun('roster', '2026-10-18T10:05:00Z', { league });
+  await storeRun('season-stats', '2026-10-18T11:05:00Z', { league });
 }
 
 const starts = (state: { games: readonly { startTimeUtc: Date }[] }) =>
@@ -136,9 +139,28 @@ describe('loadState', () => {
     await storeRun('roster', '2026-10-18T10:05:00Z');
     const { lastRuns } = await loadState(handle.db, NOW, false);
     expect(lastRuns).toEqual({
-      schedule: new Date('2026-10-18T09:05:00Z'),
-      roster: new Date('2026-10-18T10:05:00Z'),
+      NHL: {
+        schedule: new Date('2026-10-18T09:05:00Z'),
+        roster: new Date('2026-10-18T10:05:00Z'),
+      },
     });
+  });
+
+  it('lastRuns keeps each league apart', async () => {
+    await storeRun('roster', '2026-10-18T10:05:00Z', { league: 'NHL' });
+    await storeRun('roster', '2026-10-17T10:05:00Z', { league: 'NBA' });
+    const { lastRuns } = await loadState(handle.db, NOW, false);
+    expect(lastRuns).toEqual({
+      NHL: { roster: new Date('2026-10-18T10:05:00Z') },
+      NBA: { roster: new Date('2026-10-17T10:05:00Z') },
+    });
+  });
+
+  it('lastRuns ignores runs without a known league', async () => {
+    await storeRun('roster', '2026-10-18T10:05:00Z', {});
+    await storeRun('roster', '2026-10-18T10:06:00Z', { league: 'MLB' });
+    const { lastRuns } = await loadState(handle.db, NOW, false);
+    expect(lastRuns).toEqual({});
   });
 });
 
@@ -197,6 +219,26 @@ describe('tick', () => {
     };
     await tick(ctx, ['NHL'], false, run);
     expect(calls).toEqual([['results', { league: 'NHL' }]]);
+  });
+
+  it('a tick for both leagues runs NBA decisions with the NBA league', async () => {
+    await upsertTeams(handle.db, [celtics, sixers]);
+    await ranAllDailyJobsToday('NHL');
+    await storeRun('schedule', '2026-10-18T09:05:00Z', { league: 'NBA' });
+    await storeRun('season-stats', '2026-10-18T11:05:00Z', { league: 'NBA' });
+    await storeGame('2026020001', TOMORROW, 'SCHEDULED');
+    await storeGame('401810001', TOMORROW, 'SCHEDULED', {}, nbaGame);
+    await storeGame('401810002', ago(3 * 24 * H), 'SCHEDULED', {}, nbaGame);
+    const calls: [string, unknown][] = [];
+    const run: typeof runJob = async (_ctx, name, _job, args) => {
+      calls.push([name, args]);
+      return succeeded;
+    };
+    await tick(ctx, ['NHL', 'NBA'], true, run);
+    expect(calls).toEqual([
+      ['results', { league: 'NBA', catchUp: true }],
+      ['roster', { league: 'NBA' }],
+    ]);
   });
 
   it('a rejected runJob is logged and the tick goes on', async () => {

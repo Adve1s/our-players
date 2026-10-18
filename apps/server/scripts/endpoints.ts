@@ -1,8 +1,8 @@
+import { espnUrls } from '../src/sources/espn-nba/client';
 import { nhlUrls } from '../src/sources/nhl/client';
 
 const NHL = 'https://api-web.nhle.com/v1';
 const NHL_STATS = 'https://api.nhle.com/stats/rest/en';
-const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
 
 // Ids come from the command line, so each is escaped before it goes into a URL.
 const e = encodeURIComponent;
@@ -36,16 +36,15 @@ export const endpoints = {
       `${NHL_STATS}/goalie/bios?cayenneExp=${encodeURIComponent(`seasonId=${seasonId} and nationalityCode="LVA"`)}`,
   },
   'espn-nba': {
-    // Takes YYYY-MM-DD like the NHL date endpoints; ESPN wants YYYYMMDD.
-    scoreboard: (date) => `${ESPN}/scoreboard?dates=${e(date.replaceAll('-', ''))}`,
-    summary: (eventId) => `${ESPN}/summary?event=${e(eventId)}`,
-    roster: (teamId) => `${ESPN}/teams/${e(teamId)}/roster`,
-    athlete: (athleteId) =>
-      `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/athletes/${e(athleteId)}`,
+    scoreboard: espnUrls.scoreboard,
+    summary: espnUrls.summary,
+    roster: espnUrls.roster,
+    // The id is ignored; it only names the fixture file.
+    teams: espnUrls.teams,
+    athlete: espnUrls.athlete,
     overview: (athleteId) =>
       `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${e(athleteId)}/overview`,
-    // Q5 probe: ESPN labels a season by its end year; seasontype 2 = regular season.
-    byathlete: (season) =>
-      `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?season=${e(season)}&seasontype=2&limit=50&page=1`,
+    // ESPN labels a season by its end year; page 1 of the regular season.
+    byathlete: (season) => espnUrls.byathlete(season, 2, 1),
   },
 } satisfies Record<'nhl' | 'espn-nba', Record<string, (id: string) => string>>;

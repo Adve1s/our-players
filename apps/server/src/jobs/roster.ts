@@ -4,17 +4,17 @@ import { upsertPlayers } from '../db/players';
 import { players } from '../db/schema';
 import { upsertTeams } from '../db/teams';
 import { recomputeNationalities } from '../nationality/recompute';
-import { fetchRoster, fetchScheduleCalendar } from '../sources/nhl';
+import { ADAPTERS } from './adapters';
 import type { Job } from './runner';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-// The team list comes from the calendar, not stored teams: a missing team would wrongly deactivate its players.
+// The team list comes from the source (NHL calendar, ESPN teams), not stored teams: a missing team would wrongly deactivate its players.
 export const rosterJob: Job = async (ctx, run, args) => {
-  if (args.league !== 'NHL') throw new Error(`${args.league.toLowerCase()} arrives in S05`);
+  const adapter = ADAPTERS[args.league];
   const date = args.date ?? usGameDay(ctx.now());
-  const { teams } = await fetchScheduleCalendar(ctx.client, date);
-  if (teams.length === 0) throw new Error(`schedule-calendar ${date}: no teams`);
+  const { teams } = await adapter.teams(ctx.client, date);
+  if (teams.length === 0) throw new Error(`${args.league} teams ${date}: no teams`);
   await upsertTeams(ctx.db, teams);
   run.add('teams', teams.length);
 
@@ -22,7 +22,7 @@ export const rosterJob: Job = async (ctx, run, args) => {
   let failed = 0;
   for (const team of teams) {
     try {
-      const roster = await fetchRoster(ctx.client, team);
+      const roster = await adapter.roster(ctx.client, team);
       // An empty roster would deactivate the whole team, so it is treated like a failed fetch.
       if (roster.players.length === 0) throw new Error('empty roster');
       for (const w of roster.warnings) run.log.warn(w);

@@ -1,8 +1,8 @@
-import type { League } from '@our-players/shared';
-import { and, eq, gte, inArray, isNull, lte, max, or } from 'drizzle-orm';
+import { type League, leagueSchema } from '@our-players/shared';
+import { and, eq, gte, inArray, isNull, lte, max, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { games, jobRuns } from '../db/schema';
-import { JOBS, type JobName } from '../jobs';
+import { JOBS } from '../jobs';
 import { RESULTS_WINDOW_MS } from '../jobs/results';
 import { type JobContext, runJob } from '../jobs/runner';
 import { type Decision, decide, type SchedulerState } from './decide';
@@ -33,13 +33,17 @@ export async function loadState(db: Db, now: Date, startup: boolean): Promise<Sc
           : undefined,
       ),
     );
+  const leagueArg = sql<string | null>`${jobRuns.args}->>'league'`;
   const runs = await db
-    .select({ job: jobRuns.job, last: max(jobRuns.startedAt) })
+    .select({ job: jobRuns.job, league: leagueArg, last: max(jobRuns.startedAt) })
     .from(jobRuns)
-    .groupBy(jobRuns.job);
+    .groupBy(jobRuns.job, leagueArg);
   const lastRuns: SchedulerState['lastRuns'] = {};
-  for (const { job, last } of runs)
-    if (last && Object.hasOwn(JOBS, job)) lastRuns[job as JobName] = last;
+  for (const { job, league, last } of runs) {
+    const known = leagueSchema.safeParse(league);
+    if (last && known.success && Object.hasOwn(JOBS, job))
+      lastRuns[known.data] = { ...lastRuns[known.data], [job]: last };
+  }
   return { games: rows, lastRuns, startup };
 }
 

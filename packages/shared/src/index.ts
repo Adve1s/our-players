@@ -1,7 +1,9 @@
 export {
   COUNTRY_CODES,
+  COUNTRY_NAMES,
   type CountryCode,
   countryCodeSchema,
+  countryFromName,
   ESPN_COUNTRY_ALIASES,
 } from './countries';
 export {
@@ -25,7 +27,13 @@ export {
   sportSchema,
   statKindSchema,
 } from './enums';
-export { latestStartedGameDay, nextGameDay, previousGameDay, usGameDay } from './game-day';
+export {
+  addDays,
+  latestStartedGameDay,
+  nextGameDay,
+  previousGameDay,
+  usGameDay,
+} from './game-day';
 export { type PublicId, publicIdSchema } from './ids';
 export type {
   Game,

@@ -175,7 +175,20 @@ it('fails, naming the URL, when a summary fetch fails', async () => {
   expect(result.error).toContain(nhlUrls.summary('skater', '20252026', 2));
 });
 
-it('rejects a league that has no adapter yet', async () => {
-  const result = await runJob(ctx, 'season-stats', seasonStatsJob, { league: 'NBA' });
-  expect(result).toMatchObject({ status: 'failed', error: 'nba arrives in S05' });
+// A season type the source can't serve (e.g. ESPN answering PRE with another season) must not block the others.
+it('stores the REG season when PRE fails, and marks the run partial naming PRE', async () => {
+  const preGame = game('2025010001', {
+    season: '2025-26',
+    seasonType: 'PRE',
+    startTimeUtc: '2025-09-21T23:00:00.000Z',
+    status: 'FINAL',
+  });
+  await upsertGames(handle.db, [regGame, preGame]);
+  useRoutes(summaryRoutes(2));
+  const result = await seasonStatsJobRun();
+  expect(result).toMatchObject({ status: 'partial' });
+  if (result.status === 'skipped') throw new Error('unexpected skip');
+  expect(result.error).toContain('PRE');
+  expect(result.error).toContain(nhlUrls.summary('skater', '20252026', 1));
+  expect((await statsOf(girgensons.publicId, 'REG')).stats).toMatchObject({ points: 20 });
 });

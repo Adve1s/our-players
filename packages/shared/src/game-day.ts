@@ -47,3 +47,10 @@ export function nextGameDay(days: readonly string[], day: string): string | null
     null,
   );
 }
+
+// YYYY-MM-DD plus n calendar days; UTC midnight, so no DST shift.
+export function addDays(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}

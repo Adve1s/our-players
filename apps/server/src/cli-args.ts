@@ -28,10 +28,10 @@ export function parseJobArgs(argv: string[]): { name: JobName; args: JobArgs } {
     throw new Error(`unknown job "${name ?? ''}"; valid: ${Object.keys(JOBS).join(', ')}`);
   if (extra.length > 0) throw new Error(`unexpected argument "${extra.join(' ')}"`);
   const league = values.league.toLowerCase();
-  if (league === 'nba') throw new Error('nba arrives in S05');
-  if (league !== 'nhl') throw new Error(`unknown league "${values.league}"; valid: nhl`);
+  if (league !== 'nhl' && league !== 'nba')
+    throw new Error(`unknown league "${values.league}"; valid: nhl, nba`);
 
-  const args: JobArgs = { league: 'NHL' };
+  const args: JobArgs = { league: league === 'nba' ? 'NBA' : 'NHL' };
   if (values.date !== undefined) args.date = realDate('--date', values.date);
   if (values.from !== undefined) args.from = realDate('--from', values.from);
   if (values.to !== undefined) args.to = realDate('--to', values.to);
