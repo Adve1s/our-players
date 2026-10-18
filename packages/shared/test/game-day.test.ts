@@ -31,9 +31,14 @@ describe.each(['UTC', 'Europe/Riga', 'Pacific/Honolulu'])('host TZ %s', (tz) => 
 
   describe('latestStartedGameDay', () => {
     const games = [
-      { gameDate: '2026-10-17', startTimeUtc: new Date('2026-10-18T02:30:00Z') },
-      { gameDate: '2026-10-18', startTimeUtc: new Date('2026-10-18T23:00:00Z') },
-    ];
+      { gameDate: '2026-10-17', startTimeUtc: new Date('2026-10-18T02:30:00Z'), status: 'FINAL' },
+      { gameDate: '2026-10-18', startTimeUtc: new Date('2026-10-18T23:00:00Z'), status: 'LIVE' },
+    ] as const;
+    it.each(['POSTPONED', 'CANCELLED'] as const)('skips a %s game: it never started', (status) =>
+      expect(
+        latestStartedGameDay([games[0], { ...games[1], status }], new Date('2026-10-18T23:30:00Z')),
+      ).toBe('2026-10-17'),
+    );
     it('ignores a game that has not started yet', () =>
       expect(latestStartedGameDay(games, new Date('2026-10-18T22:59:00Z'))).toBe('2026-10-17'));
     it('counts a game starting exactly now', () =>
