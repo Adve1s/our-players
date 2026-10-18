@@ -1,5 +1,5 @@
 import type { League, PublicId } from '@our-players/shared';
-import { and, eq, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { upsertGames, upsertStatLines } from '../db/games';
 import { upsertPlayers } from '../db/players';
 import { games, players, teams } from '../db/schema';
@@ -10,11 +10,14 @@ import type { Job, JobContext, JobRun } from './runner';
 export const CORRECTION_DELAY_MS = 6 * 60 * 60 * 1000;
 // Regular-season games end within ~3.5 h, so a box score first fetched this long after the start is past CORRECTION_DELAY_MS.
 export const SETTLED_AFTER_START_MS = 12 * 60 * 60 * 1000;
+// Bounds re-fetching a box score that fails every time, and the scheduler's polling of a stuck game; catch-up runs take any age.
+export const RESULTS_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 // Without --date: the days of started games that aren't final, and of final games without a box score.
-// Then each final box score is re-fetched once, CORRECTION_DELAY_MS after the final horn, for stat corrections.
+// Then each final box score is re-fetched once, CORRECTION_DELAY_MS after the final horn, for stat corrections:
+// within RESULTS_WINDOW_MS of the final, or of any age on a catch-up run (the scheduler's startup tick, a manual `pnpm job results`).
 // shortcut: a game that stays SCHEDULED/LIVE after its start keeps its day a candidate (PR #8), so each run re-fetches that score; the scheduler bounds the trigger to a 24 h window, a job-side cutoff if a stuck game ever costs too many calls
 export const resultsJob: Job = async (ctx, run, args) => {
   const days = args.date
@@ -39,6 +42,10 @@ export const resultsJob: Job = async (ctx, run, args) => {
       ).map((r) => r.day);
   for (const day of days) await ingestDay(ctx, run, args.league, day);
 
+  // finalizeGame fetches NHL box scores only.
+  if (args.league !== 'NHL')
+    return run.fail(`corrections: ${args.league.toLowerCase()} arrives in S05`);
+  const now = ctx.now().getTime();
   const due = await ctx.db
     .select({ publicId: games.publicId, externalId: games.externalId })
     .from(games)
@@ -48,7 +55,8 @@ export const resultsJob: Job = async (ctx, run, args) => {
         eq(games.status, 'FINAL'),
         isNotNull(games.boxscoreFetchedAt),
         isNull(games.correctedAt),
-        lte(games.finalAt, new Date(ctx.now().getTime() - CORRECTION_DELAY_MS)),
+        lte(games.finalAt, new Date(now - CORRECTION_DELAY_MS)),
+        args.catchUp ? undefined : gt(games.finalAt, new Date(now - RESULTS_WINDOW_MS)),
       ),
     );
   for (const game of due) {

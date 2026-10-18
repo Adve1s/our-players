@@ -3,8 +3,9 @@ import { and, eq, gte, inArray, isNull, lte, max, or } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { games, jobRuns } from '../db/schema';
 import { JOBS, type JobName } from '../jobs';
+import { RESULTS_WINDOW_MS } from '../jobs/results';
 import { type JobContext, runJob } from '../jobs/runner';
-import { type Decision, decide, RESULTS_WINDOW_MS, type SchedulerState } from './decide';
+import { type Decision, decide, type SchedulerState } from './decide';
 
 export const TICK_MS = 10 * 60 * 1000;
 
@@ -53,7 +54,12 @@ export async function tick(
   ctx.log.info('tick', { decisions });
   for (const { job, league } of decisions) {
     try {
-      await run(ctx, job, JOBS[job], { league });
+      await run(
+        ctx,
+        job,
+        JOBS[job],
+        startup && job === 'results' ? { league, catchUp: true } : { league },
+      );
     } catch (e) {
       // runJob only rejects when its job_runs write fails; the other decisions still deserve a try.
       ctx.log.error('scheduled job threw', { job, league, error: errorMessage(e) });
@@ -68,7 +74,9 @@ export function startScheduler(
   tickFn: typeof tick = tick,
 ): { stop(): Promise<void> } {
   let inFlight: Promise<void> | null = null;
-  const fire = (startup: boolean) => {
+  // Until a tick completes: a failed first tick must not lose the startup catch-up.
+  let startup = true;
+  const fire = () => {
     if (inFlight) {
       ctx.log.warn('tick skipped: previous tick still running');
       return;
@@ -76,6 +84,7 @@ export function startScheduler(
     inFlight = tickFn(ctx, leagues, startup).then(
       () => {
         inFlight = null;
+        startup = false;
       },
       (e: unknown) => {
         inFlight = null;
@@ -83,8 +92,8 @@ export function startScheduler(
       },
     );
   };
-  fire(true);
-  const timer = setInterval(() => fire(false), TICK_MS);
+  fire();
+  const timer = setInterval(fire, TICK_MS);
   return {
     async stop() {
       clearInterval(timer);

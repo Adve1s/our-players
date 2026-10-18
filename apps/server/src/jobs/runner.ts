@@ -43,7 +43,14 @@ export type JobContext = {
   log: Logger;
   overrides: ReadonlyMap<PublicId, NationalityOverride>;
 };
-export type JobArgs = { league: League; date?: string; from?: string; to?: string };
+// catchUp: results takes corrections of any age (the scheduler's startup tick, every manual run).
+export type JobArgs = {
+  league: League;
+  date?: string;
+  from?: string;
+  to?: string;
+  catchUp?: boolean;
+};
 export type JobRun = {
   counts: Record<string, number>;
   add(key: string, n?: number): void;

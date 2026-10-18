@@ -17,7 +17,7 @@ import {
 } from '../src/jobs/runner';
 import { mapBoxscore, mapScore, nhlUrls } from '../src/sources/nhl';
 import { createTestDb } from './db';
-import { NO_OVERRIDES } from './db-data';
+import { celtics, NO_OVERRIDES, nbaGame, sixers } from './db-data';
 import { fakeClient } from './fake-client';
 import { loadFixture } from './fixtures';
 
@@ -394,9 +394,46 @@ describe('corrections', () => {
 
     useRoutes(fullRoutes());
     at(30 * H);
-    await results();
+    await results({ catchUp: true });
     expect(client.requestCount).toBe(0);
     expect(await merzStats()).toEqual(corrected);
+  });
+
+  it('a correction more than 24 h after the final is left to a catch-up run', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(3 * H + 24 * H + 60 * 1000);
+    await results();
+
+    expect(client.requestCount).toBe(0);
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
+  });
+
+  it('a catch-up run corrects a final of any age', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(30 * 24 * H);
+    await results({ catchUp: true });
+
+    expect(await merzStats()).toMatchObject({ saves: 31 });
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
+  });
+
+  it('an NBA run sends no NBA final to the NHL box score endpoint', async () => {
+    await upsertTeams(handle.db, [celtics, sixers]);
+    await upsertGames(handle.db, [nbaGame]);
+    await handle.db
+      .update(games)
+      .set({
+        finalAt: new Date('2026-10-22T02:00:00Z'),
+        boxscoreFetchedAt: new Date('2026-10-22T02:00:00Z'),
+      })
+      .where(eq(games.publicId, nbaGame.publicId));
+    ctx.now = () => new Date('2026-10-22T12:00:00Z');
+    const result = await runJob(ctx, 'results', resultsJob, { league: 'NBA' });
+
+    expect(client.requests).toEqual([]);
+    expect(result.status === 'skipped' ? undefined : result.error).toContain('nba arrives in S05');
   });
 
   it('a failed correction is retried next run', async () => {

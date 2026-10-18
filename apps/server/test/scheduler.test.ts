@@ -173,6 +173,32 @@ describe('tick', () => {
     expect(parsed()).toContainEqual({ level: 'info', msg: 'tick', decisions: expected });
   });
 
+  it('a startup tick runs results as a catch-up', async () => {
+    await ranAllDailyJobsToday();
+    await storeGame('2026020001', TOMORROW, 'SCHEDULED');
+    await storeGame('2026020002', ago(3 * 24 * H), 'SCHEDULED');
+    const calls: [string, unknown][] = [];
+    const run: typeof runJob = async (_ctx, name, _job, args) => {
+      calls.push([name, args]);
+      return succeeded;
+    };
+    await tick(ctx, ['NHL'], true, run);
+    expect(calls).toEqual([['results', { league: 'NHL', catchUp: true }]]);
+  });
+
+  it('a later tick runs results without catch-up', async () => {
+    await ranAllDailyJobsToday();
+    await storeGame('2026020001', TOMORROW, 'SCHEDULED');
+    await storeGame('2026020002', ago(H), 'LIVE');
+    const calls: [string, unknown][] = [];
+    const run: typeof runJob = async (_ctx, name, _job, args) => {
+      calls.push([name, args]);
+      return succeeded;
+    };
+    await tick(ctx, ['NHL'], false, run);
+    expect(calls).toEqual([['results', { league: 'NHL' }]]);
+  });
+
   it('a rejected runJob is logged and the tick goes on', async () => {
     await storeRun('season-stats', '2026-10-18T11:05:00Z');
     await storeGame('2026020001', TOMORROW, 'SCHEDULED');
@@ -272,6 +298,19 @@ describe('startScheduler', () => {
     await vi.advanceTimersByTimeAsync(TICK_MS);
     expect(calls).toBe(2);
     expect(parsed()).toContainEqual({ level: 'error', msg: 'tick failed', error: 'db gone' });
+    await scheduler.stop();
+  });
+
+  it('ticks stay startup ticks until one completes', async () => {
+    const startups: boolean[] = [];
+    const tickFn = async (_c: JobContext, _l: unknown, startup: boolean) => {
+      startups.push(startup);
+      if (startups.length === 1) throw new Error('db gone');
+      return [];
+    };
+    const scheduler = startScheduler(ctx, ['NHL'], tickFn);
+    await vi.advanceTimersByTimeAsync(2 * TICK_MS);
+    expect(startups).toEqual([true, true, false]);
     await scheduler.stop();
   });
 });

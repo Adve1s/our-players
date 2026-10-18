@@ -3,14 +3,22 @@ import { parseJobArgs, parseRecapArgs } from '../src/cli-args';
 
 describe('parseJobArgs', () => {
   it('defaults the league to NHL', () => {
-    expect(parseJobArgs(['results'])).toEqual({ name: 'results', args: { league: 'NHL' } });
+    expect(parseJobArgs(['results'])).toEqual({
+      name: 'results',
+      args: { league: 'NHL', catchUp: true },
+    });
   });
 
   it('takes --league and --date', () => {
     expect(parseJobArgs(['results', '--league', 'nhl', '--date', '2026-01-17'])).toEqual({
       name: 'results',
-      args: { league: 'NHL', date: '2026-01-17' },
+      args: { league: 'NHL', date: '2026-01-17', catchUp: true },
     });
+  });
+
+  // Only the scheduler's 10-minute ticks need the 24 h bound; a manual run is rare and deliberate.
+  it('a manual results run catches up corrections of any age', () => {
+    expect(parseJobArgs(['results']).args.catchUp).toBe(true);
   });
 
   it.each(['schedule', 'roster'])('accepts --date for %s', (name) => {

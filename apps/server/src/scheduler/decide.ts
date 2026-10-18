@@ -1,6 +1,6 @@
 import type { GameStatus, League } from '@our-players/shared';
 import type { JobName } from '../jobs';
-import { CORRECTION_DELAY_MS } from '../jobs/results';
+import { CORRECTION_DELAY_MS, RESULTS_WINDOW_MS } from '../jobs/results';
 
 export type SchedulerGame = {
   league: League;
@@ -18,8 +18,6 @@ export type SchedulerState = {
 export type Decision = { league: League; job: Exclude<JobName, 'backfill'>; reason: string };
 
 export const DAILY_SLOTS = { schedule: 9, roster: 10, 'season-stats': 11 } as const; // UTC hours
-// Bounds polling for a game stuck in the payload (results.ts stuck-game shortcut); startup catches up the rest.
-export const RESULTS_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Per league, in run order: schedule first so a stale schedule is healed before results runs.
 export function decide(now: Date, leagues: readonly League[], state: SchedulerState): Decision[] {
