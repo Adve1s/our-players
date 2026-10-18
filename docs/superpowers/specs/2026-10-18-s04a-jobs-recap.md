@@ -84,7 +84,7 @@ All take `--league nhl` (the only league; `nba` → "nba arrives in S05").
 **backfill** (`--from`, `--to`, inclusive, `from <= to`): `ingestDay` for each day in order — `score` gives every game of the day including future ones, so no `schedule` call is needed. Same counts as results. Re-running fetches one `score` per day and no box scores.
 
 **roster**
-1. `fetchScheduleCalendar(today)` → the league's teams; `upsertTeams`. A failure here throws (run `failed`: nothing to compare against).
+1. `fetchScheduleCalendar(--date, default `usGameDay(ctx.now)`)` → the league's teams; `upsertTeams`. A failure here throws (run `failed`: nothing to compare against).
 2. For each team: `fetchRoster(team)` in its own try/catch (failure → `fail("roster <abbrev>: …")`); log warnings; collect players.
 3. `upsertPlayers(all collected, overrides)`.
 4. Only if **every** team's roster was fetched: `active = false, current_team_id = null` for this league's players not in the collected set (where `active` or `current_team_id is not null`, so a re-run is a no-op), and `active = true` for collected players stored inactive. After any failed fetch: no `active` change at all (AC1, VISION §6.1), and the run is `partial`.
