@@ -17,6 +17,7 @@
     "inspect": "pnpm --filter @our-players/server inspect",
     "job": "pnpm --filter @our-players/server job",
     "recap": "pnpm --filter @our-players/server recap",
+    "latency": "pnpm --filter @our-players/server latency",
     "db:generate": "pnpm --filter @our-players/server db:generate",
     "db:migrate": "pnpm --filter @our-players/server db:migrate",
     "db:reset": "pnpm --filter @our-players/server db:reset",
