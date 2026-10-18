@@ -68,7 +68,7 @@ describe('parseRecapArgs', () => {
   });
 
   it('needs a date', () => {
-    expect(() => parseRecapArgs([])).toThrow('--date');
+    expect(() => parseRecapArgs([])).toThrow('missing --date YYYY-MM-DD');
   });
 
   it('rejects an unknown country code', () => {
