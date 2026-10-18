@@ -2,7 +2,7 @@ import type { DbHandle } from '../src/db/client';
 import { upsertPlayers } from '../src/db/players';
 import { resultsJob } from '../src/jobs/results';
 import { rosterJob } from '../src/jobs/roster';
-import { createLogger, type JobContext, runJob } from '../src/jobs/runner';
+import { createLogger, type Job, type JobArgs, type JobContext, runJob } from '../src/jobs/runner';
 import { scheduleJob } from '../src/jobs/schedule';
 import { espnUrls } from '../src/sources/espn-nba';
 import { nhlUrls } from '../src/sources/nhl';
@@ -64,10 +64,19 @@ export async function seedApiDb(): Promise<DbHandle> {
     log: createLogger(() => {}),
     overrides: NO_OVERRIDES,
   };
-  await runJob(ctx, 'roster', rosterJob, { league: 'NHL' });
-  await runJob(ctx, 'results', resultsJob, { league: 'NHL', date: NHL_DAY });
-  await runJob(ctx, 'schedule', scheduleJob, { league: 'NHL', date: NHL_WEEK });
-  for (const date of NBA_DAYS) await runJob(ctx, 'results', resultsJob, { league: 'NBA', date });
+  // runJob records a failure instead of throwing and the log is silenced, so a broken seed must fail here.
+  const run = async (name: string, job: Job, args: JobArgs) => {
+    const result = await runJob(ctx, name, job, args);
+    if (result.status === 'failed' || result.status === 'skipped') {
+      const error = result.status === 'failed' ? result.error : 'skipped';
+      const what = [name, args.league, args.date].filter(Boolean).join(' ');
+      throw new Error(`seed: ${what} failed: ${error}`);
+    }
+  };
+  await run('roster', rosterJob, { league: 'NHL' });
+  await run('results', resultsJob, { league: 'NHL', date: NHL_DAY });
+  await run('schedule', scheduleJob, { league: 'NHL', date: NHL_WEEK });
+  for (const date of NBA_DAYS) await run('results', resultsJob, { league: 'NBA', date });
   await upsertPlayers(
     handle.db,
     [
