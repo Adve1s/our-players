@@ -2,6 +2,7 @@ import { metaResponseSchema } from '@our-players/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/api/app';
 import type { Db, DbHandle } from '../src/db/client';
+import { jobRuns } from '../src/db/schema';
 import { createLogger } from '../src/jobs/runner';
 import { seedApiDb } from './api-seed';
 import { createTestDb } from './db';
@@ -44,6 +45,46 @@ describe('GET /v1/meta', () => {
     const { dataUpdatedAt } = await meta(seeded.db);
 
     expect(typeof dataUpdatedAt).toBe('string');
+  });
+
+  const T1 = '2026-03-20T10:00:00.000Z';
+  const T2 = '2026-03-21T10:00:00.000Z';
+  const T3 = '2026-03-22T10:00:00.000Z';
+  const T4 = '2026-03-23T10:00:00.000Z';
+  const T5 = '2026-03-23T11:00:00.000Z';
+  type Run = { job: string; status: 'succeeded' | 'partial' | 'failed'; at: string };
+  const runs: Run[] = [
+    { job: 'results', status: 'partial', at: T1 },
+    { job: 'results', status: 'succeeded', at: T2 },
+    { job: 'results', status: 'failed', at: T3 },
+    { job: 'roster', status: 'succeeded', at: T4 },
+  ];
+
+  it.each([
+    { label: 'a later failed results run or other job does not count', extra: [], expected: T2 },
+    {
+      label: 'a later partial results run counts',
+      extra: [{ job: 'results', status: 'partial', at: T5 } satisfies Run],
+      expected: T5,
+    },
+  ])('dataUpdatedAt: $label', async ({ extra, expected }) => {
+    const handle = await createTestDb();
+    try {
+      // Explicit times: the database's now() can't give distinct, ordered ones.
+      await handle.db.insert(jobRuns).values(
+        [...runs, ...extra].map(({ job, status, at }) => ({
+          job,
+          status,
+          args: {},
+          startedAt: new Date(at),
+          finishedAt: new Date(at),
+        })),
+      );
+
+      expect((await meta(handle.db)).dataUpdatedAt).toBe(expected);
+    } finally {
+      await handle.close();
+    }
   });
 
   it('an empty database has no season, no game day and no update time', async () => {
