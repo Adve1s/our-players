@@ -22,6 +22,12 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 ## Known issues
 - none
 
+## Revisit for v2
+Owner topics to look at once v1 (S00–S15) is done, when planning v2 changes. Only things no v1 session already changes.
+- **Tab bar: text labels only, no icons** (S08). Icons would need `@expo/vector-icons` or similar.
+- **Settings countries list** (S08): ticked countries first, then by player count across both leagues; substring search on code and shortest English name only; no flags.
+- **Default when stored preferences are missing or invalid** (S08): falls back to Latvia + NHL + NBA, no favorites or hidden.
+
 ## Parking lot
 Ideas that came up but are out of scope for now.
 - `apps/mobile/app.json` keeps the template's `web.output: "server"`, which `expo export -p web` turns into a server bundle needing a Node host; S08 (screenshots from the web build) or S14 (static home-screen web app) should switch it to `"static"` (PR #4 review).
