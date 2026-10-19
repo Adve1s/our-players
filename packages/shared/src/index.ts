@@ -1,3 +1,4 @@
+export { type ApiClient, ApiError, createApiClient, type FetchLike } from './client';
 export * from './contract';
 export {
   COUNTRY_CODES,
