@@ -27,12 +27,15 @@ export class ApiError extends Error {
   }
 }
 
-// All four keys always, each list sorted, so equal prefs give the same URL (the app's cache key).
+// Sets go out sorted, so equal sets give the same URL (the app's cache key).
+const sorted = (set: ReadonlySet<string>) => [...set].sort().join(',');
+
+// All four keys always.
 const prefsQuery = (p: Prefs) => ({
-  leagues: [...p.leagues].sort().join(','),
-  countries: [...p.countries].sort().join(','),
-  fav: [...p.favorites].sort().join(','),
-  hide: [...p.hidden].sort().join(','),
+  leagues: sorted(p.leagues),
+  countries: sorted(p.countries),
+  fav: sorted(p.favorites),
+  hide: sorted(p.hidden),
 });
 
 export function createApiClient(baseUrl: string, fetch: FetchLike) {
@@ -59,12 +62,12 @@ export function createApiClient(baseUrl: string, fetch: FetchLike) {
     game: (gameId: string, prefs: Prefs) =>
       get(`/v1/games/${seg(gameId)}`, gameResponseSchema, prefsQuery(prefs)),
     searchPlayers: (q: string, leagues: ReadonlySet<League>) =>
-      get('/v1/players/search', playersResponseSchema, { q, leagues: [...leagues].join(',') }),
+      get('/v1/players/search', playersResponseSchema, { q, leagues: sorted(leagues) }),
     players: (ids: readonly string[]) =>
       get('/v1/players', playersResponseSchema, { ids: ids.join(',') }),
     player: (id: string) => get(`/v1/players/${seg(id)}`, playerResponseSchema),
     countries: (leagues: ReadonlySet<League>) =>
-      get('/v1/countries', countriesResponseSchema, { leagues: [...leagues].join(',') }),
+      get('/v1/countries', countriesResponseSchema, { leagues: sorted(leagues) }),
   };
 }
 

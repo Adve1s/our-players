@@ -33,12 +33,16 @@ function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
   return result.data;
 }
 
-// A repeated preference is a client bug; taking one of the values would silently drop the other.
+// A repeated parameter we read is a client bug; taking one of the values would silently drop the other.
 // Other parameters are ignored, repeated or not, so cache-busters still work.
-export function parseQuery(c: Context): Prefs {
-  for (const name of Object.keys(prefsQuerySchema.in.shape)) {
+function rejectRepeated(c: Context, names: readonly string[]): void {
+  for (const name of names) {
     if ((c.req.queries(name)?.length ?? 0) > 1) throw badRequest(`${name}: given more than once`);
   }
+}
+
+export function parseQuery(c: Context): Prefs {
+  rejectRepeated(c, Object.keys(prefsQuerySchema.in.shape));
   return parse(prefsQuerySchema, c.req.query());
 }
 
@@ -106,6 +110,7 @@ export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
 
   // Before /v1/players/:playerId, so "search" is never read as a player ID.
   app.get('/v1/players/search', async (c) => {
+    rejectRepeated(c, ['q']);
     const term = searchName(parse(searchQuerySchema, c.req.query()).q);
     // Only combining marks: an empty term would match everyone.
     if (term === '') throw badRequest('q: nothing to search for');
@@ -113,6 +118,7 @@ export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
   });
 
   app.get('/v1/players', async (c) => {
+    rejectRepeated(c, ['ids']);
     const { ids } = parse(idsQuerySchema, c.req.query());
     return c.json(await playersByIds(db, ids));
   });

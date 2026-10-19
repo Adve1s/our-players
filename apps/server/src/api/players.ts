@@ -65,9 +65,12 @@ export async function searchPlayers(
     .orderBy(
       desc(players.active),
       // A word start: the first name, the last name, or a part after a hyphen.
-      desc(sql`strpos(' ' || translate(${players.searchName}, '-', ' '), ' ' || ${term}) > 0`),
-      asc(players.lastName),
-      asc(players.firstName),
+      desc(
+        sql`strpos(' ' || translate(${players.searchName}, '-', ' '), ' ' || translate(${term}, '-', ' ')) > 0`,
+      ),
+      // The database collation may be C (PGlite's is), which sorts Ā and Č after Z.
+      asc(sql`${players.lastName} collate "und-x-icu"`),
+      asc(sql`${players.firstName} collate "und-x-icu"`),
       asc(players.publicId),
     )
     .limit(SEARCH_LIMIT);
@@ -106,7 +109,8 @@ export async function loadPlayer(
   if (!row) return null;
 
   // VISION §4.4: the regular season, plus the playoffs when present; the preseason is left out.
-  const season = await currentSeason(db, row.league, now);
+  // Owner (PR #14): until the regular season starts, last season's stats.
+  const season = await currentSeason(db, row.league, now, { skipPreseason: true });
   const stats =
     season === null
       ? []

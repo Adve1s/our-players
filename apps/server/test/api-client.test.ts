@@ -1,4 +1,5 @@
 import {
+  type ApiClient,
   ApiError,
   type CountryCode,
   createApiClient,
@@ -22,14 +23,18 @@ beforeAll(async () => {
 
 afterAll(() => handle.close());
 
-function client() {
+// urls: every requested URL is pushed onto it.
+function client(urls: string[] = []) {
   const app = createApp({
     db: handle.db,
     now: () => new Date('2026-10-18T12:00:00Z'),
     log: createLogger(() => {}),
   });
   // async: Hono's app.request may return the Response unwrapped.
-  return createApiClient('http://api.test', async (url) => app.request(url));
+  return createApiClient('http://api.test', async (url) => {
+    urls.push(url);
+    return app.request(url);
+  });
 }
 
 function prefs(p: {
@@ -138,6 +143,19 @@ describe('createApiClient against the in-memory app', () => {
         hidden: [EMBIID, GIRGENSONS],
       }),
     );
+
+    expect(urls[1]).toBe(urls[0]);
+  });
+
+  it.each([
+    ['searchPlayers', (api: ApiClient, leagues: Set<League>) => api.searchPlayers('porz', leagues)],
+    ['countries', (api: ApiClient, leagues: Set<League>) => api.countries(leagues)],
+  ])('%s: equal league sets in different orders request the same URL', async (_, call) => {
+    const urls: string[] = [];
+    const api = client(urls);
+
+    await call(api, new Set(['NHL', 'NBA']));
+    await call(api, new Set(['NBA', 'NHL']));
 
     expect(urls[1]).toBe(urls[0]);
   });

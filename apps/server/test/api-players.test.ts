@@ -11,6 +11,7 @@ import { createApp } from '../src/api/app';
 import type { DbHandle } from '../src/db/client';
 import { upsertGames, upsertStatLines } from '../src/db/games';
 import { upsertPlayers } from '../src/db/players';
+import { upsertSeasonStats } from '../src/db/season-stats';
 import { upsertTeams } from '../src/db/teams';
 import { createLogger } from '../src/jobs/runner';
 import {
@@ -26,7 +27,16 @@ import {
   TOWNS,
 } from './api-seed';
 import { createTestDb } from './db';
-import { cbj, girgensons, girgensonsLine, NO_OVERRIDES, nhlGame, nyi } from './db-data';
+import {
+  cbj,
+  freeAgent,
+  girgensons,
+  girgensonsLine,
+  NO_OVERRIDES,
+  nhlGame,
+  nhlSeasonStats,
+  nyi,
+} from './db-data';
 
 let handle: DbHandle;
 
@@ -124,6 +134,10 @@ describe('GET /v1/players/search', () => {
     await badRequest('/v1/players/search?q=porz&leagues=xx', 'leagues');
   });
 
+  it('a repeated q → 400 naming q', async () => {
+    await badRequest('/v1/players/search?q=porz&q=girgen', 'q');
+  });
+
   it('a result row carries league, position, nationality, active and team', async () => {
     const p = (await searchFor('porzingis'))[0];
     expect(p?.league).toBe('NBA');
@@ -131,6 +145,50 @@ describe('GET /v1/players/search', () => {
     expect(p?.nationality).toBe('LVA');
     expect(p?.active).toBe(true);
     expect(p?.team?.abbrev).toBe('GS');
+  });
+
+  describe('ordering among crafted names', () => {
+    let crafted: DbHandle;
+    const named = (n: number, firstName: string, lastName: string) => ({
+      ...freeAgent,
+      publicId: `nhl-200000${n}`,
+      externalId: `200000${n}`,
+      firstName,
+      lastName,
+    });
+
+    beforeAll(async () => {
+      crafted = await createTestDb();
+      await upsertPlayers(
+        crafted.db,
+        [
+          named(1, 'Jānis', 'Zeltiņš'),
+          named(2, 'Jānis', 'Čehlārs'),
+          named(3, 'Jānis', 'Bērziņš'),
+          named(4, 'Jānis', 'Ābols'),
+          named(5, 'Ana', 'Baston-Ruiz'),
+          named(6, 'Zed', 'Kim-Aston-Rey'),
+        ],
+        NO_OVERRIDES,
+      );
+    }, 30_000);
+
+    afterAll(() => crafted.close());
+
+    const lastNames = async (term: string) => {
+      const path = `/v1/players/search?${new URLSearchParams({ q: term })}`;
+      const { body } = await setup(crafted.db).get(path, 200, playersResponseSchema);
+      return body.players.map((p) => p.lastName);
+    };
+
+    // Under the database's C collation, Ā and Č would sort after Z and be the first cut by the limit.
+    it('ties sort by last name with a diacritic letter beside its base letter', async () => {
+      expect(await lastNames('janis')).toEqual(['Ābols', 'Bērziņš', 'Čehlārs', 'Zeltiņš']);
+    });
+
+    it('a hyphen in the query still matches as a word start', async () => {
+      expect(await lastNames('aston-r')).toEqual(['Kim-Aston-Rey', 'Baston-Ruiz']);
+    });
   });
 });
 
@@ -153,6 +211,10 @@ describe('GET /v1/players?ids=', () => {
 
   it('a malformed ID → 400', async () => {
     await badRequest('/v1/players?ids=bad', 'ids');
+  });
+
+  it('a repeated ids → 400 naming ids', async () => {
+    await badRequest(`/v1/players?ids=${GIRGENSONS}&ids=${PORZINGIS}`, 'ids');
   });
 
   it('201 IDs → 400', async () => {
@@ -333,6 +395,59 @@ describe('GET /v1/players/:playerId', () => {
       expect(gameLog).toHaveLength(10);
       expect(gameLog[0]?.game.id).toBe('nhl-2026020011');
       expect(gameLog[9]?.game.id).toBe('nhl-2026020002');
+    });
+  });
+
+  describe('in the preseason', () => {
+    let pre: DbHandle;
+
+    beforeAll(async () => {
+      pre = await createTestDb();
+      await upsertTeams(pre.db, [cbj, nyi]);
+      await upsertPlayers(pre.db, [girgensons], NO_OVERRIDES);
+      await upsertGames(pre.db, [
+        {
+          ...nhlGame,
+          publicId: 'nhl-2025021300',
+          externalId: '2025021300',
+          season: '2025-26',
+          gameDate: '2026-04-10',
+          startTimeUtc: '2026-04-10T23:00:00.000Z',
+        },
+        {
+          ...nhlGame,
+          publicId: 'nhl-2026010001',
+          externalId: '2026010001',
+          seasonType: 'PRE',
+          gameDate: '2026-10-01',
+          startTimeUtc: '2026-10-01T23:00:00.000Z',
+        },
+      ]);
+      await upsertSeasonStats(pre.db, [
+        {
+          ...nhlSeasonStats,
+          season: '2025-26',
+          stats: {
+            gamesPlayed: 74,
+            goals: 9,
+            assists: 11,
+            points: 20,
+            plusMinus: 1,
+            shots: 89,
+            pim: 10,
+            powerPlayGoals: 1,
+            toiPerGameSeconds: 886,
+          },
+        },
+      ]);
+    }, 30_000);
+
+    afterAll(() => pre.close());
+
+    // Owner (PR #14): a started preseason game doesn't empty the page; last season's stats stay.
+    it("shows last season's stats until the regular season starts", async () => {
+      const { seasonStats } = await player(GIRGENSONS, pre.db);
+      expect(seasonStats.map((s) => [s.season, s.seasonType])).toEqual([['2025-26', 'REG']]);
     });
   });
 });
