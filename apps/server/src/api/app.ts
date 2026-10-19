@@ -17,7 +17,7 @@ import type { Logger } from '../jobs/runner';
 import { loadCountries } from './countries';
 import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
-import { playersByIds, searchPlayers } from './players';
+import { loadPlayer, playersByIds, searchPlayers } from './players';
 
 export type ApiDeps = { db: Db; now: () => Date; log: Logger };
 
@@ -42,6 +42,7 @@ export function parseQuery(c: Context): Prefs {
 
 const dateParam = z.object({ gameDate: gameDateSchema });
 const gameParam = z.object({ gameId: publicIdSchema });
+const playerParam = z.object({ playerId: publicIdSchema });
 const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
@@ -110,6 +111,13 @@ export function createApp({ db, now, log }: ApiDeps): Hono {
   app.get('/v1/players', async (c) => {
     const { ids } = parse(idsQuerySchema, c.req.query());
     return c.json(await playersByIds(db, ids));
+  });
+
+  app.get('/v1/players/:playerId', async (c) => {
+    const { playerId } = parse(playerParam, c.req.param());
+    const body = await loadPlayer(db, playerId, now());
+    if (!body) return errorBody(c, 404, 'NOT_FOUND', `no player ${playerId}`);
+    return c.json(body);
   });
 
   app.get('/v1/countries', async (c) => c.json(await loadCountries(db, parseQuery(c).leagues)));

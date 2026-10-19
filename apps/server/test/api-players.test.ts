@@ -2,22 +2,31 @@ import {
   countriesResponseSchema,
   errorResponseSchema,
   type PlayerSummary,
+  playerResponseSchema,
   playersResponseSchema,
 } from '@our-players/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import { createApp } from '../src/api/app';
 import type { DbHandle } from '../src/db/client';
+import { upsertGames, upsertStatLines } from '../src/db/games';
+import { upsertPlayers } from '../src/db/players';
+import { upsertTeams } from '../src/db/teams';
 import { createLogger } from '../src/jobs/runner';
 import {
+  EMBIID,
   FORSLING,
   FREE_AGENT,
   GIRGENSONS,
   GUSTAVSEN,
+  LEONS,
   MERZLIKINS,
   PORZINGIS,
   seedApiDb,
+  TOWNS,
 } from './api-seed';
+import { createTestDb } from './db';
+import { cbj, girgensons, girgensonsLine, NO_OVERRIDES, nhlGame, nyi } from './db-data';
 
 let handle: DbHandle;
 
@@ -180,5 +189,150 @@ describe('GET /v1/countries', () => {
   it('codes are sorted', async () => {
     const codes = (await countries()).map((c) => c.code);
     expect(codes).toEqual([...codes].sort());
+  });
+});
+
+describe('GET /v1/players/:playerId', () => {
+  const player = async (id: string, db = handle.db) =>
+    (await setup(db).get(`/v1/players/${id}`, 200, playerResponseSchema)).body;
+  const onlyEntry = async (id: string) => {
+    const { seasonStats } = await player(id);
+    expect(seasonStats).toHaveLength(1);
+    return seasonStats[0];
+  };
+
+  it('Girgensons: current team and nationality from his birth country', async () => {
+    const p = await player(GIRGENSONS);
+    expect(p.team?.abbrev).toBe('CBJ');
+    expect(p.birthCountry).toBe('LVA');
+    expect(p.nationalitySource).toBe('birth');
+  });
+
+  it("Girgensons: the current season's regular-season skater totals", async () => {
+    const entry = await onlyEntry(GIRGENSONS);
+    expect(entry).toMatchObject({
+      kind: 'hockey_skater',
+      season: '2025-26',
+      seasonType: 'REG',
+      basis: 'totals',
+    });
+    expect(entry?.stats).toMatchObject({
+      gamesPlayed: 74,
+      goals: 9,
+      assists: 11,
+      points: 20,
+      plusMinus: 1,
+      shots: 89,
+      toiPerGameSeconds: 886.054,
+    });
+  });
+
+  it("Merzļikins: the current season's regular-season goalie totals", async () => {
+    const entry = await onlyEntry(MERZLIKINS);
+    expect(entry?.kind).toBe('hockey_goalie');
+    expect(entry?.seasonType).toBe('REG');
+    expect(entry?.stats).toMatchObject({
+      gamesPlayed: 30,
+      wins: 14,
+      losses: 11,
+      otLosses: 3,
+      savePct: 0.883,
+      shutouts: 1,
+    });
+  });
+
+  it('Merzļikins: his game log is his one stored line, on the away side', async () => {
+    const { gameLog } = await player(MERZLIKINS);
+    expect(gameLog).toHaveLength(1);
+    expect(gameLog[0]?.type).toBe('line');
+    expect(gameLog[0]?.game.id).toBe('nhl-2025020760');
+    expect(gameLog[0]?.side).toBe('away');
+  });
+
+  it("Towns: the current season's regular-season basketball totals", async () => {
+    const entry = await onlyEntry(TOWNS);
+    expect(entry?.kind).toBe('basketball_player');
+    expect(entry?.seasonType).toBe('REG');
+    expect(entry?.stats).toMatchObject({ gamesPlayed: 75, points: 1504, rebounds: 889 });
+    expect(entry?.kind === 'basketball_player' && entry.stats.fgPct).toBeCloseTo(0.501, 3);
+  });
+
+  it('Towns: an override makes him DOM, born in the USA', async () => {
+    const p = await player(TOWNS);
+    expect(p.nationality).toBe('DOM');
+    expect(p.nationalitySource).toBe('override');
+    expect(p.birthCountry).toBe('USA');
+  });
+
+  it('Embiid: an override makes him USA, born in CMR, with no stats or games', async () => {
+    const p = await player(EMBIID);
+    expect(p.nationality).toBe('USA');
+    expect(p.nationalitySource).toBe('override');
+    expect(p.birthCountry).toBe('CMR');
+    expect(p.seasonStats).toEqual([]);
+    expect(p.gameLog).toEqual([]);
+  });
+
+  it('Porziņģis: the game log is newest first', async () => {
+    const { gameLog } = await player(PORZINGIS);
+    expect(gameLog.map((e) => e.game.id)).toEqual(['nba-401810899', 'nba-401810839']);
+    expect(gameLog.map((e) => e.type)).toEqual(['line', 'line']);
+  });
+
+  it('Porziņģis: the 2026-03-16 line has his points, on the away side', async () => {
+    const entry = (await player(PORZINGIS)).gameLog.find((e) => e.game.id === 'nba-401810839');
+    expect(entry?.type === 'line' && entry.line.stats).toMatchObject({ points: 30 });
+    expect(entry?.side).toBe('away');
+  });
+
+  it("Leons: a game he didn't play is a DNP with its reason", async () => {
+    const entry = (await player(LEONS)).gameLog.find((e) => e.game.id === 'nba-401810899');
+    expect(entry).toMatchObject({ type: 'dnp', reason: "COACH'S DECISION" });
+  });
+
+  it('the free agent has no team', async () => {
+    expect((await player(FREE_AGENT)).team).toBeNull();
+  });
+
+  it('an unknown player → 404', async () => {
+    const { body } = await setup().get('/v1/players/nhl-999', 404, errorResponseSchema);
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('a malformed ID → 400 naming playerId', async () => {
+    await badRequest('/v1/players/bad', 'playerId');
+  });
+
+  describe('with 11 games', () => {
+    let cap: DbHandle;
+
+    beforeAll(async () => {
+      cap = await createTestDb();
+      await upsertTeams(cap.db, [cbj, nyi]);
+      await upsertPlayers(cap.db, [girgensons], NO_OVERRIDES);
+      for (let n = 1; n <= 11; n++) {
+        const nn = String(n).padStart(2, '0');
+        const id = `nhl-20260200${nn}`;
+        await upsertGames(cap.db, [
+          {
+            ...nhlGame,
+            publicId: id,
+            externalId: `20260200${nn}`,
+            gameDate: `2026-10-${nn}`,
+            startTimeUtc: `2026-10-${nn}T23:00:00.000Z`,
+          },
+        ]);
+        await upsertStatLines(cap.db, id, [{ ...girgensonsLine, gamePublicId: id }]);
+      }
+    }, 30_000);
+
+    afterAll(() => cap.close());
+
+    it('the game log keeps the newest 10', async () => {
+      const { gameLog } = await player(GIRGENSONS, cap.db);
+      expect(gameLog).toHaveLength(10);
+      expect(gameLog[0]?.game.id).toBe('nhl-2026020011');
+      expect(gameLog[9]?.game.id).toBe('nhl-2026020002');
+    });
   });
 });
