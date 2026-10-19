@@ -726,6 +726,20 @@ export function countryFromName(name: string): CountryCode | null {
   return null;
 }
 
+// iso-codes' shortest form is inverted or qualified for these ("Congo, The Democratic Republic of the").
+const NAME_OVERRIDES: Partial<Record<CountryCode, string>> = {
+  BES: 'Caribbean Netherlands',
+  CCK: 'Cocos Islands',
+  COD: 'DR Congo',
+  FLK: 'Falkland Islands',
+  MAF: 'Saint Martin',
+  PSE: 'Palestine',
+  SHN: 'Saint Helena',
+  SXM: 'Sint Maarten',
+  VAT: 'Vatican City',
+  VIR: 'U.S. Virgin Islands',
+};
+
 // Shortest name per code (ties → alphabetical): "Latvia" over "Republic of Latvia".
 const DISPLAY_NAMES = new Map<string, string>();
 for (const [name, code] of Object.entries(COUNTRY_NAMES)) {
@@ -740,5 +754,5 @@ for (const [name, code] of Object.entries(COUNTRY_NAMES)) {
 }
 
 export function countryName(code: CountryCode): string {
-  return DISPLAY_NAMES.get(code) ?? code;
+  return NAME_OVERRIDES[code] ?? DISPLAY_NAMES.get(code) ?? code;
 }

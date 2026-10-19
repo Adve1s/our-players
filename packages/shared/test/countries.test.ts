@@ -104,4 +104,24 @@ describe('countryName', () => {
   ])('names %s "%s"', (code, name) => {
     expect(countryName(code)).toBe(name);
   });
+
+  // iso-codes' shortest form is inverted or qualified for these, so a hand-picked name wins.
+  it.each<[CountryCode, string]>([
+    ['COD', 'DR Congo'],
+    ['PSE', 'Palestine'],
+    ['VAT', 'Vatican City'],
+    ['VIR', 'U.S. Virgin Islands'],
+    ['FLK', 'Falkland Islands'],
+    ['MAF', 'Saint Martin'],
+    ['SXM', 'Sint Maarten'],
+    ['CCK', 'Cocos Islands'],
+    ['BES', 'Caribbean Netherlands'],
+    ['SHN', 'Saint Helena'],
+  ])('names %s "%s"', (code, name) => {
+    expect(countryName(code)).toBe(name);
+  });
+
+  it('gives no code a name with a comma or parentheses', () => {
+    expect(COUNTRY_CODES.map((c) => countryName(c)).filter((n) => /[,()]/.test(n))).toEqual([]);
+  });
 });
