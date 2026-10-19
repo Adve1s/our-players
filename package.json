@@ -21,7 +21,7 @@
     "db:generate": "pnpm --filter @our-players/server db:generate",
     "db:migrate": "pnpm --filter @our-players/server db:migrate",
     "db:reset": "pnpm --filter @our-players/server db:reset",
-    "screenshots": "echo 'pnpm screenshots arrives in session S08' >&2; exit 1"
+    "screenshots": "pnpm --filter @our-players/mobile screenshots"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

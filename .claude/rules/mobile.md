@@ -13,4 +13,4 @@ paths:
 - Style through the theme tokens (light and dark); no hard-coded colors or font sizes in components.
 - Must work on Android and web: no native-only module without a web fallback. Before calling UI work done, run `pnpm screenshots` and look at the images.
 - No league or team logos and no player photos (VISION §4.6). Show the country code next to any flag emoji.
-- Touchable elements get an `accessibilityLabel`; text respects the system font scale.
+- Touchable elements get an `accessibilityLabel`; text respects the system font scale. State goes in `aria-*` props (`aria-checked`, `aria-disabled`, …), not `accessibilityState`: react-native-web 0.21 ignores the latter, and RN maps `aria-*` for Android too.

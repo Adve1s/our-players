@@ -1,19 +1,5 @@
-import { seasonLabel } from '@our-players/shared';
-import { StyleSheet, Text, View } from 'react-native';
+import { Placeholder } from '../components/placeholder';
 
-export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text>Our Players</Text>
-      <Text>{`Season ${seasonLabel(2026)}`}</Text>
-    </View>
-  );
+export default function Today() {
+  return <Placeholder text="Your morning recap will appear here." />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
