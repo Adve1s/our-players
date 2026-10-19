@@ -450,7 +450,7 @@ Then plan and build, red/green. Prove each criterion with output, then tell me i
 ```text
 Session S08 — App shell, settings, screenshot tooling (slice 4). Create branch `s08-app-shell` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S08 (the contract), docs/VISION.md §4.2 and §4.6, and the typed API client from S07. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S08 (the contract), docs/VISION.md §4.2 and §4.6, and the typed API client from S07 (`packages/shared/src/client.ts`; `createApiClient(baseUrl, fetch)`, `baseUrl` without a trailing slash; the server's `CORS_ORIGINS` defaults to `http://localhost:8081`, so a web build on another origin needs it set). First run the tests.
 
 Brainstorm with §S08 as the spec. The design must cover: the route/tab structure; the theme tokens; the preferences store shape and its pure update functions; the Settings screen layout (describe it); how `pnpm screenshots` starts what it needs and which screens/states it captures; and any new dependencies with justification.
 

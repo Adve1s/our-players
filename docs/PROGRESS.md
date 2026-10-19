@@ -17,7 +17,7 @@ Read this first in every session. **Current state** is rewritten at each `/hando
   - API tests: `test/api-seed.ts` `seedApiDb()` now also seeds the NBA teams, Embiid/Towns (via `mapAthlete` + overrides), an inactive NHL player (Gustavsen, NOR) and season stats for both leagues; exported IDs `EMBIID`, `TOWNS`, `GUSTAVSEN`, `FORSLING`.
   - Under `tsx watch` a tick longer than 5 s is SIGKILLed on Ctrl-C or an edit-triggered restart (`main.ts` `shortcut:`, D-041). NBA preseason `byathlete seasontype=1` is still unverified live.
   - pnpm 12 refuses package versions younger than 1 day (`minimumReleaseAge`); after mise installs a different Node, run `corepack enable && mise reshim` once.
-- **Owner question (S07 final review, not blocking):** a player-page view puts the player's ID in the request-log path (`/v1/players/nba-3102531`); fine under "preferences are never logged"? It matters if S12 loads favorites one at a time instead of through `?ids=`.
+- **Owner question (S07 final review, not blocking; owner: ask in S08 or later, at the latest when S12 designs favorites loading):** a player-page view puts the player's ID in the request-log path (`/v1/players/nba-3102531`); fine under "preferences are never logged"? It matters if S12 loads favorites one at a time instead of through `?ids=`.
 
 ## Known issues
 - none
