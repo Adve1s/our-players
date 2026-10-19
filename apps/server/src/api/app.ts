@@ -8,6 +8,7 @@ import {
   searchQuerySchema,
 } from '@our-players/shared';
 import { type Context, Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
@@ -19,7 +20,8 @@ import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
 import { loadPlayer, playersByIds, searchPlayers } from './players';
 
-export type ApiDeps = { db: Db; now: () => Date; log: Logger };
+// corsOrigins absent: no browser origin may read /v1.
+export type ApiDeps = { db: Db; now: () => Date; log: Logger; corsOrigins?: readonly string[] };
 
 export function badRequest(message: string): HTTPException {
   return new HTTPException(400, { message });
@@ -48,7 +50,7 @@ const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);
 
-export function createApp({ db, now, log }: ApiDeps): Hono {
+export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
   const app = new Hono();
 
   // c.req.path has no query string, so preferences (countries, favorites) never reach the logs.
@@ -62,6 +64,8 @@ export function createApp({ db, now, log }: ApiDeps): Hono {
       ms: Math.round(performance.now() - start),
     });
   });
+
+  app.use('/v1/*', cors({ origin: [...corsOrigins], allowMethods: ['GET'] }));
 
   app.onError((err, c) => {
     // Only our own 400s echo their message; any other status takes the generic, logged 500.
