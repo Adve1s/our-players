@@ -20,7 +20,7 @@ If `pnpm` then fails with "No version is set for shim: pnpm", run `corepack enab
 Start the API first (`pnpm dev:server`, on :3001), then `pnpm dev:mobile`.
 
 - **Web** (`w` in Expo): works as is. The app calls `http://localhost:3001`, and the API allows the Expo web origin `http://localhost:8081` by default. Only if you serve the web app from another origin do you set `CORS_ORIGINS` on the server (e.g. `CORS_ORIGINS=http://localhost:8091`).
-- **Phone** (Expo Go, same Wi-Fi as the computer): the phone can't reach `localhost` on your computer, so point the app at the computer's LAN address. Find it with `ip -4 addr` (or `hostname -I`), then copy `apps/mobile/.env.example` to `apps/mobile/.env` and set `EXPO_PUBLIC_API_URL=http://<LAN-IP>:3001`. Expo reads `.env` at start: restart `pnpm dev:mobile` after changing it. CORS doesn't apply to the phone.
+- **Phone** (Expo Go, same Wi-Fi as the computer): the phone can't reach `localhost` on your computer, so point the app at the computer's LAN address. Find it with `ip -4 -brief addr show scope global` (the Wi-Fi line, e.g. `192.168.1.112`), then copy `apps/mobile/.env.example` to `apps/mobile/.env` and set `EXPO_PUBLIC_API_URL=http://<LAN-IP>:3001`. Expo reads `.env` at start: restart `pnpm dev:mobile` after changing it. CORS doesn't apply to the phone.
 
 ## Screenshots
 
