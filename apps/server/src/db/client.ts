@@ -172,7 +172,7 @@ export function pgliteHandle(client: PGlite): DbHandle {
 }
 
 export function openPostgres(url: string): DbHandle {
-  // shortcut: not exercised before S10 (no Postgres in CI); test it when the deploy exists
+  // shortcut: not exercised before S10b (no Postgres in CI); test it when the deploy exists
   const pool = new Pool({ connectionString: url });
   const db = drizzlePg(pool);
   return {
