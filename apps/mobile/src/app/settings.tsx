@@ -63,6 +63,7 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
         alignItems: 'center',
         gap: t.space.md,
         paddingVertical: t.space.sm,
+        minHeight: t.space.xl * 2,
         borderTopWidth: 1,
         borderTopColor: t.colors.border,
       }}
@@ -96,6 +97,7 @@ export default function Settings() {
   const toggleCountry = usePrefs((s) => s.toggleCountry);
   const { data, isPending, isError, error, fetchStatus, refetch } = useCountries();
   const [query, setQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   // Without data (loading, error) this still lists the selected countries, so they can be unticked.
   const rows = countryRows(data?.countries ?? [], countries, query);
 
@@ -118,6 +120,7 @@ export default function Settings() {
       <Card title="Leagues">
         {LEAGUES.map((l) => {
           const on = leagues.includes(l);
+          const locked = on && leagues.length === 1;
           return (
             <View
               key={l}
@@ -131,12 +134,14 @@ export default function Settings() {
               <Switch
                 accessibilityLabel={l}
                 value={on}
-                disabled={on && leagues.length === 1}
+                disabled={locked}
                 onValueChange={() => toggleLeague(l)}
                 trackColor={{ true: t.colors.accent, false: t.colors.border }}
-                thumbColor={on ? t.colors.onAccent : t.colors.textMuted}
+                thumbColor={on ? t.colors.thumb : t.colors.textMuted}
                 // react-native-web takes the "on" thumb from this web-only prop (not in RN's types), else teal.
-                {...{ activeThumbColor: t.colors.onAccent }}
+                {...{ activeThumbColor: t.colors.thumb }}
+                // react-native-web draws a disabled switch with the given colors, unchanged.
+                style={{ opacity: locked ? 0.4 : 1 }}
               />
             </View>
           );
@@ -152,11 +157,16 @@ export default function Settings() {
           accessibilityLabel="Search countries"
           autoCorrect={false}
           placeholderTextColor={t.colors.textMuted}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
           style={{
             color: t.colors.text,
             fontSize: t.font.body,
             borderWidth: 1,
-            borderColor: t.colors.border,
+            // The accent border is the focus indicator; a 0-width solid outline hides the browser's (style auto ignores width).
+            borderColor: searchFocused ? t.colors.accent : t.colors.border,
+            outlineStyle: 'solid',
+            outlineWidth: 0,
             borderRadius: t.radius,
             paddingHorizontal: t.space.md,
             paddingVertical: t.space.sm,
@@ -166,9 +176,14 @@ export default function Settings() {
           <Caption>No countries selected — Today stays empty until you pick one.</Caption>
         ) : null}
         {status}
-        {rows.map((row) => (
-          <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
-        ))}
+        {/* No gap between rows: the Card's gap would add a band under each row's text. */}
+        {rows.length > 0 ? (
+          <View>
+            {rows.map((row) => (
+              <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
+            ))}
+          </View>
+        ) : null}
         {data && rows.length === 0 && query.trim() ? (
           <Caption>No country matches "{query.trim()}".</Caption>
         ) : null}

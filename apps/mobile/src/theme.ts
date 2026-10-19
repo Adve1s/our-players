@@ -9,6 +9,8 @@ export type Theme = {
     border: string;
     accent: string;
     onAccent: string;
+    // A switch's "on" thumb: light in both schemes so it reads against the accent track.
+    thumb: string;
     danger: string;
   };
   space: { xs: 4; sm: 8; md: 12; lg: 16; xl: 24 };
@@ -30,6 +32,7 @@ const light: Theme = {
     border: '#D1D1D6',
     accent: '#1A5FB4',
     onAccent: '#FFFFFF',
+    thumb: '#FFFFFF',
     danger: '#B3261E',
   },
   space,
@@ -47,6 +50,7 @@ const dark: Theme = {
     border: '#3A3A3C',
     accent: '#8AB4F8',
     onAccent: '#0B1F3A',
+    thumb: '#FFFFFF',
     danger: '#F2B8B5',
   },
   space,

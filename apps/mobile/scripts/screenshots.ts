@@ -136,6 +136,16 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    name: 'settings-one-league',
+    take: async (page) => {
+      await tab(page, 'Settings');
+      await page.getByText('Sweden').waitFor();
+      // NBA off leaves NHL as the last league, so its switch is the disabled one.
+      await page.getByRole('switch', { name: 'NBA' }).click();
+      await page.getByText('At least one league stays on.').waitFor();
+    },
+  },
+  {
     name: 'settings-search',
     take: async (page) => {
       await tab(page, 'Settings');
@@ -211,7 +221,8 @@ async function main(): Promise<void> {
         try {
           const page = await context.newPage();
           await shot.take(page);
-          await page.screenshot({ path: file });
+          // Finishes CSS transitions (a switch just toggled would be caught mid-slide).
+          await page.screenshot({ path: file, animations: 'disabled' });
         } finally {
           await context.close();
         }
