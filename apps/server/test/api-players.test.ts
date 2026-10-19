@@ -79,14 +79,10 @@ describe('GET /v1/players/search', () => {
     expect(ids(await searchFor('gus'))).toEqual([FORSLING, GIRGENSONS, GUSTAVSEN]);
   });
 
-  it('a match at the start of a hyphenated part counts as a word start', async () => {
+  // Without the hyphen rule, Reese would be the only word start and come before Aston-Reese.
+  it('a match at the start of a part after a hyphen counts as a word start', async () => {
     const lastNames = (await searchFor('ree')).map((p) => p.lastName);
-    const green = lastNames.indexOf('Green');
-    expect(green).toBeGreaterThanOrEqual(0);
-    expect(lastNames.indexOf('Aston-Reese')).toBeGreaterThanOrEqual(0);
-    expect(lastNames.indexOf('Aston-Reese')).toBeLessThan(green);
-    expect(lastNames.indexOf('Reese')).toBeGreaterThanOrEqual(0);
-    expect(lastNames.indexOf('Reese')).toBeLessThan(green);
+    expect(lastNames).toEqual(['Aston-Reese', 'Reese', 'Green']);
   });
 
   it('leagues=NBA leaves out NHL players', async () => {
