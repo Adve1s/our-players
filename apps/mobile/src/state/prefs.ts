@@ -1,4 +1,13 @@
-import type { CountryCode, League, Prefs, PublicId } from '@our-players/shared';
+import {
+  type CountryCode,
+  countryCodeSchema,
+  type League,
+  leagueSchema,
+  type Prefs,
+  type PublicId,
+  publicIdSchema,
+} from '@our-players/shared';
+import { z } from 'zod';
 
 export type StoredPrefs = {
   leagues: League[];
@@ -14,18 +23,46 @@ export const DEFAULT_PREFS: StoredPrefs = {
   hidden: [],
 };
 
-export function toggleLeague(_p: StoredPrefs, _league: League): StoredPrefs {
-  throw new Error('not implemented');
+const sortedUnique = <T extends string>(xs: readonly T[]): T[] => [...new Set(xs)].sort();
+
+const toggle = <T extends string>(xs: readonly T[], x: T): T[] =>
+  xs.includes(x) ? xs.filter((y) => y !== x) : sortedUnique([...xs, x]);
+
+export function toggleLeague(p: StoredPrefs, league: League): StoredPrefs {
+  // An empty league list would select nothing, so the last league stays on.
+  if (p.leagues.length === 1 && p.leagues[0] === league) return p;
+  return { ...p, leagues: toggle(p.leagues, league) };
 }
 
-export function toggleCountry(_p: StoredPrefs, _code: CountryCode): StoredPrefs {
-  throw new Error('not implemented');
+export function toggleCountry(p: StoredPrefs, code: CountryCode): StoredPrefs {
+  return { ...p, countries: toggle(p.countries, code) };
 }
 
-export function toPrefs(_p: StoredPrefs): Prefs {
-  throw new Error('not implemented');
+export function toPrefs(p: StoredPrefs): Prefs {
+  return {
+    leagues: new Set(p.leagues),
+    countries: new Set(p.countries),
+    favorites: new Set(p.favorites),
+    hidden: new Set(p.hidden),
+  };
 }
 
-export function restorePrefs(_stored: unknown): StoredPrefs {
-  throw new Error('not implemented');
+const storedPrefsSchema = z.object({
+  leagues: z.array(leagueSchema).min(1),
+  countries: z.array(countryCodeSchema),
+  favorites: z.array(publicIdSchema),
+  hidden: z.array(publicIdSchema),
+});
+
+// Storage is outside the app's control: junk there must not turn every request into a 400.
+export function restorePrefs(stored: unknown): StoredPrefs {
+  const parsed = storedPrefsSchema.safeParse(stored);
+  if (!parsed.success) return DEFAULT_PREFS;
+  const { leagues, countries, favorites, hidden } = parsed.data;
+  return {
+    leagues: sortedUnique(leagues),
+    countries: sortedUnique(countries),
+    favorites: sortedUnique(favorites),
+    hidden: sortedUnique(hidden),
+  };
 }

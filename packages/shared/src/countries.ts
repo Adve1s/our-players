@@ -726,6 +726,19 @@ export function countryFromName(name: string): CountryCode | null {
   return null;
 }
 
-export function countryName(_code: CountryCode): string {
-  throw new Error('not implemented');
+// Shortest name per code (ties → alphabetical): "Latvia" over "Republic of Latvia".
+const DISPLAY_NAMES = new Map<string, string>();
+for (const [name, code] of Object.entries(COUNTRY_NAMES)) {
+  const best = DISPLAY_NAMES.get(code);
+  if (
+    best === undefined ||
+    name.length < best.length ||
+    (name.length === best.length && name < best)
+  ) {
+    DISPLAY_NAMES.set(code, name);
+  }
+}
+
+export function countryName(code: CountryCode): string {
+  return DISPLAY_NAMES.get(code) ?? code;
 }

@@ -1,3 +1,3 @@
-export function apiBaseUrl(_env: string | undefined): string {
-  throw new Error('not implemented');
+export function apiBaseUrl(env: string | undefined): string {
+  return (env || 'http://localhost:3001').replace(/\/+$/, '');
 }
