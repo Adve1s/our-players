@@ -56,7 +56,7 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
     <Pressable
       accessibilityRole="checkbox"
       aria-checked={row.selected}
-      accessibilityLabel={row.selected ? `${row.name}, selected` : row.name}
+      accessibilityLabel={row.name}
       onPress={onPress}
       style={{
         flexDirection: 'row',
