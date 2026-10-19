@@ -725,3 +725,7 @@ export function countryFromName(name: string): CountryCode | null {
   if (Object.hasOwn(COUNTRY_NAMES, key)) return COUNTRY_NAMES[key] ?? null;
   return null;
 }
+
+export function countryName(_code: CountryCode): string {
+  throw new Error('not implemented');
+}
