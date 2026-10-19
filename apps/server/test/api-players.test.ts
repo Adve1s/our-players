@@ -296,7 +296,7 @@ describe('GET /v1/players/:playerId', () => {
 
   it('an unknown player → 404', async () => {
     const { body } = await setup().get('/v1/players/nhl-999', 404, errorResponseSchema);
-    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error).toMatchObject({ code: 'NOT_FOUND', message: 'no player nhl-999' });
   });
 
   it('a malformed ID → 400 naming playerId', async () => {

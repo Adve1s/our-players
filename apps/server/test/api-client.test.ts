@@ -108,24 +108,60 @@ describe('createApiClient against the in-memory app', () => {
     expect(countries.find((c) => c.code === 'LVA')?.counts).toEqual({ NBA: 1 });
   });
 
+  it('equal prefs built in different orders request the same URL', async () => {
+    const app = createApp({
+      db: handle.db,
+      now: () => new Date('2026-10-18T12:00:00Z'),
+      log: createLogger(() => {}),
+    });
+    const urls: string[] = [];
+    const api = createApiClient('http://api.test', async (url) => {
+      urls.push(url);
+      return app.request(url);
+    });
+
+    await api.day(
+      '2026-03-16',
+      prefs({
+        leagues: ['NHL', 'NBA'],
+        countries: ['LVA', 'CMR'],
+        favorites: [PORZINGIS, EMBIID],
+        hidden: [GIRGENSONS, EMBIID],
+      }),
+    );
+    await api.day(
+      '2026-03-16',
+      prefs({
+        leagues: ['NBA', 'NHL'],
+        countries: ['CMR', 'LVA'],
+        favorites: [EMBIID, PORZINGIS],
+        hidden: [EMBIID, GIRGENSONS],
+      }),
+    );
+
+    expect(urls[1]).toBe(urls[0]);
+  });
+
   it.each([
     {
       label: 'an empty search',
       call: () => client().searchPlayers('', new Set(['NBA'])),
       status: 400,
       code: 'BAD_REQUEST',
+      message: expect.any(String),
     },
     {
       label: 'an unknown player',
       call: () => client().player('nhl-999'),
       status: 404,
       code: 'NOT_FOUND',
+      message: 'no player nhl-999',
     },
-  ])('$label rejects with ApiError $status $code', async ({ call, status, code }) => {
+  ])('$label rejects with ApiError $status $code', async ({ call, status, code, message }) => {
     const e = await rejection(call());
 
     expect(e).toBeInstanceOf(ApiError);
-    expect(e).toMatchObject({ name: 'ApiError', status, code });
+    expect(e).toMatchObject({ name: 'ApiError', status, code, message });
   });
 });
 

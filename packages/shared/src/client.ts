@@ -11,7 +11,7 @@ import {
 import type { League } from './enums';
 import type { Prefs } from './selection';
 
-// Structural, because packages/shared has neither DOM nor Node types.
+// Structural, so both the global fetch and Hono's app.request fit.
 export type FetchLike = (
   url: string,
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
@@ -27,12 +27,12 @@ export class ApiError extends Error {
   }
 }
 
-// All four keys always, so the same prefs give the same URL (the app's cache key).
+// All four keys always, each list sorted, so equal prefs give the same URL (the app's cache key).
 const prefsQuery = (p: Prefs) => ({
-  leagues: [...p.leagues].join(','),
-  countries: [...p.countries].join(','),
-  fav: [...p.favorites].join(','),
-  hide: [...p.hidden].join(','),
+  leagues: [...p.leagues].sort().join(','),
+  countries: [...p.countries].sort().join(','),
+  fav: [...p.favorites].sort().join(','),
+  hide: [...p.hidden].sort().join(','),
 });
 
 export function createApiClient(baseUrl: string, fetch: FetchLike) {
