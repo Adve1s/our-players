@@ -1,18 +1,23 @@
 import {
   type ErrorResponse,
   gameDateSchema,
+  idsQuerySchema,
   type Prefs,
   prefsQuerySchema,
   publicIdSchema,
+  searchQuerySchema,
 } from '@our-players/shared';
 import { type Context, Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import type { Db } from '../db/client';
+import { searchName } from '../db/players';
 import type { Logger } from '../jobs/runner';
+import { loadCountries } from './countries';
 import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
+import { playersByIds, searchPlayers } from './players';
 
 export type ApiDeps = { db: Db; now: () => Date; log: Logger };
 
@@ -93,6 +98,21 @@ export function createApp({ db, now, log }: ApiDeps): Hono {
     c.header('Cache-Control', CACHE_CONTROL);
     return c.json(body);
   });
+
+  // Before /v1/players/:playerId, so "search" is never read as a player ID.
+  app.get('/v1/players/search', async (c) => {
+    const term = searchName(parse(searchQuerySchema, c.req.query()).q);
+    // Only combining marks: an empty term would match everyone.
+    if (term === '') throw badRequest('q: nothing to search for');
+    return c.json(await searchPlayers(db, term, parseQuery(c).leagues));
+  });
+
+  app.get('/v1/players', async (c) => {
+    const { ids } = parse(idsQuerySchema, c.req.query());
+    return c.json(await playersByIds(db, ids));
+  });
+
+  app.get('/v1/countries', async (c) => c.json(await loadCountries(db, parseQuery(c).leagues)));
 
   return app;
 }
