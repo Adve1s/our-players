@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { COUNTRY_CODES, countryCodeSchema, countryFromName } from '../src/index';
+import {
+  COUNTRY_CODES,
+  type CountryCode,
+  countryCodeSchema,
+  countryFromName,
+  countryName,
+} from '../src/index';
 
 describe('countryCodeSchema', () => {
   it.each(['LVA', 'USA', 'CMR', 'DOM', 'GBR'])('accepts %s', (code) => {
@@ -83,5 +89,19 @@ describe('countryFromName, English short forms', () => {
   // Kosovo has no ISO 3166-1 code; "Korea" and "Virgin Islands" name two countries each.
   it.each(['Kosovo', 'Korea', 'Virgin Islands'])('leaves "%s" unmapped', (name) => {
     expect(countryFromName(name)).toBeNull();
+  });
+});
+
+describe('countryName', () => {
+  // The shortest of the code's iso-codes names; "Ivory Coast" is an ESPN alias, not an iso-codes name.
+  it.each<[CountryCode, string]>([
+    ['LVA', 'Latvia'],
+    ['KOR', 'South Korea'],
+    ['CZE', 'Czechia'],
+    ['USA', 'United States'],
+    ['GBR', 'United Kingdom'],
+    ['CIV', "Côte d'Ivoire"],
+  ])('names %s "%s"', (code, name) => {
+    expect(countryName(code)).toBe(name);
   });
 });
