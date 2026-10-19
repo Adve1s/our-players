@@ -87,5 +87,5 @@ export type SeasonStats = {
   // The basis of the counting stats; rates (toiPerGameSeconds, savePct, goalsAgainstAverage…) are
   // named as rates and never divided by gamesPlayed.
   basis: 'totals' | 'per_game';
-  stats: Readonly<Record<string, number>>; // shortcut: untyped per source, typed schemas when S03/S05 map them
+  stats: Readonly<Record<string, number>>; // shortcut: stored as the mappers give it; the read side is typed by seasonStatsEntrySchema (S07), type it here if the jobs ever need it
 };

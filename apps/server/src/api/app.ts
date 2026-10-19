@@ -1,20 +1,27 @@
 import {
   type ErrorResponse,
   gameDateSchema,
+  idsQuerySchema,
   type Prefs,
   prefsQuerySchema,
   publicIdSchema,
+  searchQuerySchema,
 } from '@our-players/shared';
 import { type Context, Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import type { Db } from '../db/client';
+import { searchName } from '../db/players';
 import type { Logger } from '../jobs/runner';
+import { loadCountries } from './countries';
 import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
+import { loadPlayer, playersByIds, searchPlayers } from './players';
 
-export type ApiDeps = { db: Db; now: () => Date; log: Logger };
+// corsOrigins absent: no browser origin may read /v1.
+export type ApiDeps = { db: Db; now: () => Date; log: Logger; corsOrigins?: readonly string[] };
 
 export function badRequest(message: string): HTTPException {
   return new HTTPException(400, { message });
@@ -26,23 +33,28 @@ function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
   return result.data;
 }
 
-// A repeated preference is a client bug; taking one of the values would silently drop the other.
+// A repeated parameter we read is a client bug; taking one of the values would silently drop the other.
 // Other parameters are ignored, repeated or not, so cache-busters still work.
-export function parseQuery(c: Context): Prefs {
-  for (const name of Object.keys(prefsQuerySchema.in.shape)) {
+function rejectRepeated(c: Context, names: readonly string[]): void {
+  for (const name of names) {
     if ((c.req.queries(name)?.length ?? 0) > 1) throw badRequest(`${name}: given more than once`);
   }
+}
+
+export function parseQuery(c: Context): Prefs {
+  rejectRepeated(c, Object.keys(prefsQuerySchema.in.shape));
   return parse(prefsQuerySchema, c.req.query());
 }
 
 const dateParam = z.object({ gameDate: gameDateSchema });
 const gameParam = z.object({ gameId: publicIdSchema });
+const playerParam = z.object({ playerId: publicIdSchema });
 const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);
 
-export function createApp({ db, now, log }: ApiDeps): Hono {
+export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
   const app = new Hono();
 
   // c.req.path has no query string, so preferences (countries, favorites) never reach the logs.
@@ -56,6 +68,8 @@ export function createApp({ db, now, log }: ApiDeps): Hono {
       ms: Math.round(performance.now() - start),
     });
   });
+
+  app.use('/v1/*', cors({ origin: [...corsOrigins], allowMethods: ['GET'] }));
 
   app.onError((err, c) => {
     // Only our own 400s echo their message; any other status takes the generic, logged 500.
@@ -93,6 +107,30 @@ export function createApp({ db, now, log }: ApiDeps): Hono {
     c.header('Cache-Control', CACHE_CONTROL);
     return c.json(body);
   });
+
+  // Before /v1/players/:playerId, so "search" is never read as a player ID.
+  app.get('/v1/players/search', async (c) => {
+    rejectRepeated(c, ['q']);
+    const term = searchName(parse(searchQuerySchema, c.req.query()).q);
+    // Only combining marks: an empty term would match everyone.
+    if (term === '') throw badRequest('q: nothing to search for');
+    return c.json(await searchPlayers(db, term, parseQuery(c).leagues));
+  });
+
+  app.get('/v1/players', async (c) => {
+    rejectRepeated(c, ['ids']);
+    const { ids } = parse(idsQuerySchema, c.req.query());
+    return c.json(await playersByIds(db, ids));
+  });
+
+  app.get('/v1/players/:playerId', async (c) => {
+    const { playerId } = parse(playerParam, c.req.param());
+    const body = await loadPlayer(db, playerId, now());
+    if (!body) return errorBody(c, 404, 'NOT_FOUND', `no player ${playerId}`);
+    return c.json(body);
+  });
+
+  app.get('/v1/countries', async (c) => c.json(await loadCountries(db, parseQuery(c).leagues)));
 
   return app;
 }

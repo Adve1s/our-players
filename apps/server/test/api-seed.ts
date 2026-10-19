@@ -1,10 +1,13 @@
 import type { DbHandle } from '../src/db/client';
 import { upsertPlayers } from '../src/db/players';
+import { upsertTeams } from '../src/db/teams';
 import { resultsJob } from '../src/jobs/results';
 import { rosterJob } from '../src/jobs/roster';
 import { createLogger, type Job, type JobArgs, type JobContext, runJob } from '../src/jobs/runner';
 import { scheduleJob } from '../src/jobs/schedule';
-import { espnUrls } from '../src/sources/espn-nba';
+import { seasonStatsJob } from '../src/jobs/season-stats';
+import { loadNationalityOverrides } from '../src/nationality/overrides';
+import { espnUrls, mapAthlete, mapTeams } from '../src/sources/espn-nba';
 import { nhlUrls } from '../src/sources/nhl';
 import { createTestDb } from './db';
 import { freeAgent, girgensons, NO_OVERRIDES } from './db-data';
@@ -18,6 +21,11 @@ export const GIRGENSONS = 'nhl-8476878';
 export const FREE_AGENT = 'nhl-8479356';
 export const PORZINGIS = 'nba-3102531';
 export const LEONS = 'nba-4897449';
+export const EMBIID = 'nba-3059318';
+export const TOWNS = 'nba-3136195';
+// Not on any recorded roster, so the real roster run deactivates him.
+export const GUSTAVSEN = 'nhl-1000001';
+export const FORSLING = 'nhl-8478055';
 
 const ROSTER_DAY = '2026-10-18';
 const TEAMS = ['CBJ', 'FLA', 'PIT'];
@@ -31,6 +39,15 @@ function calendar(): unknown {
     teams: { abbrev: string }[];
   };
   raw.teams = raw.teams.filter((t) => TEAMS.includes(t.abbrev));
+  return raw;
+}
+
+// Page 1 of the recorded 2025-26 regular season as the only page, so the job asks for no other.
+function byathletePageOne(): unknown {
+  const raw = loadFixture('espn-nba', 'byathlete', '2026') as {
+    pagination: { pages: number; count: number };
+  };
+  raw.pagination = { ...raw.pagination, pages: 1, count: 50 };
   return raw;
 }
 
@@ -59,6 +76,17 @@ export async function seedApiDb(): Promise<DbHandle> {
       [espnUrls.summary('401810839')]: loadFixture('espn-nba', 'summary', '401810839'),
       [espnUrls.summary('401810899')]: loadFixture('espn-nba', 'summary', '401810899'),
       [espnUrls.athlete('3102531')]: loadFixture('espn-nba', 'athlete', '3102531'),
+      [nhlUrls.summary('skater', '20252026', 2)]: loadFixture(
+        'nhl',
+        'skater-summary-reg-all',
+        '20252026',
+      ),
+      [nhlUrls.summary('goalie', '20252026', 2)]: loadFixture(
+        'nhl',
+        'goalie-summary-reg-all',
+        '20252026',
+      ),
+      [espnUrls.byathlete('2026', 2, 1)]: byathletePageOne(),
     }),
     now: () => new Date(`${ROSTER_DAY}T12:00:00Z`),
     log: createLogger(() => {}),
@@ -73,6 +101,21 @@ export async function seedApiDb(): Promise<DbHandle> {
       throw new Error(`seed: ${what} failed: ${error}`);
     }
   };
+  await upsertPlayers(
+    handle.db,
+    [
+      {
+        ...freeAgent,
+        publicId: GUSTAVSEN,
+        externalId: '1000001',
+        firstName: 'Ola',
+        lastName: 'Gustavsen',
+        birthCountry: 'NOR',
+        currentTeamExternalId: null,
+      },
+    ],
+    NO_OVERRIDES,
+  );
   await run('roster', rosterJob, { league: 'NHL' });
   await run('results', resultsJob, { league: 'NHL', date: NHL_DAY });
   await run('schedule', scheduleJob, { league: 'NHL', date: NHL_WEEK });
@@ -85,5 +128,13 @@ export async function seedApiDb(): Promise<DbHandle> {
     ],
     NO_OVERRIDES,
   );
+  await upsertTeams(handle.db, mapTeams(loadFixture('espn-nba', 'teams', '2026-10-18')).teams);
+  const [embiid, towns] = ['3059318', '3136195'].map(
+    (id) => mapAthlete(loadFixture('espn-nba', 'athlete', id)).player,
+  );
+  if (!embiid || !towns) throw new Error('seed: athletes not mapped');
+  await upsertPlayers(handle.db, [embiid, towns], await loadNationalityOverrides());
+  await run('season-stats', seasonStatsJob, { league: 'NHL' });
+  await run('season-stats', seasonStatsJob, { league: 'NBA' });
   return handle;
 }

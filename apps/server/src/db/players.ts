@@ -11,7 +11,7 @@ import { playerExternalIds, players } from './schema';
 import { teamIdLookup } from './teams';
 import { conflictUpdate, lastByKey } from './upsert';
 
-// shortcut: letters that don't decompose (ø, ł, đ) stay as they are; upgrade when S07's search needs them
+// shortcut: letters that don't decompose (ø, ł, đ) stay as they are; search queries go through this too, so only an ASCII query for such a name misses; upgrade when one does
 export function searchName(name: string): string {
   return name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }

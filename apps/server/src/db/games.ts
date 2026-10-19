@@ -7,7 +7,7 @@ import {
   type Source,
   type StatLine,
 } from '@our-players/shared';
-import { and, asc, desc, eq, gt, lte, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './client';
 import { playerIdLookup } from './players';
@@ -22,20 +22,28 @@ export const playedOrPlaying = notInArray(games.status, ['POSTPONED', 'CANCELLED
 
 // The season of the last game that started, so the summer stays on the finished season and the
 // rollover comes with the first preseason game; before any game started, the first one scheduled.
-export async function currentSeason(db: Db, league: League, now: Date): Promise<string | null> {
+// skipPreseason: the rollover comes with the first regular-season game instead.
+export async function currentSeason(
+  db: Db,
+  league: League,
+  now: Date,
+  { skipPreseason = false } = {},
+): Promise<string | null> {
+  const ofLeague = and(
+    eq(games.league, league),
+    skipPreseason ? ne(games.seasonType, 'PRE') : undefined,
+  );
   const [started] = await db
     .select({ season: games.season })
     .from(games)
-    .where(and(eq(games.league, league), lte(games.startTimeUtc, now), playedOrPlaying))
+    .where(and(ofLeague, lte(games.startTimeUtc, now), playedOrPlaying))
     .orderBy(desc(games.startTimeUtc))
     .limit(1);
   if (started) return started.season;
   const [next] = await db
     .select({ season: games.season })
     .from(games)
-    .where(
-      and(eq(games.league, league), gt(games.startTimeUtc, now), eq(games.status, 'SCHEDULED')),
-    )
+    .where(and(ofLeague, gt(games.startTimeUtc, now), eq(games.status, 'SCHEDULED')))
     .orderBy(asc(games.startTimeUtc))
     .limit(1);
   return next?.season ?? null;

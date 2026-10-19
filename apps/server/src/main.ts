@@ -9,7 +9,7 @@ import { createLogger } from './jobs/runner';
 import { loadNationalityOverrides } from './nationality/overrides';
 import { startScheduler } from './scheduler/scheduler';
 
-const { port, contactUrl, schedulerEnabled } = loadConfig(process.env);
+const { port, contactUrl, schedulerEnabled, corsOrigins } = loadConfig(process.env);
 
 // The API reads the DB, so the dev server always holds the PGlite lock (stop it before `pnpm job`).
 const handle = openDb();
@@ -21,7 +21,11 @@ try {
 }
 
 serve(
-  { fetch: createApp({ db: handle.db, now: () => new Date(), log: createLogger() }).fetch, port },
+  {
+    fetch: createApp({ db: handle.db, now: () => new Date(), log: createLogger(), corsOrigins })
+      .fetch,
+    port,
+  },
   (info) => {
     console.log(`API listening on http://localhost:${info.port}`);
   },
