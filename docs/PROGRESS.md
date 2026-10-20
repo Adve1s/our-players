@@ -28,6 +28,7 @@ Owner topics to look at once v1 (S00–S15) is done, when planning v2 changes. O
 - **Default when stored preferences are missing or invalid** (S08): falls back to Latvia + NHL + NBA, no favorites or hidden.
 - **Everything team-based** (owner, 2026-10-20): team pages, team tabs, teams in search, following a team. No v1 session builds any team logic (VISION §5).
 - **Schedule horizon** (owner, 2026-10-20): the schedule job stores about a week ahead; looking further forward would need more.
+- **Offline after a restart** (owner, S09 brainstorming, 2026-10-20): server data lives only in memory, so an app started offline (e.g. Android killed it overnight) shows the error, not the planned games. Option: persist loaded days on the device (`@tanstack/query-async-storage-persister` + `@tanstack/react-query-persist-client`), optionally prefetch the next game day.
 
 ## Parking lot
 Ideas that came up but are out of scope for now.
