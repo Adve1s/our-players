@@ -14,7 +14,8 @@ import {
 
 // No locale or zone passed: the device decides both. timeStyle, not hour: 'numeric', keeps the
 // locale's own pattern (en-GB "04:00", en-US "9:00 PM"). A night stays on its US game day (owner),
-// so a start on another local date gets the local weekday: "Sat 04:00".
+// so a start on another local date gets the local weekday: "Sat 04:00". The weekday is English like
+// dayLabel's (v1 is English-only, owner); only the 12/24 h clock follows the device.
 export function startTime(
   iso: string,
   gameDate: string,
@@ -32,8 +33,9 @@ export function startTime(
     })
       .formatToParts(at)
       .find((p) => p.type === type)?.value;
-  if (`${part('year')}-${part('month')}-${part('day')}` === gameDate) return time;
-  return `${new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone }).format(at)} ${time}`;
+  const localDate = `${part('year')}-${part('month')}-${part('day')}`;
+  if (localDate === gameDate) return time;
+  return `${abbr(WEEKDAYS, new Date(`${localDate}T00:00:00Z`).getUTCDay())} ${time}`;
 }
 
 const WEEKDAYS = 'SunMonTueWedThuFriSat';

@@ -98,6 +98,10 @@ describe('startTime', () => {
     );
   });
 
+  it('the weekday is English whatever the locale (v1 is English-only)', () => {
+    expect(startTime('2026-10-17T01:00:00Z', '2026-10-16', 'lv', 'Europe/Riga')).toBe('Sat 04:00');
+  });
+
   it('adds the local weekday when the local date is before the game day', () => {
     const text = startTime('2026-10-17T01:00:00Z', '2026-10-17', 'en-US', 'America/New_York');
     expect(text.replace(/[\u202f\u00a0]/g, ' ')).toBe('Fri 9:00 PM');
