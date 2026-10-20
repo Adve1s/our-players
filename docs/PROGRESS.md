@@ -35,6 +35,8 @@ Owner topics to look at once v1 (S00–S15) is done, when planning v2 changes. O
 
 ## Parking lot
 Ideas that came up but are out of scope for now.
+- Today pull to refresh (`apps/mobile/src/app/index.tsx` `onRefresh`) refetches the old day beside meta; when the new meta moves the latest day, that fetch is wasted and the spinner stops before the new day lands (the old day stays on screen meanwhile, `keepPreviousData`). Fix by refetching meta first and then fetching the day it picks (`dayQuery`), if a morning pull ever feels off (PR #18 review).
+- `startTime` (`apps/mobile/src/lib/format.ts`) builds two `Intl.DateTimeFormat`s per scheduled card per render; Hermes builds them slowly. Cache them per `(locale, timeZone)` if Today feels slow on the phone on a busy night (PR #18 review).
 - `upcoming` rows (S09, D-049) have no date bound: a past game stuck SCHEDULED/LIVE (`results.ts` `shortcut:`) keeps showing them on its old date, from the current roster, and a FINAL game whose box score never arrives keeps "Waiting for stats". Bound by start time (e.g. started ≤ 24 h ago) if that ever shows up (PR #17 review).
 - Mobile typecheck differs between a dev machine and CI: Expo's typed-route and asset types (`.expo/types`, `expo-env.d.ts`) are gitignored and only exist after `expo start`. S08 didn't need it (no `Link href`, no asset imports); settle it in S12/S13, when screens first use `Link href` or import assets — e.g. run `expo customize`/type generation before `tsc` in the mobile `typecheck` script (PR #4 review).
 - CI: cache the pnpm store (`corepack enable` before `actions/setup-node`, then `cache: pnpm`) once runs get slow; they take about 20 s now (PR #4 review).
