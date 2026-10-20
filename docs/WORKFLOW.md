@@ -65,7 +65,7 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 
 ## One-time setup
 
-1. **Tools (Omarchy).** `mise use -g node@24`, then `corepack enable`. `sudo pacman -S github-cli typescript-language-server`, then `gh auth login`. Install Claude Code; put Expo Go on your Android phone. Accounts needed later: Google Play Console (start in S08 — verification takes days), a hosting provider (S10), Expo (S11).
+1. **Tools (Omarchy).** `mise use -g node@24`, then `corepack enable`. `sudo pacman -S github-cli typescript-language-server`, then `gh auth login`. Install Claude Code; put Expo Go on your Android phone. Accounts needed later: Google Play Console (start in S08 — verification takes days), Expo (S11a), a hosting provider (S10a, paid from S10b).
 2. **Repo.** Public GitHub repo with this kit on `main` (done). Public is the easy path: free branch protection, GitHub Pages and Actions minutes.
 3. **Repo settings** (Settings → General → Pull Requests): allow merge commits; turn on **Automatically delete head branches**.
 4. **Protect `main`** (Settings → Branches → rule for `main`): **Require a pull request before merging** with no required approvals, and **Do not allow bypassing the above settings** (otherwise admins — you, and Claude through your `gh` login — skip the rule). After S00's first CI run, add **Require status checks to pass** with `verify (22)` and `verify (24)`.

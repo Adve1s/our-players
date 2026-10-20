@@ -39,14 +39,17 @@ All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to 
 | S07 | API: players, search, countries | `s07-api-players` | M | medium | either | Search and player detail over HTTP |
 | S08 | App shell, settings, screenshots | `s08-app-shell` | M | medium | local | Settings on phone; `pnpm screenshots` |
 | S09 | Main page | `s09-main-page` | L | high | local | **The morning recap app** |
-| S10 | Deploy backend | `s10-deploy` | L | medium | local | Public API with a running scheduler and a staleness alert |
-| S11 | Android build + Play closed test | `s11-android` | M | medium | local | Friends install it; **14-day clock starts** |
+| S10a | Hosting choice + upstream probe | `s10a-hosting-probe` | S | medium | local | Both APIs answer from the chosen host — before any monthly bill |
 | S12 | Search, favorites, hidden | `s12-favorites` | M | medium | local | Star/hide players |
-| S13 | Player page + game page | `s13-player-game` | M | medium | local | Full v1 feature set |
-| S14 | Web build as a home-screen app | `s14-web` | M | medium | local | iPhone friends use it |
+| S13 | Player page + game page | `s13-player-game` | M | medium | local | Full v1 feature set (locally) |
+| S14a | Web build as a home-screen app (local) | `s14a-web-build` | M | medium | local | The web app, built and checked locally |
+| S11a | First Play upload (placeholder) — any time after Play verifies you | `s11a-play-upload` | S | medium | local | The app installs from Play internal testing (no server yet) |
+| S10b | Deploy backend | `s10b-deploy` | L | medium | local | Public API with a running scheduler and a staleness alert; **server bill starts** |
+| S14b | Web go-live | `s14b-web-live` | S | medium | local | PC and iPhone friends use it |
+| S11b | Play closed test | `s11b-closed-test` | M | medium | local | Friends install it; **14-day clock starts** |
 | S15 | Production access + runbook | `s15-launch` | S | medium | local | Public on Google Play |
 
-Slices group the sessions on the roadmap; they no longer map to a branch or PR. Slices 6a/6b split the brief's slice 6 so the Play closed test starts before slice 5 (DECISIONS.md D-014). Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
+Slices group the sessions on the roadmap; they no longer map to a branch or PR. Everything is built and used locally first; the server bill, the public web app and the Play closed test all start in slice 7 (DECISIONS.md D-048). S10a runs right after S09: it needs nothing from S12–S13, and a provider whose IPs the upstream APIs block is better found before the rest is built. S11a runs whenever Play Console has verified you, between any two sessions. Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
 
 **Size** is a rough guess at your attention per session: S under 1 h, M 1–2 h, L 2–3 h. An L session may need a second sitting — use the "Resume" template.
 
@@ -365,7 +368,7 @@ Then plan and build, red/green: mapper stubs → the test-writer agent writes th
 
 **In scope**
 - Hono app structure under `apps/server/src/api/`; zod contract in `packages/shared/src/contract/` (params + responses); preferences parsing and validation.
-- `GET /v1/meta`, `GET /v1/days/{gameDate}`, `GET /v1/games/{gameId}`, `GET /health` per VISION §10 (`/health/data` arrives in S10): ordering rules (§4.1), did-not-play rows, prev/next game day, cache headers, error format, request logs without query strings.
+- `GET /v1/meta`, `GET /v1/days/{gameDate}`, `GET /v1/games/{gameId}`, `GET /health` per VISION §10 (`/health/data` arrives in S10b): ordering rules (§4.1), did-not-play rows, prev/next game day, cache headers, error format, request logs without query strings.
 - API test harness: in-memory PGlite seeded by running the real ingestion over fixtures.
 
 **Out of scope:** players, search, countries, CORS (S07); app.
@@ -376,7 +379,7 @@ Then plan and build, red/green: mapper stubs → the test-writer agent writes th
 3. Ordering and rows: games with shown players first; DNP and "Not in lineup" rows, and no "Not in lineup" row for a player with no current team; prev/next game day.
 4. `latestGameDate` with an injected clock: 08:00 in Riga returns the previous US date.
 5. Bad parameters → 400 with the error format; logs contain no query strings (test).
-6. With S04a/S05 data loaded, `curl "localhost:3001/v1/days/<date>?countries=LVA"` returns that night's lines; 100 sequential requests print their p95, next to the row counts of `games` and `stat_lines` (a smoke check — the real p95 target is measured in production in S10).
+6. With S04a/S05 data loaded, `curl "localhost:3001/v1/days/<date>?countries=LVA"` returns that night's lines; 100 sequential requests print their p95, next to the row counts of `games` and `stat_lines` (a smoke check — the real p95 target is measured in production in S10b).
 7. `pnpm verify` green.
 
 ```text
@@ -438,7 +441,7 @@ Then plan and build, red/green. Prove each criterion with output, then tell me i
 
 **Out of scope:** Main page content (S09), search and favorites (S12), player and game pages (S13).
 
-**You, in parallel (long lead time for S11):** create the Google Play Console personal developer account and finish its identity verification, which can take days. Start collecting 15+ testers' Google-account email addresses — people who'd actually open the app, since Google also checks that testers used it.
+**You, in parallel (long lead time for S11a/S11b):** create the Google Play Console personal developer account and finish its identity verification, which can take days. Start collecting 15+ testers' Google-account email addresses — people who'd actually open the app, since Google also checks that testers used it.
 
 **Acceptance criteria**
 1. A fresh install defaults to Latvia + both leagues; preferences survive a web reload and an Android relaunch.
@@ -476,7 +479,7 @@ Then plan and build: red/green for the store logic; build the screens (check Exp
 4. Works on web and Android.
 5. `pnpm verify` green.
 
-**You:** use it on your phone for a few real mornings (the NHL season will be running) and note anything that annoys you in the PROGRESS.md parking lot.
+**You:** use it on your phone for a few real mornings (the NHL season will be running) and note anything that annoys you in the PROGRESS.md parking lot. Until launch that means Expo Go against your computer with `SCHEDULER_ENABLED=1 pnpm dev:server` running. After a sleep, its next tick catches up every unfinished game as long as some game started in the last 24 hours; otherwise (a break in the schedule, a reboot) start the dev server again, which catches up on startup. Only game days missing from the DB — more than a week off, since the schedule job stores a week ahead — need `pnpm job backfill --league <nhl|nba> --from … --to …`, with the dev server stopped first (it holds the PGlite lock).
 
 ```text
 Session S09 — Main page (slice 4). Create branch `s09-main-page` from the latest `main`.
@@ -490,85 +493,7 @@ Then plan and build: red/green for the formatting helpers, then the UI. Run `pnp
 
 ---
 
-## Slice 6a — Ship to closed testing
-
-Claude prepares configs, scripts, text and runbooks; you do the account and console steps (hosting provider, Expo/EAS, Play Console) and paste results back.
-
-### S10 — Deploy the backend
-
-**Goal:** the API and scheduler running on an always-on host with Postgres, documented well enough to rebuild from scratch, and an alert reaches you when data goes stale.
-
-**In scope**
-- A short hosting options memo (an always-on small VPS with Docker Compose vs a PaaS with managed Postgres): cost, effort, how each runs the scheduler, and whether its router or reverse proxy logs request query strings — and how to stop that (VISION §11) → you pick.
-- An upstream probe script you run **from the candidate host** before committing to it (both APIs answer, normal latency, no block).
-- Dockerfile (multi-stage), production config via env, migrations on deploy, scheduler on, health check, log retention. Platform and proxy access logs record no query strings.
-- Staleness alerting (VISION §10, §12): `/health/data` returns 503 when, during the season, the last successful `results` run is too old or the last few runs failed (propose the thresholds); a free external uptime monitor polls it and emails you. The host's health check keeps using `/health`, which stays green during upstream outages.
-- A per-IP rate limit on the read API (at the reverse proxy or in the app), answering 429 in the error format.
-- `docs/DEPLOY.md`: deploy, rollback, rebuild from scratch (migrations, `roster`, the season-to-date `backfill`, then `season-stats`, with request count and duration — DECISIONS.md D-021), rotating secrets. Production API URL wired into the app config.
-
-**Out of scope:** Android build (S11), web hosting (S14).
-
-**Acceptance criteria**
-1. Probe output from the chosen host shows both APIs reachable (pasted by you).
-2. `https://<api>/health` OK; `/v1/meta` fresh; after a few hours, `job_runs` shows scheduled runs.
-3. No secrets in git (the reviewer checks).
-4. The rebuild from `docs/DEPLOY.md` performed once on the host (migrations, `roster`, the season-to-date `backfill`, then `season-stats`), with request count and duration recorded in DEPLOY.md.
-5. `docs/DEPLOY.md` covers deploy, rollback, rebuild and secret rotation from zero; the reviewer walks through it against the repo.
-6. A production access-log line for a `/v1/days` request shows no query string (pasted).
-7. A forced staleness or failure makes `/health/data` return 503 and the monitor emails you (you confirm), while `/health` stays 200.
-8. `/v1/days/{date}` p95 is under 150 ms server-side against a DB holding a full season — last season backfilled, locally or on the host (VISION §12; print the measurement and the row counts).
-9. Lines arrive within ~15 minutes of a game going final (VISION §2): for one night's games, `boxscore_fetched_at` minus the start of the last `results` run that still saw the game not final is at most 15 minutes (show the query).
-10. Requests over the rate limit get 429.
-11. `pnpm verify` green.
-
-```text
-Session S10 — Deploy the backend (slice 6a). Create branch `s10-deploy` from the latest `main`.
-
-Read docs/PROGRESS.md, docs/SESSIONS.md §S10 (the contract), docs/VISION.md §2, §6, §9 (etiquette), §11 and §12, and docs/DECISIONS.md D-021. First run the tests.
-
-Brainstorm with §S10 as the spec. Start with the hosting options memo. Then write the upstream probe script as a brainstorming spike; I run it from the candidate host and paste the output before choosing, and the design keeps the script as an in-scope deliverable. Then the design must cover: Dockerfile and runtime config; how migrations and the scheduler run in production; how access logs avoid query strings; the staleness rule for `/health` and the uptime monitor; the rate limit; the rebuild procedure; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
-
-Then plan and build the repo work. Console and host steps are mine: after the final review, hand me each as an exact checklist, one at a time, and wait for my results where criteria depend on them. Then tell me it's ready for /handoff.
-```
-
-### S11 — Android build + Play closed test
-
-**Goal:** friends can install the app from Google Play's closed testing track, and the 14-day clock starts.
-
-**In scope**
-- Prerequisite from S08: the Play Console account is verified and the tester list exists.
-- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Add icon and adaptive icon, splash, and the production `EXPO_PUBLIC_API_URL`.
-- `eas.json` profiles (development, preview, production), version codes, a production AAB build.
-- `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers, privacy policy (a hosted page — GitHub Pages works for a public repo), tester invitation message and a "keep testers opted in" plan.
-- Internal testing first, then the closed track.
-
-**Out of scope:** new features.
-
-**Acceptance criteria**
-1. A production AAB builds (you run the EAS build; Claude fixes config issues).
-2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
-3. The internal-testing install on your phone works against the production API.
-4. Closed track live with 15+ testers invited and 12+ opted in; day 1 recorded in PROGRESS.md.
-5. `docs/store/` complete; privacy policy URL live.
-6. In-app About shows the non-affiliation note; no logos or player photos anywhere.
-
-**You:** time a warm open of the installed app on your phone (VISION §2: under 2 s on a mid-range Android) and note the result in PROGRESS.md. Remind testers to open it on match mornings — Google checks that they used it.
-
-```text
-Session S11 — Android build + Play closed test (slice 6a). Create branch `s11-android` from the latest `main`.
-
-Read docs/PROGRESS.md, docs/SESSIONS.md §S11 (the contract), docs/VISION.md §4.6 and §11. First run the tests.
-
-Brainstorm with §S11 as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; the docs/store/ files with draft contents; and the step-by-step console checklist for EAS and Play Console (internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
-
-Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
-```
-
----
-
 ## Slice 5 — Favorites, player and game pages
-
-Built while the closed test runs. Ship each finished session to the closed track so testers see progress.
 
 ### S12 — Search, favorites, hidden
 
@@ -604,7 +529,7 @@ Then plan and build: red/green for the preference logic, then the UI and screens
 2. Game log: last 10, correct formatting; tapping a row opens that game.
 3. Period table correct for regulation, OT and shootout hockey games and an OT basketball game.
 4. Loading `/player/nhl-…` directly on web works.
-5. `pnpm verify` green; you ship a new build to the closed track.
+5. `pnpm verify` green.
 
 ```text
 Session S13 — Player page + game page (slice 5). Create branch `s13-player-game` from the latest `main`.
@@ -618,29 +543,189 @@ Then plan and build: build, screenshot, fix, repeat. Prove each criterion, then 
 
 ---
 
-## Slice 6b — Web + launch
+## Slice 6 — Ready to launch (local, no hosting bill)
 
-### S14 — Web build as a home-screen app
+Everything is finished and checked on your machine; nothing here starts a monthly bill (D-048). S10a sits here with its launch partners but runs right after S09 (Overview). Claude prepares configs, scripts, text and checklists; you do the account and console steps and paste results back.
 
-**Goal:** iPhone friends add the web app to their home screen; PC users open it in a browser.
+### S10a — Hosting choice + upstream probe
 
-**In scope:** static web export; web manifest (name, icons, theme color, standalone display); iOS home-screen meta tags and apple-touch-icon; a static host (Claude proposes options — GitHub Pages is one candidate; you choose); SPA fallback so deep links survive reloads; production CORS for the web origin; an "Add to Home Screen" help page.
+**Goal:** know which host the backend will run on, and that both upstream APIs answer from it, before paying for anything monthly.
+
+**In scope**
+- A short hosting options memo in the session's design doc (an always-on small VPS with Docker Compose vs a PaaS with managed Postgres): monthly cost, effort, how each runs the scheduler, and whether its router or reverse proxy logs request query strings — and how to stop that (VISION §11) → you pick.
+- An upstream probe script (`pnpm probe`, through the polite client): both APIs answer, normal latency, no block. You run it from a throwaway server or one-off job at the chosen provider, billed by the hour, and delete it afterwards — the cost is cents. S10b runs it again on the real host.
+
+**Out of scope:** Dockerfile, deploy, alerting, rate limit (S10b).
+
+**Acceptance criteria**
+1. The memo compares the options on the points above; your pick is recorded in the design doc.
+2. Probe output from the chosen provider shows both APIs reachable with normal latency (pasted by you); the throwaway server is deleted (you confirm).
+3. `pnpm verify` green.
+
+```text
+Session S10a — Hosting choice + upstream probe (slice 6). Create branch `s10a-hosting-probe` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S10a (the contract) and §S10b (what the host must support), docs/VISION.md §6, §9 (etiquette), §11 and §12. First run the tests.
+
+Brainstorm with §S10a as the spec. Start with the hosting options memo; current prices and free tiers change, so look them up. Then write the probe script as a brainstorming spike; I run it from the provider I tentatively pick and paste the output before confirming the choice, and the design keeps the script as an in-scope deliverable. Give me the exact steps to rent the throwaway server, run the probe and delete the server.
+
+Then plan and build the repo work. Then tell me it's ready for /handoff.
+```
+
+### S14a — Web build as a home-screen app (local)
+
+**Goal:** the web version is finished and checked locally — iPhone friends will add it to their home screen and PC users will open it in a browser once it goes online in S14b.
+
+**In scope:** static web export by one command; web manifest (name, icons, theme color, standalone display); iOS home-screen meta tags and apple-touch-icon; the icon set (reuse S11a's artwork if it exists, else make the simple text-based icon here and S11a reuses it); SPA fallback so deep links survive reloads; an "Add to Home Screen" help page; static hosting options (Claude proposes — GitHub Pages is one candidate; you choose) and the deploy config for the chosen host, written but not switched on: a CI deploy workflow runs only when triggered by hand (no push trigger) until S14b.
+
+**Out of scope:** going online (S14b); production `CORS_ORIGINS` (S10b).
 
 **Acceptance criteria**
 1. The static build is produced by one command and screenshot-checked.
-2. Deployed URL works on desktop and iPhone Safari; added to the home screen it opens standalone with the right icon.
-3. Deep links work on reload.
-4. Production API accepts the web origin and rejects others.
+2. Served locally as a production build: deep links work on reload; the manifest and icons load (show them).
+3. Hosting choice recorded; the deploy config is ready for S14b and doesn't run on a push to `main`.
+4. `pnpm verify` green.
+
+**You:** open the local build in your phone's browser over the LAN and check that it looks right.
+
+```text
+Session S14a — Web build as a home-screen app, local (slice 6). Create branch `s14a-web-build` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S14a (the contract) and §S14b (what follows), docs/VISION.md §11, and the screenshot tooling from S08 (it already serves a web export with an index.html fallback). The dev server's `CORS_ORIGINS` defaults to `http://localhost:8081`, so a local build served on another origin needs it set. First run the tests.
+
+Brainstorm with §S14a as the spec. The design must cover: static hosting options with trade-offs (wait for my choice); manifest and icon set; iOS meta tags; deep-link fallback locally and on the chosen host; how the build gets its API URL; and what S14b will have to switch on.
+
+Then plan and build it, screenshot the built site, and wait for my phone check. Then tell me it's ready for /handoff.
+```
+
+### S11a — First Play upload (placeholder)
+
+**When:** any time after Play Console has verified your identity — between any two sessions, on its own timeline. It needs no server.
+
+**Goal:** the app exists on Google Play's internal testing track and installs on your phone, so the package name and signing key are settled early; later builds are updates.
+
+**In scope**
+- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Add icon and adaptive icon and splash (simple text-based; reuse S14a's artwork if it ran first).
+- `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build. No production `EXPO_PUBLIC_API_URL` yet: the build shows the "Can't reach the server" state, and that's expected.
+- Play Console: create the app, fill in only what the console requires before an internal-testing release (truthful drafts, saved in `docs/store/console-answers.md`; S11b completes them), upload, install through the tester link.
+- Back up the EAS signing credentials outside the repo.
+- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out).
+
+**Out of scope:** production API URL, store listing texts, closed track and testers (S11b); new features.
+
+**Acceptance criteria**
+1. A production AAB builds (you run the EAS build; Claude fixes config issues).
+2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
+3. Installed from internal testing on your phone, it shows the friendly "can't reach the server" state (in Settings, or on Today once S09 exists) without crashing.
+4. Signing credentials backed up (you confirm); `docs/store/release.md` and `docs/store/console-answers.md` written.
 5. `pnpm verify` green.
 
 ```text
-Session S14 — Web build as a home-screen app (slice 6b). Create branch `s14-web` from the latest `main`.
+Session S11a — First Play upload, placeholder (slice 6). Create branch `s11a-play-upload` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S14 (the contract), docs/VISION.md §11, and docs/DEPLOY.md. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S11a (the contract) and §S11b (what follows), docs/VISION.md §4.6 and §11. First run the tests.
 
-Brainstorm with §S14 as the spec. The design must cover: static hosting options with trade-offs (wait for my choice); manifest and icon set; iOS meta tags; deep-link fallback; CORS changes; and the console steps I must do.
+Brainstorm with §S11a as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; which Play Console forms are required before an internal-testing release (check the current rules) and truthful draft answers for them — check the code (VISION §11); credential backup; and the step-by-step console checklist for EAS and the internal track.
 
-Then plan and build it, screenshot the built site, walk me through deployment, and wait for my phone test. Then tell me it's ready for /handoff.
+Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
+```
+
+---
+
+## Slice 7 — Launch
+
+The server bill starts with S10b. Run these back to back: the API, the web app and the closed test all go live together, and the 14-day clock (S11b) is the last fixed wait before the public Play release.
+
+### S10b — Deploy the backend
+
+**Goal:** the API and scheduler running on an always-on host with Postgres, documented well enough to rebuild from scratch, and an alert reaches you when data goes stale.
+
+**In scope**
+- The host and provider chosen in S10a; S10a's probe run again from the production host before deploying.
+- Dockerfile (multi-stage), production config via env, migrations on deploy, scheduler on, health check, log retention. Platform and proxy access logs record no query strings.
+- Staleness alerting (VISION §10, §12): `/health/data` returns 503 when, during the season, the last successful `results` run is too old or the last few runs failed (propose the thresholds); a free external uptime monitor polls it and emails you. The host's health check keeps using `/health`, which stays green during upstream outages.
+- A per-IP rate limit on the read API (at the reverse proxy or in the app), answering 429 in the error format.
+- Production `CORS_ORIGINS`: required in production (see the S10b parking-lot note), set to the web origin chosen in S14a.
+- `docs/DEPLOY.md`: deploy, rollback, rebuild from scratch (migrations, `roster`, the season-to-date `backfill`, then `season-stats`, with request count and duration — DECISIONS.md D-021), rotating secrets. The production API URL recorded in DEPLOY.md (S14b and S11b put it into their builds).
+
+**Out of scope:** Android builds (S11a, S11b), web go-live (S14b).
+
+**Acceptance criteria**
+1. Probe output from the production host shows both APIs reachable (pasted by you).
+2. `https://<api>/health` OK; `/v1/meta` fresh; after a few hours, `job_runs` shows scheduled runs.
+3. No secrets in git (the reviewer checks); the server refuses to start in production without `CORS_ORIGINS`.
+4. The rebuild from `docs/DEPLOY.md` performed once on the host (migrations, `roster`, the season-to-date `backfill`, then `season-stats`), with request count and duration recorded in DEPLOY.md.
+5. `docs/DEPLOY.md` covers deploy, rollback, rebuild and secret rotation from zero; the reviewer walks through it against the repo.
+6. A production access-log line for a `/v1/days` request shows no query string (pasted).
+7. A forced staleness or failure makes `/health/data` return 503 and the monitor emails you (you confirm), while `/health` stays 200.
+8. `/v1/days/{date}` p95 is under 150 ms server-side against a DB holding a full season — last season backfilled, locally or on the host (VISION §12; print the measurement and the row counts).
+9. Lines arrive within ~15 minutes of a game going final (VISION §2): for one night's games, `boxscore_fetched_at` minus the start of the last `results` run that still saw the game not final is at most 15 minutes (show the query).
+10. Requests over the rate limit get 429.
+11. `pnpm verify` green.
+
+```text
+Session S10b — Deploy the backend (slice 7). Create branch `s10b-deploy` from the latest `main`.
+
+Read docs/PROGRESS.md (including the parking-lot items marked S10b), docs/SESSIONS.md §S10b (the contract), S10a's design doc in docs/superpowers/specs/ (the hosting choice), docs/VISION.md §2, §6, §9 (etiquette), §11 and §12, and docs/DECISIONS.md D-021. First run the tests.
+
+Brainstorm with §S10b as the spec. The design must cover: Dockerfile and runtime config; how migrations and the scheduler run in production; how access logs avoid query strings; the staleness rule for `/health` and the uptime monitor; the rate limit; the rebuild procedure; and the DEPLOY.md outline. Mark clearly which steps I must do in provider consoles and which you do in the repo.
+
+Then plan and build the repo work. Console and host steps are mine: after the final review, hand me each as an exact checklist, one at a time, and wait for my results where criteria depend on them. Then tell me it's ready for /handoff.
+```
+
+### S14b — Web go-live
+
+**Goal:** PC users open the web app in a browser; iPhone friends add it to their home screen.
+
+**In scope:** switch on S14a's deploy config (its push trigger) with the production API URL; check the production API's `CORS_ORIGINS` (set in S10b) matches the live web origin; the help page reachable from the site.
+
+**Out of scope:** new features.
+
+**Acceptance criteria**
+1. Deployed URL works on desktop and iPhone Safari; added to the home screen it opens standalone with the right icon (you, or your iPhone friend).
+2. Deep links work on reload on the host.
+3. Production API accepts the web origin and rejects others.
+4. `pnpm verify` green.
+
+```text
+Session S14b — Web go-live (slice 7). Create branch `s14b-web-live` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S14b (the contract), S14a's design doc in docs/superpowers/specs/, docs/VISION.md §11, and docs/DEPLOY.md. First run the tests.
+
+Brainstorm with §S14b as the spec. The design must cover: the deploy steps for the host chosen in S14a; the production API URL in the web build; the CORS check; and the console steps I must do.
+
+Then plan and build it, walk me through deployment, and wait for my phone test. Then tell me it's ready for /handoff.
+```
+
+### S11b — Play closed test
+
+**Goal:** friends can install the finished app from Google Play's closed testing track, and the 14-day clock starts.
+
+**In scope**
+- Prerequisites: S11a done (the app exists on internal testing), S10b live, and 15+ testers' Google-account emails collected.
+- The production `EXPO_PUBLIC_API_URL` in the production build profile.
+- `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers, privacy policy (a hosted page — GitHub Pages works for a public repo), tester invitation message and a "keep testers opted in" plan. Completes S11a's drafts.
+- An internal-testing build against the production API first, then the closed track.
+
+**Out of scope:** new features.
+
+**Acceptance criteria**
+1. The internal-testing install on your phone works against the production API.
+2. Closed track live with 15+ testers invited and 12+ opted in; day 1 recorded in PROGRESS.md.
+3. `docs/store/` complete; privacy policy URL live.
+4. In-app About shows the non-affiliation note; no logos or player photos anywhere.
+5. `pnpm verify` green.
+
+**You:** time a warm open of the installed app on your phone (VISION §2: under 2 s on a mid-range Android) and note the result in PROGRESS.md. Remind testers to open it on match mornings — Google checks that they used it.
+
+```text
+Session S11b — Play closed test (slice 7). Create branch `s11b-closed-test` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S11b (the contract), docs/VISION.md §4.6 and §11, docs/DEPLOY.md and docs/store/. First run the tests.
+
+Brainstorm with §S11b as the spec. The design must cover: the production build profile; the docs/store/ files with draft contents; and the step-by-step Play Console checklist (internal track against the production API, then the closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
+
+Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
 ```
 
 ### S15 — Production access + runbook
@@ -660,7 +745,7 @@ Then plan and build it, screenshot the built site, walk me through deployment, a
 **You:** afterwards, one more `/walkthrough the whole system end to end` for yourself.
 
 ```text
-Session S15 — Production access + runbook (slice 6b). Create branch `s15-launch` from the latest `main`.
+Session S15 — Production access + runbook (slice 7). Create branch `s15-launch` from the latest `main`.
 
 Read docs/PROGRESS.md, docs/SESSIONS.md §S15 (the contract), docs/VISION.md §11, and docs/store/. First run the tests.
 
