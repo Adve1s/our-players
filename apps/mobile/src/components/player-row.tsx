@@ -13,7 +13,13 @@ export function PlayerRow({ row, status, team }: { row: Row; status: GameStatus;
         <Text style={{ color: t.colors.textMuted, fontWeight: '400' }}>{team}</Text>
       </Text>
       {rowText(row, status).map((line) => (
-        <Text key={line} style={{ color: t.colors.text, fontSize: t.font.body }}>
+        <Text
+          key={line}
+          style={{
+            color: row.type === 'line' ? t.colors.text : t.colors.textMuted,
+            fontSize: t.font.body,
+          }}
+        >
           {line}
         </Text>
       ))}

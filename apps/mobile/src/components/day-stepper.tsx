@@ -40,7 +40,7 @@ function StepButton({
     >
       <Text
         style={{
-          color: disabled ? t.colors.border : t.colors.accent,
+          color: disabled ? t.colors.textDisabled : t.colors.accent,
           fontSize: text.length === 1 ? t.font.title : t.font.body,
           fontWeight: '600',
         }}

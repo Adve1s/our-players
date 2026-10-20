@@ -65,7 +65,9 @@ function Banner({ text }: { text: string }) {
         borderWidth: 1,
         borderColor: t.colors.border,
         borderRadius: t.radius,
-        padding: t.space.md,
+        paddingVertical: t.space.md,
+        // Minus the 1px border so the text lines up with card content.
+        paddingHorizontal: t.space.lg - 1,
       }}
     >
       <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{text}</Text>

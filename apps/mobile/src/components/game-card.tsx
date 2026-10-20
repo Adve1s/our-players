@@ -13,7 +13,8 @@ export function GameCard({ game, compact = false }: { game: DayGameResponse; com
       style={{
         backgroundColor: t.colors.surface,
         borderRadius: t.radius,
-        padding: compact ? t.space.md : t.space.lg,
+        paddingHorizontal: t.space.lg,
+        paddingVertical: compact ? t.space.md : t.space.lg,
         gap: t.space.md,
       }}
     >

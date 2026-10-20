@@ -25,6 +25,8 @@ export function DayMessageCard({ text, action }: { text: string; action?: Action
           style={{
             backgroundColor: t.colors.accent,
             borderRadius: t.radius,
+            minHeight: t.space.xl * 2,
+            justifyContent: 'center',
             paddingVertical: t.space.sm,
             paddingHorizontal: t.space.lg,
           }}

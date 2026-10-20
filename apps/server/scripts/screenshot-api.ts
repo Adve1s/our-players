@@ -41,7 +41,8 @@ const mixed = await runJob(
 );
 // COL's players aren't on a recorded roster, so they become stubs; only a failed run means no data.
 if (mixed.status === 'failed' || mixed.status === 'skipped') {
-  throw new Error(`screenshot seed: results NHL ${MIXED_DAY} ${mixed.status}`);
+  const error = mixed.status === 'failed' ? mixed.error : 'skipped';
+  throw new Error(`screenshot seed: results NHL ${MIXED_DAY} failed: ${error}`);
 }
 
 serve(
