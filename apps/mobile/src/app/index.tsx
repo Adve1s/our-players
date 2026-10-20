@@ -7,7 +7,7 @@ import { DayStepper } from '../components/day-stepper';
 import { ErrorState } from '../components/error-state';
 import { GameCard } from '../components/game-card';
 import { OtherGames } from '../components/other-games';
-import { type DayMessage, dayMessage } from '../lib/day-message';
+import { type DayMessage, dayMessage, refreshBanner } from '../lib/day-message';
 import { dateParam, latestDate } from '../lib/format';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
@@ -140,12 +140,7 @@ export default function Today() {
     next: () => data.nextGameDate && go(data.nextGameDate),
     settings: () => router.navigate('/settings'),
   };
-  const banner =
-    meta.fetchStatus === 'paused' || day.fetchStatus === 'paused'
-      ? "You're offline — showing saved data."
-      : day.isRefetchError || meta.isError
-        ? "Couldn't refresh — showing saved data."
-        : null;
+  const banner = refreshBanner(meta, day);
 
   return screen(
     <>

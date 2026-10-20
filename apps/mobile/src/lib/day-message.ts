@@ -1,4 +1,5 @@
 import type { DayResponse } from '@our-players/shared';
+import type { QueryObserverResult } from '@tanstack/react-query';
 import { dayLabel } from './format';
 
 export type DayMessage = { text: string; action: 'prev' | 'next' | 'settings' | null };
@@ -24,4 +25,16 @@ export function dayMessage(
     text: `None of your players played on ${label}.`,
     action: day.prevGameDate === null ? null : 'prev',
   };
+}
+
+type QueryState = Pick<QueryObserverResult, 'fetchStatus' | 'isRefetchError'>;
+
+// The line above a day that is on screen, or null when it is fresh.
+export function refreshBanner(meta: QueryState, day: QueryState): string | null {
+  if (meta.fetchStatus === 'paused' || day.fetchStatus === 'paused')
+    return "You're offline — showing saved data.";
+  // A first-load failure has no saved data to show, so only refetch errors count.
+  return day.isRefetchError || meta.isRefetchError
+    ? "Couldn't refresh — showing saved data."
+    : null;
 }
