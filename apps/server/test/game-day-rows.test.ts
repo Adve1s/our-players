@@ -188,7 +188,7 @@ describe('gameDayRows', () => {
   // D-049: a game without a box score says who plays instead of leaving him out.
   it('a LIVE game without a box score gives an upcoming row', () => {
     const p = player('nhl-10', PIT.id);
-    const live = game(G1, CBJ, PIT, { status: 'LIVE' });
+    const live = game(G1, CBJ, PIT, { status: 'LIVE', boxScoreStored: false });
     expect(rowsOf({ games: [live], lines: [], players: [p] })).toEqual([
       { game: G1, rows: ['upcoming:nhl-10'] },
     ]);
