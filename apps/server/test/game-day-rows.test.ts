@@ -194,6 +194,12 @@ describe('gameDayRows', () => {
     ]);
   });
 
+  it('a LIVE game with a stored box score gives no row for a player not in it', () => {
+    const p = player('nhl-10', PIT.id);
+    const live = game(G1, CBJ, PIT, { status: 'LIVE' });
+    expect(rowsOf({ games: [live], lines: [], players: [p] })).toEqual([]);
+  });
+
   it("a FINAL game whose box score isn't stored gives an upcoming row", () => {
     const p = player('nhl-10', PIT.id);
     const unfetched = game(G1, CBJ, PIT, { boxScoreStored: false });
