@@ -469,7 +469,7 @@ Then plan and build: red/green for the store logic; build the screens (check Exp
 - Game cards (all status variants), stat cards per kind, did-not-play rows, ordering, collapsed "Other games".
 - Loading, empty, error and offline states; pull to refresh; local-time formatting; accessibility labels.
 - Formatting helpers as pure, tested functions (TOI, SV%, shooting splits, status labels, local start time).
-- Upcoming games (VISION §4.1, D-049): a game with no stored box score yet (scheduled, live, or final awaiting its box score; not postponed or cancelled) lists the shown players whose current team plays in it, as an `upcoming` row in `/v1/days` (contract + server change), and those games sort first, like games with lines. The row comes from `gameDayRows` (D-038), so `pnpm recap` prints it too (`rowText` in `apps/server/src/recap.ts` handles the new kind). D-049 lists the existing tests whose expectations change.
+- Upcoming games (VISION §4.1, D-049): a game with no stored box score yet (scheduled, live, or final awaiting its box score; not postponed or cancelled) lists the shown players whose current team plays in it, as an `upcoming` row in `/v1/days` (contract + server change), and those games sort first, like games with lines. On a final game the row reads "Waiting for stats" (in the app and in `pnpm recap`). D-038's guard carries over: a player with a line in another game that day gets no `upcoming` row. The row comes from `gameDayRows` (D-038), so `pnpm recap` prints it too (`rowText` in `apps/server/src/recap.ts` becomes an exhaustive switch over the row kind, like `playerRow` and `rank`, so the compiler catches a missing kind). D-049 lists the existing tests whose expectations change.
 
 **Out of scope:** navigation targets (player/game pages arrive in S13); anything team-based (v2).
 
@@ -477,7 +477,7 @@ Then plan and build: red/green for the store logic; build the screens (check Exp
 1. Formatting helpers unit-tested (e.g. `.933`, `18:32`, `Final/OT`, start time in an injected timezone).
 2. Screenshots reviewed and fixed by Claude for: a busy night; a night with a goalie, a skater and an NBA player; DNP rows; an upcoming day with `upcoming` rows; an empty day; the error state; dark mode.
 3. With default preferences, opening the app shows the latest game day (seeded or real data).
-4. API tests for `upcoming` rows: a followed player whose current team plays a scheduled game gets one and the game sorts first; a live game and a final game without a stored box score give one too; a favorite from another country gets one; a hidden player and a player with no current team don't; a final game keeps its line, DNP and "Not in lineup" rows; `pnpm recap` prints upcoming rows.
+4. API tests for `upcoming` rows: a followed player whose current team plays a scheduled game gets one and the game sorts first; a live game and a final game without a stored box score give one too (`pnpm recap` prints the final one as "Waiting for stats"); a favorite from another country gets one; a hidden player, a player with no current team and a player with a line in another game that day don't; a final game keeps its line, DNP and "Not in lineup" rows; `pnpm recap` prints upcoming rows.
 5. Works on web and Android.
 6. `pnpm verify` green.
 
@@ -524,7 +524,7 @@ Then plan and build: red/green for the preference logic, then the UI and screens
 
 **Goal:** the remaining v1 screens.
 
-**In scope:** routes `/player/[id]` and `/game/[id]`; navigation from stat cards, game cards and search; player bio, season stats per kind, game log; game page with the period table and the full box score (VISION §4.5, D-049: every stored line of both teams, `/v1/games/{id}` contract + server change, shown players first within each team and marked); loading and error states; web deep links work on reload.
+**In scope:** routes `/player/[id]` and `/game/[id]`; navigation from stat cards, game cards and search; player bio, season stats per kind, game log; game page with the period table and the full box score (VISION §4.5, D-049: every stored line of both teams plus shown players' "Not in lineup" rows, `/v1/games/{id}` contract + server change, shown players first within each team and marked, each group in `rank()` order; a game without a stored box score returns its upcoming rows instead); loading and error states; web deep links work on reload.
 
 **Out of scope:** anything team-based (v2).
 
@@ -532,7 +532,7 @@ Then plan and build: red/green for the preference logic, then the UI and screens
 1. Season-stats layout correct per kind (skater, goalie, basketball) — screenshots.
 2. Game log: last 10, correct formatting; tapping a row opens that game.
 3. Period table correct for regulation, OT and shootout hockey games and an OT basketball game.
-4. Full box score: API tests over a fixture game return every stored line of both teams with shown players first per team and marked; a game in a deselected league returns the full box score with nobody marked; screenshots of a hockey and a basketball box score.
+4. Full box score: API tests over a fixture game return every stored line of both teams (DNP lines included) plus a shown player's "Not in lineup" row, with shown players first per team and marked, each group in `rank()` order; a game in a deselected league returns the full box score with nobody marked; a scheduled game returns its upcoming rows and no box score; screenshots of a hockey and a basketball box score.
 5. Loading `/player/nhl-…` directly on web works.
 6. `pnpm verify` green.
 
