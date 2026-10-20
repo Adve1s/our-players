@@ -38,10 +38,10 @@ All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to 
 | S06 | API: days, games, meta | `s06-api-days` | M | high | either | `curl …/v1/days/<date>?countries=LVA` |
 | S07 | API: players, search, countries | `s07-api-players` | M | medium | either | Search and player detail over HTTP |
 | S08 | App shell, settings, screenshots | `s08-app-shell` | M | medium | local | Settings on phone; `pnpm screenshots` |
-| S09 | Main page | `s09-main-page` | L | high | local | **The morning recap app** |
+| S09 | Main page | `s09-main-page` | L | high | local | **The morning recap app**, with who plays in upcoming games |
 | S10a | Hosting choice + upstream probe | `s10a-hosting-probe` | S | medium | local | Both APIs answer from the chosen host — before any monthly bill |
 | S12 | Search, favorites, hidden | `s12-favorites` | M | medium | local | Star/hide players |
-| S13 | Player page + game page | `s13-player-game` | M | medium | local | Full v1 feature set (locally) |
+| S13 | Player page + game page | `s13-player-game` | L | medium | local | Full v1 feature set (locally) |
 | S14a | Web build as a home-screen app (local) | `s14a-web-build` | M | medium | local | The web app, built and checked locally |
 | S11a | First Play upload (placeholder) — any time after Play verifies you | `s11a-play-upload` | S | medium | local | The app installs from Play internal testing (no server yet) |
 | S10b | Deploy backend | `s10b-deploy` | L | medium | local | Public API with a running scheduler and a staleness alert; **server bill starts** |
@@ -469,26 +469,28 @@ Then plan and build: red/green for the store logic; build the screens (check Exp
 - Game cards (all status variants), stat cards per kind, did-not-play rows, ordering, collapsed "Other games".
 - Loading, empty, error and offline states; pull to refresh; local-time formatting; accessibility labels.
 - Formatting helpers as pure, tested functions (TOI, SV%, shooting splits, status labels, local start time).
+- Upcoming games (VISION §4.1, D-049): a game with no stored box score yet (scheduled, live, or final awaiting its box score; not postponed or cancelled) lists the shown players whose current team plays in it, as an `upcoming` row in `/v1/days` (contract + server change), and those games sort first, like games with lines. On a final game the row reads "Waiting for stats" (in the app and in `pnpm recap`). D-038's guard carries over: a player with a line in another game that day gets no `upcoming` row. The row comes from `gameDayRows` (D-038), so `pnpm recap` prints it too (`rowText` in `apps/server/src/recap.ts` becomes an exhaustive switch over the row kind, like `playerRow` and `rank`, so the compiler catches a missing kind). D-049 lists the existing tests whose expectations change.
 
-**Out of scope:** navigation targets (player/game pages arrive in S13).
+**Out of scope:** navigation targets (player/game pages arrive in S13); anything team-based (v2).
 
 **Acceptance criteria**
 1. Formatting helpers unit-tested (e.g. `.933`, `18:32`, `Final/OT`, start time in an injected timezone).
-2. Screenshots reviewed and fixed by Claude for: a busy night; a night with a goalie, a skater and an NBA player; DNP rows; an empty day; the error state; dark mode.
+2. Screenshots reviewed and fixed by Claude for: a busy night; a night with a goalie, a skater and an NBA player; DNP rows; an upcoming day with `upcoming` rows; an empty day; the error state; dark mode.
 3. With default preferences, opening the app shows the latest game day (seeded or real data).
-4. Works on web and Android.
-5. `pnpm verify` green.
+4. API tests for `upcoming` rows: a followed player whose current team plays a scheduled game gets one and the game sorts first; a live game and a final game without a stored box score give one too (`pnpm recap` prints the final one as "Waiting for stats"); a favorite from another country gets one; a hidden player, a player with no current team and a player with a line in another game that day don't; a final game keeps its line, DNP and "Not in lineup" rows; `pnpm recap` prints upcoming rows.
+5. Works on web and Android.
+6. `pnpm verify` green.
 
 **You:** use it on your phone for a few real mornings (the NHL season will be running) and note anything that annoys you in the PROGRESS.md parking lot. Until launch that means Expo Go against your computer with `SCHEDULER_ENABLED=1 pnpm dev:server` running. After a sleep, its next tick catches up every unfinished game as long as some game started in the last 24 hours; otherwise (a break in the schedule, a reboot) start the dev server again, which catches up on startup. Only game days missing from the DB — more than a week off, since the schedule job stores a week ahead — need `pnpm job backfill --league <nhl|nba> --from … --to …`, with the dev server stopped first (it holds the PGlite lock).
 
 ```text
 Session S09 — Main page (slice 4). Create branch `s09-main-page` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S09 (the contract), docs/VISION.md §2 and §4.1, and the app shell from S08. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S09 (the contract), docs/VISION.md §2 and §4.1, docs/DECISIONS.md D-044 and D-049, the day view (`apps/server/src/api/day.ts`, `apps/server/src/game-day-rows.ts`), and the app shell from S08. First run the tests.
 
-Brainstorm with §S09 as the spec. The design must cover: the component breakdown (game card, stat card per kind, DNP row, stepper); data fetching and caching (query keys, refetch on focus and pull); exact text formats for every card and status; empty/error/offline designs (describe them); and the screenshot states you'll capture.
+Brainstorm with §S09 as the spec. The design must cover: the `upcoming` row (contract shape, which statuses get it, ordering, how it goes through the selection rule) and its tests; the component breakdown (game card, stat card per kind, DNP row, upcoming row, stepper); data fetching and caching (query keys, refetch on focus and pull); exact text formats for every card and status; empty/error/offline designs (describe them); and the screenshot states you'll capture.
 
-Then plan and build: red/green for the formatting helpers, then the UI. Run `pnpm screenshots`, look at each image, fix what's off, repeat until it looks right. Prove each criterion, then tell me it's ready for /handoff.
+Then plan and build: red/green for the formatting helpers and the `upcoming` rows, then the UI. Run `pnpm screenshots`, look at each image, fix what's off, repeat until it looks right. Prove each criterion, then tell me it's ready for /handoff.
 ```
 
 ---
@@ -522,21 +524,24 @@ Then plan and build: red/green for the preference logic, then the UI and screens
 
 **Goal:** the remaining v1 screens.
 
-**In scope:** routes `/player/[id]` and `/game/[id]`; navigation from stat cards, game cards and search; player bio, season stats per kind, game log; game page with the period table and lines; loading and error states; web deep links work on reload.
+**In scope:** routes `/player/[id]` and `/game/[id]`; navigation from stat cards, game cards and search; player bio, season stats per kind, game log; game page with the period table and the full box score (VISION §4.5, D-049: every stored line of both teams plus shown players' "Not in lineup" rows, `/v1/games/{id}` contract + server change, shown players first within each team and marked, each group in `rank()` order; a game without a stored box score returns its upcoming rows instead); loading and error states; web deep links work on reload.
+
+**Out of scope:** anything team-based (v2).
 
 **Acceptance criteria**
 1. Season-stats layout correct per kind (skater, goalie, basketball) — screenshots.
 2. Game log: last 10, correct formatting; tapping a row opens that game.
 3. Period table correct for regulation, OT and shootout hockey games and an OT basketball game.
-4. Loading `/player/nhl-…` directly on web works.
-5. `pnpm verify` green.
+4. Full box score: API tests over a fixture game return every stored line of both teams (DNP lines included) plus a shown player's "Not in lineup" row, with shown players first per team and marked, each group in `rank()` order; a game in a deselected league returns the full box score with nobody marked; a scheduled game returns its upcoming rows and no box score; screenshots of a hockey and a basketball box score.
+5. Loading `/player/nhl-…` directly on web works.
+6. `pnpm verify` green.
 
 ```text
 Session S13 — Player page + game page (slice 5). Create branch `s13-player-game` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S13 (the contract), docs/VISION.md §4.4–§4.5, and the API's player and game contracts. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S13 (the contract), docs/VISION.md §4.4–§4.5 and §10, docs/DECISIONS.md D-044 and D-049, the API's player and game contracts, and `loadGame` in `apps/server/src/api/day.ts`. First run the tests.
 
-Brainstorm with §S13 as the spec. The design must cover: routes and navigation; layouts per stat kind (describe them); the period table for each sport; deep-link handling on web; and the screenshot states.
+Brainstorm with §S13 as the spec. The design must cover: routes and navigation; layouts per stat kind (describe them); the period table for each sport; the box-score contract, ordering and layout per sport (describe them); deep-link handling on web; and the screenshot states.
 
 Then plan and build: build, screenshot, fix, repeat. Prove each criterion, then tell me it's ready for /handoff.
 ```
