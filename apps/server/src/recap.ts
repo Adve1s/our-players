@@ -1,6 +1,8 @@
 import {
   type CountryCode,
+  finalLabel,
   leagueSchema,
+  lineText,
   parseStatPayload,
   upcomingText,
 } from '@our-players/shared';
@@ -124,35 +126,11 @@ export async function loadRecap(
   };
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 const dnp = (reason: string | null) => (reason === null ? 'DNP' : `DNP — ${reason}`);
 
-// Card text per VISION §4.1.
-function card(line: DayLine): string {
-  if (!line.played) return dnp(line.dnpReason);
-  switch (line.kind) {
-    case 'hockey_skater': {
-      const s = line.stats;
-      const toi = `${Math.floor(s.toiSeconds / 60)}:${pad2(s.toiSeconds % 60)}`;
-      return `${s.goals} G · ${s.assists} A · ${signed(s.plusMinus)} · ${s.shots} SOG · ${toi}`;
-    }
-    case 'hockey_goalie': {
-      const s = line.stats;
-      const pct = s.savePct === null ? null : s.savePct.toFixed(3).replace(/^0/, '');
-      return [`${s.saves}/${s.shotsAgainst}`, pct, `${s.goalsAgainst} GA`, s.decision]
-        .filter((part) => part !== null)
-        .join(' · ');
-    }
-    case 'basketball_player': {
-      const s = line.stats;
-      return [
-        `${s.points} PTS · ${s.rebounds} REB · ${s.assists} AST · ${s.minutes} MIN`,
-        `FG ${s.fgMade}-${s.fgAttempted} · 3PT ${s.threeMade}-${s.threeAttempted} · FT ${s.ftMade}-${s.ftAttempted}`,
-      ].join(' · ');
-    }
-  }
-}
+// Card text per VISION §4.1, shared with the app; the terminal joins basketball's two lines into one.
+const card = (line: DayLine): string =>
+  line.played ? lineText(line).join(' · ') : dnp(line.dnpReason);
 
 function rowText(row: DayRow, game: DayGame): string {
   switch (row.kind) {
@@ -170,7 +148,7 @@ function rowText(row: DayRow, game: DayGame): string {
 function statusLabel(game: DayGame): string {
   switch (game.status) {
     case 'FINAL':
-      return game.endedIn === 'OT' || game.endedIn === 'SO' ? `Final/${game.endedIn}` : 'Final';
+      return finalLabel(game.endedIn);
     case 'LIVE':
       return 'Live';
     // The terminal has no viewer time zone to honor, so a start time reads in UTC.
