@@ -155,6 +155,17 @@ describe('formatRecap', () => {
   });
 
   it.each<[Partial<DayGame>, string]>([
+    [{ status: 'SCHEDULED', awayScore: null, homeScore: null, endedIn: null }, 'Not started'],
+    [{ status: 'LIVE', endedIn: null }, 'In progress'],
+    [{ status: 'FINAL' }, 'Waiting for stats'],
+  ])('an upcoming row in a game %o reads %s', (over, text) => {
+    const g = game({ boxScoreStored: false, ...over });
+    expect(recapOf([{ player, team: CBJ, kind: 'upcoming' }], g)).toContain(
+      `Elvis Merzlikins  CBJ  ${text}`,
+    );
+  });
+
+  it.each<[Partial<DayGame>, string]>([
     [{}, 'CBJ 4 – 3 PIT  Final/SO'],
     [{ endedIn: 'OT' }, 'CBJ 4 – 3 PIT  Final/OT'],
     [{ endedIn: 'REG' }, 'CBJ 4 – 3 PIT  Final'],

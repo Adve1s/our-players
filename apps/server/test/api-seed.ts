@@ -138,3 +138,50 @@ export async function seedApiDb(): Promise<DbHandle> {
   await run('season-stats', seasonStatsJob, { league: 'NBA' });
   return handle;
 }
+
+const UPCOMING_WEEK_GAME = '2025021127';
+const UPCOMING_DAY = '2026-10-16';
+const LIVE_GAME = 2026020119;
+
+// PIT@COL in progress: the recorded FUT day with the one game's state and score changed in memory.
+function liveScore(): unknown {
+  const raw = loadFixture('nhl', 'score', `${UPCOMING_DAY}-states`) as {
+    games: {
+      id: number;
+      gameState: string;
+      awayTeam: { score?: number };
+      homeTeam: { score?: number };
+    }[];
+  };
+  const game = raw.games.find((g) => g.id === LIVE_GAME);
+  if (!game) throw new Error(`seed: game ${LIVE_GAME} not in the 2026-10-16 fixture`);
+  game.gameState = 'LIVE';
+  game.awayTeam.score = 1;
+  game.homeTeam.score = 2;
+  return raw;
+}
+
+// Days with games but no box score yet, on top of seedApiDb: 2026-03-24 (every box score but MIN@TBL's 404s, so
+// that run is partial) and the 2026-10-16 FUT day, its PIT@COL LIVE with `live`.
+export async function seedUpcoming(handle: DbHandle, opts: { live?: boolean } = {}): Promise<void> {
+  const ctx: JobContext = {
+    db: handle.db,
+    client: fakeClient({
+      [nhlUrls.score(NHL_WEEK)]: loadFixture('nhl', 'score', NHL_WEEK),
+      [nhlUrls.boxscore(UPCOMING_WEEK_GAME)]: loadFixture('nhl', 'boxscore', UPCOMING_WEEK_GAME),
+      [nhlUrls.score(UPCOMING_DAY)]: opts.live
+        ? liveScore()
+        : loadFixture('nhl', 'score', `${UPCOMING_DAY}-states`),
+    }),
+    now: () => new Date(`${ROSTER_DAY}T12:00:00Z`),
+    log: createLogger(() => {}),
+    overrides: NO_OVERRIDES,
+  };
+  for (const date of [NHL_WEEK, UPCOMING_DAY]) {
+    const result = await runJob(ctx, 'results', resultsJob, { league: 'NHL', date });
+    if (result.status === 'failed' || result.status === 'skipped') {
+      const error = result.status === 'failed' ? result.error : 'skipped';
+      throw new Error(`seed: results NHL ${date} failed: ${error}`);
+    }
+  }
+}
