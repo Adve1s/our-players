@@ -31,16 +31,14 @@ export function GameCard({ game, compact = false }: { game: DayGameResponse; com
         </Text>
         <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{status}</Text>
       </View>
-      {compact
-        ? null
-        : game.rows.map((row) => (
-            <PlayerRow
-              key={row.player.id}
-              row={row}
-              status={game.status}
-              team={game[row.side].abbrev}
-            />
-          ))}
+      {game.rows.map((row) => (
+        <PlayerRow
+          key={row.player.id}
+          row={row}
+          status={game.status}
+          team={game[row.side].abbrev}
+        />
+      ))}
     </View>
   );
 }

@@ -1,5 +1,6 @@
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTheme } from '../theme';
+import { AccentButton } from './accent-button';
 
 type Action = { label: string; onPress: () => void };
 
@@ -17,25 +18,7 @@ export function DayMessageCard({ text, action }: { text: string; action?: Action
       }}
     >
       <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{text}</Text>
-      {action ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={action.label}
-          onPress={action.onPress}
-          style={{
-            backgroundColor: t.colors.accent,
-            borderRadius: t.radius,
-            minHeight: t.space.xl * 2,
-            justifyContent: 'center',
-            paddingVertical: t.space.sm,
-            paddingHorizontal: t.space.lg,
-          }}
-        >
-          <Text style={{ color: t.colors.onAccent, fontSize: t.font.body, fontWeight: '600' }}>
-            {action.label}
-          </Text>
-        </Pressable>
-      ) : null}
+      {action ? <AccentButton label={action.label} onPress={action.onPress} /> : null}
     </View>
   );
 }
