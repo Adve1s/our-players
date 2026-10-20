@@ -62,8 +62,9 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
 | Hockey goalie | SV/SA · SV% · GA · decision | `28/30 · .933 · 2 GA · W` |
 | Basketball | PTS · REB · AST · MIN, then shooting | `22 PTS · 8 REB · 3 AST · 31 MIN` / `FG 8-15 · 3PT 3-7 · FT 3-3` |
 
+- **Upcoming games:** a game that isn't postponed or cancelled and has no stored box score yet (scheduled, live, or final while its box score is still being fetched) lists the shown players whose *current* team plays in it, and such games sort first like games with lines, so stepping to tomorrow shows who plays and when. (Current team again: a trade after the schedule was stored can show the wrong player.)
 - **Did-not-play rows:** if the box score lists a shown player as not playing (NBA DNP), show "DNP — reason". If a shown player's *current* team played a final game that day and he has no line, show "Not in lineup". A player on no current roster (sent to the AHL or G League, released, retired) has no current team, so he gets no such row. (This uses the current team, so it can be wrong for older dates after a trade — acceptable in v1.)
-- **States:** loading skeleton; empty ("No games on this day", or "None of your players played on Fri, Oct 10" with a jump to the previous game day); error with retry; offline shows the last cached data with a banner.
+- **States:** loading skeleton; empty ("No games on this day", or "None of your players played on Fri, Oct 10" with a jump to the previous game day; a future day words it as not playing); error with retry; offline shows the last cached data with a banner.
 - **Pull to refresh.** Tapping a game opens the Game page; tapping a player opens the Player page (both slice 5).
 
 ### 4.2 Settings
@@ -88,7 +89,7 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
 
 ### 4.5 Game page (slice 5)
 - Score, status, local start time, and a period table (hockey: 1, 2, 3, OT, SO; basketball: Q1–Q4, OT).
-- Shown players' lines (and did-not-play rows). The full box score comes later.
+- The full box score: every stored line of both teams, by team and kind, with shown players first within each team and marked (did-not-play rows included).
 
 ### 4.6 UI principles
 - English UI in v1; dark and light themes follow the system.
@@ -101,7 +102,7 @@ The rule is implemented once, as a pure function in `packages/shared/src/selecti
 | Later feature | What v1 already does so it fits |
 |---|---|
 | Live updates | `games.status` has `LIVE`; ingestion is per game, so a live-polling job is additive; responses carry `updatedAt` for ETag/polling later |
-| Team follow / team pages | `teams` is a first-class table; preferences can gain a `teams` list; the selection rule stays the single place to extend |
+| Team follow / team pages / team search | `teams` is a first-class table; preferences can gain a `teams` list; the selection rule stays the single place to extend |
 | More leagues and countries | `leagues` table, one adapter per source, stat lines typed by `kind` per sport |
 | Push notifications | Would need server-side preferences per device; preferences are already a versioned object that can be uploaded later |
 | Accounts with sync | Preferences are a versioned object keyed by stable public IDs, ready to move into `users` / `user_prefs` tables |
@@ -240,8 +241,8 @@ All responses are JSON validated by zod schemas in `packages/shared/src/contract
 | Endpoint | Returns |
 |---|---|
 | `GET /v1/meta` | leagues with current season and `latestGameDate`; `dataUpdatedAt` |
-| `GET /v1/days/{gameDate}?<prefs>` | that game day's games (ordered per §4.1) with shown players' lines and did-not-play rows; `prevGameDate`, `nextGameDate` |
-| `GET /v1/games/{gameId}?<prefs>` | one game with period scores, shown lines, did-not-play rows |
+| `GET /v1/days/{gameDate}?<prefs>` | that game day's games (ordered per §4.1) with shown players' lines, did-not-play rows, and upcoming rows for games without a stored box score; `prevGameDate`, `nextGameDate` |
+| `GET /v1/games/{gameId}?<prefs>` | one game with period scores and the full box score (every stored line of both teams, shown players first per team and marked; did-not-play rows) |
 | `GET /v1/players/search?q=&leagues=` | up to 20 player summaries |
 | `GET /v1/players?ids=` | player summaries for a list of IDs (favorites and hidden lists) |
 | `GET /v1/players/{playerId}` | bio, nationality with its source, season stats, last 10 game lines |
