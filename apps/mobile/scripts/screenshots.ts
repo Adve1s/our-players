@@ -6,6 +6,7 @@ import { createServer, type Server } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { type Browser, chromium, type Page } from 'playwright';
+import { DEFAULT_PREFS, type StoredPrefs } from '../src/state/prefs';
 
 // Own ports, so this runs next to `pnpm dev:server` (:3001) and `pnpm dev:mobile` (:8081).
 const API_PORT = 3101;
@@ -105,7 +106,20 @@ function serveWeb(): Promise<Server> {
   });
 }
 
-type Shot = { name: string; take: (page: Page) => Promise<void> };
+// Stored prefs other than the defaults, written before the first load as the app's persist layer does.
+type Shot = { name: string; prefs?: Partial<StoredPrefs>; take: (page: Page) => Promise<void> };
+
+const RUST = 'nhl-8475810';
+const LEONS = 'nba-4897449';
+
+// .first(): a wait only needs the text on screen, not that it's the only match.
+async function seen(page: Page, ...texts: string[]): Promise<void> {
+  for (const text of texts) await page.getByText(text).first().waitFor();
+}
+
+async function day(page: Page, date?: string): Promise<void> {
+  await page.goto(date ? `${WEB}/?date=${date}` : WEB);
+}
 
 async function tab(page: Page, label: string): Promise<void> {
   await page.goto(WEB);
@@ -116,8 +130,104 @@ const SHOTS: Shot[] = [
   {
     name: 'today',
     take: async (page) => {
-      await page.goto(WEB);
-      await page.getByText('Your morning recap will appear here.').waitFor();
+      await day(page);
+      await seen(page, 'Other games (9)', 'Porzingis');
+    },
+  },
+  {
+    // Silovs played for PIT that night (25 of 27, W), so Rust is the only favorite needed.
+    name: 'night-mixed',
+    prefs: { favorites: [RUST] },
+    take: async (page) => {
+      await day(page, '2026-03-16');
+      await seen(page, 'Other games (7)', 'Silovs', 'Rust', 'Porzingis');
+    },
+  },
+  {
+    name: 'night-busy',
+    prefs: { favorites: [RUST] },
+    take: async (page) => {
+      await day(page, '2026-03-16');
+      await page.getByRole('button', { name: 'Other games (7)' }).click();
+      await seen(page, 'ORL 112 – 124 ATL');
+      await page
+        .getByText('Other games (7)')
+        .evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    },
+  },
+  {
+    name: 'dnp',
+    prefs: { favorites: [LEONS] },
+    take: async (page) => {
+      await day(page, '2026-03-23');
+      await seen(page, "DNP — Coach's decision");
+    },
+  },
+  {
+    name: 'not-in-lineup',
+    take: async (page) => {
+      await day(page, '2026-01-17');
+      await seen(page, 'Not in lineup', 'Merzlikins', 'Silovs');
+    },
+  },
+  {
+    name: 'upcoming',
+    prefs: { favorites: [RUST] },
+    take: async (page) => {
+      await day(page, '2026-10-16');
+      await seen(page, 'Not started', '04:00');
+    },
+  },
+  {
+    name: 'waiting',
+    take: async (page) => {
+      await day(page, '2026-03-24');
+      await seen(page, 'Waiting for stats', 'Girgensons');
+    },
+  },
+  {
+    name: 'empty-past',
+    prefs: { countries: ['SWE'] },
+    take: async (page) => {
+      await day(page, '2026-03-23');
+      await seen(page, 'None of your players played on Mon, Mar 23.', 'Other games (10)');
+    },
+  },
+  {
+    name: 'empty-future',
+    take: async (page) => {
+      await day(page, '2026-03-25');
+      // "play", not "played": only once meta is in does the day read as after the latest.
+      await seen(page, 'None of your players play on Wed, Mar 25.');
+    },
+  },
+  {
+    name: 'nothing-followed',
+    prefs: { countries: [] },
+    take: async (page) => {
+      await day(page);
+      await seen(page, "You're not following any countries or players yet.");
+    },
+  },
+  {
+    name: 'api-down',
+    take: async (page) => {
+      await page.context().route(`${API}/**`, (r) => r.abort());
+      await day(page);
+      await seen(page, "Can't reach the server");
+    },
+  },
+  {
+    name: 'offline-banner',
+    take: async (page) => {
+      await page.clock.install();
+      await day(page);
+      await seen(page, 'Other games (9)');
+      await page.context().route(`${API}/**`, (r) => r.abort());
+      // Past the 5-minute staleTime, then the focus event TanStack Query listens for on web.
+      await page.clock.fastForward('06:00');
+      await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+      await seen(page, "Couldn't refresh — showing saved data.");
     },
   },
   {
@@ -212,13 +322,22 @@ async function main(): Promise<void> {
     for (const shot of SHOTS) {
       const file = join(OUT, `${colorScheme}-${shot.name}.png`);
       await step(`${colorScheme}-${shot.name}`, async () => {
-        // A fresh context per shot = a fresh install (no stored preferences).
+        // A fresh context per shot = a fresh install (no stored preferences unless the shot has some).
         const context = await b.newContext({
           viewport: { width: 412, height: 915 },
           deviceScaleFactor: 2,
           colorScheme,
+          timezoneId: 'Europe/Riga',
+          locale: 'en-GB',
         });
         try {
+          if (shot.prefs) {
+            const state = { ...DEFAULT_PREFS, ...shot.prefs };
+            await context.addInitScript(
+              (value) => localStorage.setItem('prefs', value),
+              JSON.stringify({ state, version: 1 }),
+            );
+          }
           const page = await context.newPage();
           await shot.take(page);
           // Finishes CSS transitions (a switch just toggled would be caught mid-slide).

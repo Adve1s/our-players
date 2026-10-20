@@ -9,7 +9,7 @@ Unofficial, keyless, undocumented. Verified against fixtures recorded 2026-10-16
 | score | `https://api-web.nhle.com/v1/score/{YYYY-MM-DD}` | `nhl/score/2026-01-17.json`, `nhl/score/2026-03-14.json`, `nhl/score/2026-03-16.json`, `nhl/score/2026-03-23.json`, `nhl/score/2026-03-24.json`, `nhl/score/2026-10-16-states.json` |
 | schedule | `https://api-web.nhle.com/v1/schedule/{YYYY-MM-DD}` (7-day `gameWeek`) | `nhl/schedule/2026-03-24.json`, `nhl/schedule/2026-09-25.json` |
 | schedule-calendar | `https://api-web.nhle.com/v1/schedule-calendar/{YYYY-MM-DD}` (`teams[]`: the 32 current-season teams, `id`, `abbrev`, `commonName.default`, `seasonId` per team) | `nhl/schedule-calendar/2026-10-18.json` |
-| boxscore | `https://api-web.nhle.com/v1/gamecenter/{gameId}/boxscore` | `nhl/boxscore/2025020760.json` (SO), `nhl/boxscore/2025021064.json` (OT), `nhl/boxscore/2025021127.json` (REG), `nhl/boxscore/2026010059.json` (preseason, SO) |
+| boxscore | `https://api-web.nhle.com/v1/gamecenter/{gameId}/boxscore` | `nhl/boxscore/2025020760.json` (SO), `nhl/boxscore/2025021064.json` (OT), `nhl/boxscore/2025021127.json` (REG), `nhl/boxscore/2025021067.json` (REG, PIT@COL 2026-03-16: Šilovs W, Rust; S09 screenshots), `nhl/boxscore/2026010059.json` (preseason, SO) |
 | right-rail | `https://api-web.nhle.com/v1/gamecenter/{gameId}/right-rail` | `nhl/right-rail/2025020760.json` |
 | roster | `https://api-web.nhle.com/v1/roster/{teamAbbrev}/current` | `nhl/roster/CBJ.json` (no Latvian), `nhl/roster/FLA.json`, `nhl/roster/PIT.json` |
 | player-landing | `https://api-web.nhle.com/v1/player/{playerId}/landing` | `nhl/player-landing/8476878.json` (Girgensons), `nhl/player-landing/8478007.json` (Merzļikins) |
@@ -99,6 +99,7 @@ Not an NHL field. Goalies who didn't play appear with `toi` `"00:00"` and no `de
 | `nhl/goalie-summary/20252026.json` | 19928 | 29629 |
 | `nhl/player-landing/8476878.json` | 19767 | 30505 |
 | `nhl/player-landing/8478007.json` | 18456 | 28367 |
+| `nhl/boxscore/2025021067.json` | 13478 | 24463 |
 | `nhl/boxscore/2025021127.json` | 13411 | 24378 |
 | `nhl/boxscore/2025021064.json` | 13407 | 24344 |
 | `nhl/boxscore/2025020760.json` | 13361 | 24306 |
