@@ -24,15 +24,13 @@ export function startTime(
 ): string {
   const at = new Date(iso);
   const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(at);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-      .formatToParts(at)
-      .find((p) => p.type === type)?.value;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
   const localDate = `${part('year')}-${part('month')}-${part('day')}`;
   if (localDate === gameDate) return time;
   return `${abbr(WEEKDAYS, new Date(`${localDate}T00:00:00Z`).getUTCDay())} ${time}`;

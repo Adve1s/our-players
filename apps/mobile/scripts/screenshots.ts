@@ -175,7 +175,7 @@ const SHOTS: Shot[] = [
     prefs: { favorites: [RUST] },
     take: async (page) => {
       await day(page, '2026-10-16');
-      await seen(page, 'Not started', '04:00');
+      await seen(page, 'Not started', 'Sat 04:00');
     },
   },
   {
