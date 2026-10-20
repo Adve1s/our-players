@@ -13,9 +13,27 @@ import {
 } from '@our-players/shared';
 
 // No locale or zone passed: the device decides both. timeStyle, not hour: 'numeric', keeps the
-// locale's own pattern (en-GB "04:00", en-US "9:00 PM").
-export function startTime(iso: string, locale?: string, timeZone?: string): string {
-  return new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(new Date(iso));
+// locale's own pattern (en-GB "04:00", en-US "9:00 PM"). A night stays on its US game day (owner),
+// so a start on another local date gets the local weekday: "Sat 04:00".
+export function startTime(
+  iso: string,
+  gameDate: string,
+  locale?: string,
+  timeZone?: string,
+): string {
+  const at = new Date(iso);
+  const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(at)
+      .find((p) => p.type === type)?.value;
+  if (`${part('year')}-${part('month')}-${part('day')}` === gameDate) return time;
+  return `${new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone }).format(at)} ${time}`;
 }
 
 const WEEKDAYS = 'SunMonTueWedThuFriSat';
@@ -29,7 +47,7 @@ export function dayLabel(date: string): string {
 }
 
 export function statusLabel(
-  game: Pick<DayGameResponse, 'status' | 'endedIn' | 'startTimeUtc'>,
+  game: Pick<DayGameResponse, 'status' | 'endedIn' | 'startTimeUtc' | 'gameDate'>,
   locale?: string,
   timeZone?: string,
 ): string {
@@ -39,7 +57,7 @@ export function statusLabel(
     case 'LIVE':
       return 'Live';
     case 'SCHEDULED':
-      return startTime(game.startTimeUtc, locale, timeZone);
+      return startTime(game.startTimeUtc, game.gameDate, locale, timeZone);
     case 'POSTPONED':
       return 'Postponed';
     case 'CANCELLED':

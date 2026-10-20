@@ -88,12 +88,24 @@ const upcomingRow: PlayerRow = { type: 'upcoming', side: 'away', player };
 
 describe('startTime', () => {
   it('reads 24-hour time in the given locale and time zone', () => {
-    expect(startTime('2026-10-17T01:00:00Z', 'en-GB', 'Europe/Riga')).toBe('04:00');
+    expect(startTime('2026-10-17T01:00:00Z', '2026-10-17', 'en-GB', 'Europe/Riga')).toBe('04:00');
+  });
+
+  // The game stays on its US game day; the weekday says the local clock is already past midnight.
+  it('adds the local weekday when the local date is after the game day', () => {
+    expect(startTime('2026-10-17T01:00:00Z', '2026-10-16', 'en-GB', 'Europe/Riga')).toBe(
+      'Sat 04:00',
+    );
+  });
+
+  it('adds the local weekday when the local date is before the game day', () => {
+    const text = startTime('2026-10-17T01:00:00Z', '2026-10-17', 'en-US', 'America/New_York');
+    expect(text.replace(/[\u202f\u00a0]/g, ' ')).toBe('Fri 9:00 PM');
   });
 
   it('reads 12-hour time for en-US in New York', () => {
     // ICU may put a narrow or no-break space before AM/PM.
-    const text = startTime('2026-10-17T01:00:00Z', 'en-US', 'America/New_York');
+    const text = startTime('2026-10-17T01:00:00Z', '2026-10-16', 'en-US', 'America/New_York');
     expect(text.replace(/[  ]/g, ' ')).toBe('9:00 PM');
   });
 });
@@ -110,6 +122,7 @@ describe('dayLabel', () => {
 
 describe('statusLabel', () => {
   const START = '2026-10-17T01:00:00Z';
+  const GAME_DATE = '2026-10-16';
   it.each<[Pick<DayGameResponse, 'status' | 'endedIn'>, string]>([
     [{ status: 'FINAL', endedIn: 'OT' }, 'Final/OT'],
     [{ status: 'FINAL', endedIn: 'SO' }, 'Final/SO'],
@@ -118,12 +131,17 @@ describe('statusLabel', () => {
     [{ status: 'POSTPONED', endedIn: null }, 'Postponed'],
     [{ status: 'CANCELLED', endedIn: null }, 'Cancelled'],
   ])('%o reads %s', (game, text) => {
-    expect(statusLabel({ ...game, startTimeUtc: START })).toBe(text);
+    expect(statusLabel({ ...game, startTimeUtc: START, gameDate: GAME_DATE })).toBe(text);
   });
 
   it('a SCHEDULED game reads its start time in the given locale and time zone', () => {
     const game = { status: 'SCHEDULED', endedIn: null, startTimeUtc: START } as const;
-    expect(statusLabel(game, 'en-GB', 'Europe/Riga')).toBe('04:00');
+    expect(statusLabel({ ...game, gameDate: '2026-10-17' }, 'en-GB', 'Europe/Riga')).toBe('04:00');
+  });
+
+  it('a SCHEDULED game past local midnight reads the local weekday and time', () => {
+    const game = { status: 'SCHEDULED', endedIn: null, startTimeUtc: START } as const;
+    expect(statusLabel({ ...game, gameDate: GAME_DATE }, 'en-GB', 'Europe/Riga')).toBe('Sat 04:00');
   });
 });
 
