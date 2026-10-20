@@ -1,4 +1,9 @@
-import { type CountryCode, leagueSchema, parseStatPayload } from '@our-players/shared';
+import {
+  type CountryCode,
+  leagueSchema,
+  parseStatPayload,
+  upcomingText,
+} from '@our-players/shared';
 import { eq, inArray, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './db/client';
@@ -149,9 +154,17 @@ function card(line: DayLine): string {
   }
 }
 
-function rowText(row: DayRow): string {
-  if (row.kind === 'line') return card(row.line);
-  return row.kind === 'dnp' ? dnp(row.reason) : 'Not in lineup';
+function rowText(row: DayRow, game: DayGame): string {
+  switch (row.kind) {
+    case 'line':
+      return card(row.line);
+    case 'dnp':
+      return dnp(row.reason);
+    case 'not-in-lineup':
+      return 'Not in lineup';
+    case 'upcoming':
+      return upcomingText(game.status);
+  }
 }
 
 function statusLabel(game: DayGame): string {
@@ -195,7 +208,9 @@ export function formatRecap(
         `${league} ${date}`,
         ...ofLeague.flatMap((g) => [
           header(g.game),
-          ...g.rows.map((r) => `  ${name(r).padEnd(width)}  ${r.team.abbrev}  ${rowText(r)}`),
+          ...g.rows.map(
+            (r) => `  ${name(r).padEnd(width)}  ${r.team.abbrev}  ${rowText(r, g.game)}`,
+          ),
         ]),
       ];
     })

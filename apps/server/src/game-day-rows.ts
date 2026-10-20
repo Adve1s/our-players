@@ -38,12 +38,14 @@ export type DayRow = { player: DayPlayer; team: DayTeam } & (
   | { kind: 'line'; line: DayLine }
   | { kind: 'dnp'; reason: string | null }
   | { kind: 'not-in-lineup' }
+  | { kind: 'upcoming' }
 );
 
-// Within a team: played skaters and basketball players by points, then goalies, then DNP, then not in lineup.
+// Within a team: played skaters and basketball players by points, then goalies, then DNP, then not in lineup, then upcoming.
 function rank(row: DayRow): [number, number] {
   if (row.kind === 'dnp') return [2, 0];
   if (row.kind === 'not-in-lineup') return [3, 0];
+  if (row.kind === 'upcoming') return [4, 0];
   const { line } = row;
   if (line.kind === 'hockey_goalie') return [1, 0];
   return [0, line.played ? -line.stats.points : 0];
