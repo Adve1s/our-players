@@ -23,7 +23,7 @@ import {
 } from './api-seed';
 import { createTestDb } from './db';
 
-const CACHE = 'public, max-age=60, stale-while-revalidate=300';
+const CACHE = 'public, max-age=0, s-maxage=60';
 
 let handle: DbHandle;
 
