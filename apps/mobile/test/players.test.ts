@@ -146,6 +146,10 @@ describe('listView', () => {
     expect(listView(['nba-3102531'], { ...loaded, isError: true }, [row])).toBe('rows');
   });
 
+  it('loading, not "none shown", while an older placeholder has no requested row', () => {
+    expect(listView(['nba-3102531'], { ...loaded, isPlaceholderData: true }, [])).toBe('loading');
+  });
+
   it('none shown when the list has IDs but no row (a deselected league)', () => {
     expect(listView(['nba-3102531'], loaded, [])).toBe('none-shown');
   });

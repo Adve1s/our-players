@@ -60,7 +60,8 @@ export function listView(
   if (ids.length === 0) return 'empty';
   if (r.fetchStatus === 'paused' && (r.isPending || r.isPlaceholderData)) return 'offline';
   if (r.isError && !r.data) return 'error';
-  if (r.isPending) return 'loading';
+  // An older key's players can all fall outside the new IDs; that's not "none shown" yet.
+  if (r.isPending || (r.isPlaceholderData && rows.length === 0)) return 'loading';
   // Stored IDs but no row: all in a deselected league, or gone from the server.
   return rows.length === 0 ? 'none-shown' : 'rows';
 }
