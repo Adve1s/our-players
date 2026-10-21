@@ -1,3 +1,4 @@
+import type { League, PublicId } from '@our-players/shared';
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
 import { type StoredPrefs, toPrefs } from '../state/prefs';
 import { api } from './client';
@@ -21,3 +22,22 @@ export const dayQuery = (date: string | null, prefs: StoredPrefs) =>
   });
 
 export const useDay = (date: string | null, prefs: StoredPrefs) => useQuery(dayQuery(date, prefs));
+
+// Results don't blank between keystrokes.
+export const useSearch = (term: string | null, leagues: League[]) =>
+  useQuery({
+    queryKey: ['search', term, leagues],
+    // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without a term.
+    queryFn: () => api.searchPlayers(term!, new Set(leagues)),
+    enabled: term !== null,
+    placeholderData: keepPreviousData,
+  });
+
+// Callers pass sorted IDs, so equal lists give equal keys.
+export const usePlayers = (ids: PublicId[]) =>
+  useQuery({
+    queryKey: ['players', ids],
+    queryFn: () => api.players(ids),
+    enabled: ids.length > 0,
+    placeholderData: keepPreviousData,
+  });

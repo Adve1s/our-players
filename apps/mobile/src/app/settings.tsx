@@ -1,17 +1,10 @@
 import type { League } from '@our-players/shared';
 import Constants from 'expo-constants';
 import { type ReactNode, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useCountries } from '../api/queries';
 import { ErrorState } from '../components/error-state';
+import { SearchField } from '../components/search-field';
 import { type CountryRow, countryRows } from '../lib/countries';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
@@ -97,7 +90,6 @@ export default function Settings() {
   const toggleCountry = usePrefs((s) => s.toggleCountry);
   const { data, isPending, isError, error, fetchStatus, refetch } = useCountries();
   const [query, setQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
   // Without data (loading, error) this still lists the selected countries, so they can be unticked.
   const rows = countryRows(data?.countries ?? [], countries, query);
 
@@ -150,28 +142,7 @@ export default function Settings() {
       </Card>
 
       <Card title="Countries" aside={`${countries.length} selected`}>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search countries"
-          accessibilityLabel="Search countries"
-          autoCorrect={false}
-          placeholderTextColor={t.colors.textMuted}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          style={{
-            color: t.colors.text,
-            fontSize: t.font.body,
-            borderWidth: 1,
-            // The accent border is the focus indicator; a 0-width solid outline hides the browser's (style auto ignores width).
-            borderColor: searchFocused ? t.colors.accent : t.colors.border,
-            outlineStyle: 'solid',
-            outlineWidth: 0,
-            borderRadius: t.radius,
-            paddingHorizontal: t.space.md,
-            paddingVertical: t.space.sm,
-          }}
-        />
+        <SearchField value={query} onChangeText={setQuery} label="Search countries" />
         {countries.length === 0 ? (
           <Caption>No countries selected — Today stays empty until you pick one.</Caption>
         ) : null}
