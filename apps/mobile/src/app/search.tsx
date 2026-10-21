@@ -5,7 +5,7 @@ import { useSearch } from '../api/queries';
 import { ErrorState } from '../components/error-state';
 import { PlayerItem } from '../components/player-item';
 import { SearchField } from '../components/search-field';
-import { SEARCH_MAX, searchTerm } from '../lib/players';
+import { SEARCH_MAX, searchTerm, searchView } from '../lib/players';
 import { markOf } from '../state/prefs';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
@@ -92,29 +92,26 @@ export default function Search() {
   const leagues = usePrefs((s) => s.leagues);
   const [query, setQuery] = useState('');
   const term = searchTerm(useDebounced(query, 300));
-  const { data, isPending, isError, error, fetchStatus, refetch, isPlaceholderData } = useSearch(
-    term,
-    leagues,
-  );
+  const result = useSearch(term, leagues);
+  const view = searchView(term, result);
 
   let body: ReactNode;
-  if (term === null) {
+  if (view === 'hint') {
     body = <Caption>Type at least 2 letters of a player's name.</Caption>;
-  } else if (isPending && fetchStatus === 'paused') {
+  } else if (view === 'offline') {
     // shortcut: only web detects offline (no NetInfo, S09), on Android an offline fetch fails and shows the error; add NetInfo if Android needs the offline state.
     body = <Caption>You're offline. Search works when you're back online.</Caption>;
-  } else if (isError) {
-    body = <ErrorState error={error} onRetry={() => void refetch()} />;
-  } else if (isPending || (isPlaceholderData && data.players.length === 0)) {
-    // An old empty result would claim the new term has no match.
+  } else if (view === 'error') {
+    body = <ErrorState error={result.error} onRetry={() => void result.refetch()} />;
+  } else if (view === 'loading') {
     body = <ActivityIndicator color={t.colors.accent} />;
-  } else if (data.players.length === 0) {
+  } else if (view === 'empty') {
     body = <Caption>No player matches "{term}".</Caption>;
   } else {
     // No gap between rows: each PlayerItem draws its own divider.
     body = (
       <View>
-        {data.players.map((p) => (
+        {result.data?.players.map((p) => (
           <ResultItem key={p.id} player={p} />
         ))}
       </View>

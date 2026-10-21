@@ -24,14 +24,17 @@ export const dayQuery = (date: string | null, prefs: StoredPrefs) =>
 export const useDay = (date: string | null, prefs: StoredPrefs) => useQuery(dayQuery(date, prefs));
 
 // Results don't blank between keystrokes.
-export const useSearch = (term: string | null, leagues: League[]) =>
-  useQuery({
+export const searchQuery = (term: string | null, leagues: League[]) =>
+  queryOptions({
     queryKey: ['search', term, leagues],
     // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without a term.
     queryFn: () => api.searchPlayers(term!, new Set(leagues)),
     enabled: term !== null,
     placeholderData: keepPreviousData,
   });
+
+export const useSearch = (term: string | null, leagues: League[]) =>
+  useQuery(searchQuery(term, leagues));
 
 // Callers pass sorted IDs, so equal lists give equal keys.
 export const usePlayers = (ids: PublicId[]) =>
