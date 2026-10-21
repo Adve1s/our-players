@@ -1,9 +1,9 @@
 import { serve } from '@hono/node-server';
 import { createApp } from '../src/api/app';
 import { resultsJob } from '../src/jobs/results';
-import { createLogger, runJob } from '../src/jobs/runner';
+import { createLogger } from '../src/jobs/runner';
 import { nhlUrls } from '../src/sources/nhl';
-import { seedApiDb, seedUpcoming } from '../test/api-seed';
+import { runSeedJob, seedApiDb, seedUpcoming } from '../test/api-seed';
 import { NO_OVERRIDES } from '../test/db-data';
 import { fakeClient } from '../test/fake-client';
 import { loadFixture } from '../test/fixtures';
@@ -24,7 +24,8 @@ function mixedScore(): unknown {
 // the API tests' seed in memory, so the shots are deterministic and the dev DB is never touched.
 const handle = await seedApiDb();
 await seedUpcoming(handle);
-const mixed = await runJob(
+// COL's players aren't on a recorded roster, so they become stubs; only a failed run means no data.
+await runSeedJob(
   {
     db: handle.db,
     client: fakeClient({
@@ -39,11 +40,6 @@ const mixed = await runJob(
   resultsJob,
   { league: 'NHL', date: MIXED_DAY },
 );
-// COL's players aren't on a recorded roster, so they become stubs; only a failed run means no data.
-if (mixed.status === 'failed' || mixed.status === 'skipped') {
-  const error = mixed.status === 'failed' ? mixed.error : 'skipped';
-  throw new Error(`screenshot seed: results NHL ${MIXED_DAY} failed: ${error}`);
-}
 
 serve(
   {

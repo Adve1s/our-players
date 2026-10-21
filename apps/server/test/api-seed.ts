@@ -57,6 +57,22 @@ function score(): unknown {
   return raw;
 }
 
+// runJob records a failure instead of throwing and the log is silenced, so a broken seed must fail here.
+// A partial run passes: some seeds (a 404ing box score, stub players) are partial on purpose.
+export async function runSeedJob(
+  ctx: JobContext,
+  name: string,
+  job: Job,
+  args: JobArgs,
+): Promise<void> {
+  const result = await runJob(ctx, name, job, args);
+  if (result.status === 'failed' || result.status === 'skipped') {
+    const error = result.status === 'failed' ? result.error : 'skipped';
+    const what = [name, args.league, args.date].filter(Boolean).join(' ');
+    throw new Error(`seed: ${what} failed: ${error}`);
+  }
+}
+
 // Every API test's data, stored by the real jobs over recorded fixtures; any other URL is a 404.
 export async function seedApiDb(): Promise<DbHandle> {
   const handle = await createTestDb();
@@ -92,15 +108,7 @@ export async function seedApiDb(): Promise<DbHandle> {
     log: createLogger(() => {}),
     overrides: NO_OVERRIDES,
   };
-  // runJob records a failure instead of throwing and the log is silenced, so a broken seed must fail here.
-  const run = async (name: string, job: Job, args: JobArgs) => {
-    const result = await runJob(ctx, name, job, args);
-    if (result.status === 'failed' || result.status === 'skipped') {
-      const error = result.status === 'failed' ? result.error : 'skipped';
-      const what = [name, args.league, args.date].filter(Boolean).join(' ');
-      throw new Error(`seed: ${what} failed: ${error}`);
-    }
-  };
+  const run = (name: string, job: Job, args: JobArgs) => runSeedJob(ctx, name, job, args);
   await upsertPlayers(
     handle.db,
     [
@@ -177,11 +185,6 @@ export async function seedUpcoming(handle: DbHandle, opts: { live?: boolean } = 
     log: createLogger(() => {}),
     overrides: NO_OVERRIDES,
   };
-  for (const date of [NHL_WEEK, UPCOMING_DAY]) {
-    const result = await runJob(ctx, 'results', resultsJob, { league: 'NHL', date });
-    if (result.status === 'failed' || result.status === 'skipped') {
-      const error = result.status === 'failed' ? result.error : 'skipped';
-      throw new Error(`seed: results NHL ${date} failed: ${error}`);
-    }
-  }
+  for (const date of [NHL_WEEK, UPCOMING_DAY])
+    await runSeedJob(ctx, 'results', resultsJob, { league: 'NHL', date });
 }
