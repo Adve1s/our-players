@@ -3,6 +3,7 @@ import {
   countryCodeSchema,
   type League,
   leagueSchema,
+  MAX_LIST,
   type Prefs,
   type PublicId,
   publicIdSchema,
@@ -50,9 +51,12 @@ export function toPrefs(p: StoredPrefs): Prefs {
 const storedPrefsSchema = z.object({
   leagues: z.array(leagueSchema).min(1),
   countries: z.array(countryCodeSchema),
-  favorites: z.array(publicIdSchema),
-  hidden: z.array(publicIdSchema),
+  favorites: z.array(z.unknown()),
+  hidden: z.array(z.unknown()),
 });
+
+const validIds = (xs: readonly unknown[]): PublicId[] =>
+  xs.filter((x): x is PublicId => publicIdSchema.safeParse(x).success);
 
 // Storage is outside the app's control: junk there must not turn every request into a 400.
 export function restorePrefs(stored: unknown): StoredPrefs {
@@ -62,7 +66,44 @@ export function restorePrefs(stored: unknown): StoredPrefs {
   return {
     leagues: sortedUnique(leagues),
     countries: sortedUnique(countries),
-    favorites: sortedUnique(favorites),
-    hidden: sortedUnique(hidden),
+    // One bad ID drops only itself, so a stale entry doesn't wipe the user's lists.
+    // Tampered storage can hold an ID in both lists; hidden wins, as in markOf.
+    favorites: sortedUnique(validIds(favorites).filter((id) => !hidden.includes(id))),
+    hidden: sortedUnique(validIds(hidden)),
   };
+}
+
+export type Mark = 'favorite' | 'hidden' | null;
+
+export function markOf(p: StoredPrefs, id: PublicId): Mark {
+  // Both lists only happens with tampered storage; hidden wins, so he stays off Today.
+  if (p.hidden.includes(id)) return 'hidden';
+  return p.favorites.includes(id) ? 'favorite' : null;
+}
+
+const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((x, i) => x === b[i]);
+
+export function setMark(p: StoredPrefs, id: PublicId, mark: Mark): StoredPrefs {
+  const target = mark === 'favorite' ? p.favorites : mark === 'hidden' ? p.hidden : null;
+  // The API rejects lists over MAX_LIST, which would turn every Today request into a 400.
+  // shortcut: a full list ignores the tap silently, add a caption if anyone reaches 200
+  if (target && target.length >= MAX_LIST && !target.includes(id)) return p;
+  const favorites = p.favorites.filter((x) => x !== id);
+  const hidden = p.hidden.filter((x) => x !== id);
+  const next: StoredPrefs = {
+    ...p,
+    favorites: mark === 'favorite' ? sortedUnique([...favorites, id]) : favorites,
+    hidden: mark === 'hidden' ? sortedUnique([...hidden, id]) : hidden,
+  };
+  // Same object when nothing changed, so zustand skips the re-render.
+  return sameList(next.favorites, p.favorites) && sameList(next.hidden, p.hidden) ? p : next;
+}
+
+export function toggleFavorite(p: StoredPrefs, id: PublicId): StoredPrefs {
+  return setMark(p, id, markOf(p, id) === 'favorite' ? null : 'favorite');
+}
+
+export function toggleHidden(p: StoredPrefs, id: PublicId): StoredPrefs {
+  return setMark(p, id, markOf(p, id) === 'hidden' ? null : 'hidden');
 }

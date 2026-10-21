@@ -16,13 +16,14 @@ export type Theme = {
     danger: string;
   };
   space: { xs: 4; sm: 8; md: 12; lg: 16; xl: 24 };
-  font: { caption: 13; body: 16; title: 20 };
+  font: { caption: 13; body: 16; title: 20; icon: 28 };
   radius: 12;
   dark: boolean;
 };
 
 const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
-const font = { caption: 13, body: 16, title: 20 } as const;
+// icon: glyph buttons like the search star, which read small at text sizes.
+const font = { caption: 13, body: 16, title: 20, icon: 28 } as const;
 
 // Text and textMuted keep >= 4.5:1 contrast on both background and surface.
 const light: Theme = {

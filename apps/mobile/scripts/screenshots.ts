@@ -107,14 +107,35 @@ function serveWeb(): Promise<Server> {
 }
 
 // Stored prefs other than the defaults, written before the first load as the app's persist layer does.
-type Shot = { name: string; prefs?: Partial<StoredPrefs>; take: (page: Page) => Promise<void> };
+// `after` runs once the image is taken: checks that belong to the shot but not to its picture.
+type Shot = {
+  name: string;
+  prefs?: Partial<StoredPrefs>;
+  take: (page: Page) => Promise<void>;
+  after?: (page: Page) => Promise<void>;
+};
 
 const RUST = 'nhl-8475810';
 const LEONS = 'nba-4897449';
+const PORZINGIS = 'nba-3102531';
+const MERZLIKINS = 'nhl-8478007';
+const GIRGENSONS = 'nhl-8476878';
+const BALINSKIS = 'nhl-8484304';
+
+// Tabs stay mounted on web: a tab left behind sits under the current one, aria-hidden but
+// "visible" to Playwright, so text only counts outside an aria-hidden subtree.
+const shown = (page: Page, text: string, exact = false) =>
+  page
+    .getByText(text, { exact })
+    .and(page.locator('xpath=//*[not(ancestor-or-self::*[@aria-hidden="true"])]'));
 
 // .first(): a wait only needs the text on screen, not that it's the only match.
 async function seen(page: Page, ...texts: string[]): Promise<void> {
-  for (const text of texts) await page.getByText(text).first().waitFor();
+  for (const text of texts) await shown(page, text).first().waitFor();
+}
+
+async function gone(page: Page, text: string, exact = false): Promise<void> {
+  await shown(page, text, exact).first().waitFor({ state: 'hidden' });
 }
 
 async function day(page: Page, date?: string): Promise<void> {
@@ -124,6 +145,21 @@ async function day(page: Page, date?: string): Promise<void> {
 async function tab(page: Page, label: string): Promise<void> {
   await page.goto(WEB);
   await page.getByRole('tab', { name: label }).click();
+}
+
+// The tab bar, not a reload: the init script would write the shot's prefs over what the flow stored.
+async function switchTo(page: Page, label: string): Promise<void> {
+  await page.getByRole('tab', { name: label }).click();
+}
+
+async function search(page: Page, term: string): Promise<void> {
+  await page.getByLabel('Search players').fill(term);
+}
+
+async function lists(page: Page): Promise<void> {
+  await tab(page, 'Settings');
+  await page.getByText('Sweden').waitFor();
+  await shown(page, 'Favorites', true).evaluate((el) => el.scrollIntoView({ block: 'start' }));
 }
 
 const SHOTS: Shot[] = [
@@ -231,10 +267,42 @@ const SHOTS: Shot[] = [
     },
   },
   {
-    name: 'search',
+    name: 'search-empty',
     take: async (page) => {
       await tab(page, 'Search');
-      await page.getByText('Player search is coming soon.').waitFor();
+      await seen(page, "Type at least 2 letters of a player's name.");
+    },
+  },
+  {
+    // "ins": both leagues, two Latvians (one starred, one hidden) and two others.
+    name: 'search-results',
+    prefs: { favorites: [MERZLIKINS], hidden: [BALINSKIS] },
+    take: async (page) => {
+      await tab(page, 'Search');
+      await search(page, 'ins');
+      await seen(page, 'Jamir Watkins', 'Uvis Balinskis', 'Elvis Merzlikins');
+      await page
+        .getByRole('checkbox', { name: 'Favorite Elvis Merzlikins', checked: true })
+        .waitFor();
+      await page.getByRole('checkbox', { name: 'Hide Uvis Balinskis', checked: true }).waitFor();
+    },
+  },
+  {
+    name: 'search-no-match',
+    take: async (page) => {
+      await tab(page, 'Search');
+      await search(page, 'zzzz');
+      await seen(page, 'No player matches "zzzz".');
+    },
+  },
+  {
+    name: 'search-api-down',
+    take: async (page) => {
+      await tab(page, 'Search');
+      // After the first load: the tab is reached with the API up, then a search finds it down.
+      await page.context().route(`${API}/**`, (r) => r.abort());
+      await search(page, 'silovs');
+      await seen(page, "Can't reach the server");
     },
   },
   {
@@ -271,6 +339,82 @@ const SHOTS: Shot[] = [
       await tab(page, 'Settings');
       await page.getByText('Sweden').waitFor();
       await page.getByText('Not affiliated with the NHL or NBA.').scrollIntoViewIfNeeded();
+    },
+  },
+  {
+    name: 'settings-lists',
+    prefs: { favorites: [PORZINGIS, RUST], hidden: [GIRGENSONS] },
+    take: async (page) => {
+      await lists(page);
+      await seen(page, 'Kristaps Porzingis', 'Bryan Rust', 'Zemgus Girgensons');
+    },
+  },
+  {
+    name: 'settings-undo',
+    prefs: { favorites: [PORZINGIS, RUST] },
+    take: async (page) => {
+      await lists(page);
+      await page.getByRole('button', { name: 'Remove Kristaps Porzingis' }).click();
+      await page.getByRole('button', { name: 'Undo removing Kristaps Porzingis' }).waitFor();
+      await seen(page, 'Undo');
+    },
+    // Leaving Settings makes the removal final: back there, no Undo and no Porziņģis.
+    after: async (page) => {
+      await switchTo(page, 'Today');
+      await seen(page, 'Other games');
+      await switchTo(page, 'Settings');
+      await page.getByRole('button', { name: 'Remove Bryan Rust' }).waitFor();
+      await gone(page, 'Undo', true);
+      await gone(page, 'Kristaps Porzingis');
+    },
+  },
+  {
+    name: 'settings-lists-empty',
+    take: async (page) => {
+      await lists(page);
+      await seen(page, 'No favorites yet. Star players in Search.');
+      await seen(page, 'Nobody hidden. Hidden players never show on Today.');
+    },
+  },
+  {
+    // Criterion 2 on web: no countries, so only the star puts Porziņģis on Today.
+    name: 'flow-favorite',
+    prefs: { countries: [] },
+    take: async (page) => {
+      await day(page, '2026-03-16');
+      await seen(page, "You're not following any countries or players yet.");
+      await switchTo(page, 'Search');
+      await search(page, 'porzingis');
+      await seen(page, 'Kristaps Porzingis');
+      await page.getByRole('checkbox', { name: 'Favorite Kristaps Porzingis' }).click();
+      await page
+        .getByRole('checkbox', { name: 'Favorite Kristaps Porzingis', checked: true })
+        .waitFor();
+      await switchTo(page, 'Today');
+      await seen(page, 'Mon, Mar 16', 'Porzingis');
+    },
+  },
+  {
+    // Criterion 3 on web: Hide takes Silovs off Today, un-hiding brings him back (the image).
+    name: 'flow-hidden',
+    take: async (page) => {
+      await day(page, '2026-03-16');
+      await seen(page, 'Mon, Mar 16', 'Silovs', 'Porzingis');
+      await switchTo(page, 'Search');
+      await search(page, 'silovs');
+      await page.getByRole('checkbox', { name: 'Hide Arturs Silovs' }).click();
+      await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: true }).waitFor();
+      await switchTo(page, 'Today');
+      // The date first: while Today is still aria-hidden, "gone" would pass on no match at all.
+      // Once it's on screen, keepPreviousData holds the old day until the refetch lands.
+      await seen(page, 'Mon, Mar 16');
+      await gone(page, 'Silovs');
+      await seen(page, 'Porzingis');
+      await switchTo(page, 'Search');
+      await page.getByRole('checkbox', { name: 'Hide Arturs Silovs' }).click();
+      await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: false }).waitFor();
+      await switchTo(page, 'Today');
+      await seen(page, 'Mon, Mar 16', 'Silovs', 'Porzingis');
     },
   },
   {
@@ -342,6 +486,7 @@ async function main(): Promise<void> {
           await shot.take(page);
           // Finishes CSS transitions (a switch just toggled would be caught mid-slide).
           await page.screenshot({ path: file, animations: 'disabled' });
+          await shot.after?.(page);
         } finally {
           await context.close();
         }

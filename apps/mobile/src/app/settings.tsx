@@ -1,18 +1,15 @@
-import type { League } from '@our-players/shared';
+import type { League, PublicId } from '@our-players/shared';
 import Constants from 'expo-constants';
-import { type ReactNode, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useCountries } from '../api/queries';
+import { useFocusEffect } from 'expo-router';
+import { type ReactNode, useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { useCountries, usePlayers } from '../api/queries';
 import { ErrorState } from '../components/error-state';
+import { PlayerItem } from '../components/player-item';
+import { SearchField } from '../components/search-field';
 import { type CountryRow, countryRows } from '../lib/countries';
+import { listIds, listRows, listView } from '../lib/players';
+import { type Mark, markOf } from '../state/prefs';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
 
@@ -89,6 +86,84 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
   );
 }
 
+function PlayerList({
+  title,
+  mark,
+  empty,
+  noneShown,
+  removed,
+  onRemove,
+  onUndo,
+}: {
+  title: string;
+  mark: 'favorite' | 'hidden';
+  empty: string;
+  noneShown: string;
+  removed: ReadonlyMap<PublicId, Mark>;
+  onRemove: (id: PublicId) => void;
+  onUndo: (id: PublicId) => void;
+}) {
+  const t = useTheme();
+  const leagues = usePrefs((s) => s.leagues);
+  const list = usePrefs((s) => (mark === 'favorite' ? s.favorites : s.hidden));
+  const ids = listIds(list, removed, mark);
+  const r = usePlayers(ids);
+  const rows = listRows(r.data?.players ?? [], ids, leagues, new Set(removed.keys()));
+  const view = listView(ids, r, rows);
+
+  let body: ReactNode;
+  if (view === 'empty') {
+    body = <Caption>{empty}</Caption>;
+  } else if (view === 'offline') {
+    body = <Caption>You're offline. Your players load when you're back online.</Caption>;
+  } else if (view === 'error') {
+    body = <ErrorState error={r.error} onRetry={() => void r.refetch()} />;
+  } else if (view === 'loading') {
+    body = <ActivityIndicator color={t.colors.accent} />;
+  } else if (view === 'none-shown') {
+    body = <Caption>{noneShown}</Caption>;
+  } else {
+    body = (
+      <View>
+        {rows.map(({ player, removed: gone }) => {
+          const name = `${player.firstName} ${player.lastName}`;
+          return (
+            <PlayerItem key={player.id} player={player} dimmed={gone}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={gone ? `Undo removing ${name}` : `Remove ${name}`}
+                onPress={() => (gone ? onUndo(player.id) : onRemove(player.id))}
+                style={{
+                  minWidth: t.space.xl * 2,
+                  minHeight: t.space.xl * 2,
+                  // Right-aligned: Remove ↔ Undo keeps the label on the card's edge.
+                  alignItems: 'flex-end',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
+                  {gone ? 'Undo' : 'Remove'}
+                </Text>
+              </Pressable>
+            </PlayerItem>
+          );
+        })}
+      </View>
+    );
+  }
+
+  // No count until the list is in: "0" beside a spinner reads as "your favorites are gone".
+  const counted = view === 'empty' || view === 'none-shown' || view === 'rows';
+  return (
+    <Card
+      title={title}
+      aside={counted ? `${rows.filter((row) => !row.removed).length}` : undefined}
+    >
+      {body}
+    </Card>
+  );
+}
+
 export default function Settings() {
   const t = useTheme();
   const leagues = usePrefs((s) => s.leagues);
@@ -97,7 +172,24 @@ export default function Settings() {
   const toggleCountry = usePrefs((s) => s.toggleCountry);
   const { data, isPending, isError, error, fetchStatus, refetch } = useCountries();
   const [query, setQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
+  const setMark = usePrefs((s) => s.setMark);
+  // The mark each player had before Remove; leaving Settings clears it, so removals become final.
+  const [removed, setRemoved] = useState<ReadonlyMap<PublicId, Mark>>(new Map());
+  useFocusEffect(useCallback(() => () => setRemoved(new Map()), []));
+  const remove = (id: PublicId) => {
+    // Read before setMark: React may run the updater after it, and then the old mark is null.
+    const prev = markOf(usePrefs.getState(), id);
+    setRemoved((m) => new Map(m).set(id, prev));
+    setMark(id, null);
+  };
+  const undo = (id: PublicId) => {
+    setMark(id, removed.get(id) ?? null);
+    setRemoved((m) => {
+      const next = new Map(m);
+      next.delete(id);
+      return next;
+    });
+  };
   // Without data (loading, error) this still lists the selected countries, so they can be unticked.
   const rows = countryRows(data?.countries ?? [], countries, query);
 
@@ -150,28 +242,7 @@ export default function Settings() {
       </Card>
 
       <Card title="Countries" aside={`${countries.length} selected`}>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search countries"
-          accessibilityLabel="Search countries"
-          autoCorrect={false}
-          placeholderTextColor={t.colors.textMuted}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          style={{
-            color: t.colors.text,
-            fontSize: t.font.body,
-            borderWidth: 1,
-            // The accent border is the focus indicator; a 0-width solid outline hides the browser's (style auto ignores width).
-            borderColor: searchFocused ? t.colors.accent : t.colors.border,
-            outlineStyle: 'solid',
-            outlineWidth: 0,
-            borderRadius: t.radius,
-            paddingHorizontal: t.space.md,
-            paddingVertical: t.space.sm,
-          }}
-        />
+        <SearchField value={query} onChangeText={setQuery} label="Search countries" />
         {countries.length === 0 ? (
           <Caption>No countries selected — Today stays empty until you pick one.</Caption>
         ) : null}
@@ -188,6 +259,25 @@ export default function Settings() {
           <Caption>No country matches "{query.trim()}".</Caption>
         ) : null}
       </Card>
+
+      <PlayerList
+        title="Favorites"
+        mark="favorite"
+        empty="No favorites yet. Star players in Search."
+        noneShown="None of your favorites play in the leagues you have on."
+        removed={removed}
+        onRemove={remove}
+        onUndo={undo}
+      />
+      <PlayerList
+        title="Hidden"
+        mark="hidden"
+        empty="Nobody hidden. Hidden players never show on Today."
+        noneShown="None of your hidden players play in the leagues you have on."
+        removed={removed}
+        onRemove={remove}
+        onUndo={undo}
+      />
 
       <Card title="About">
         <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>

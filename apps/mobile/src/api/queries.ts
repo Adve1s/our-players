@@ -1,3 +1,4 @@
+import type { League, PublicId } from '@our-players/shared';
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
 import { type StoredPrefs, toPrefs } from '../state/prefs';
 import { api } from './client';
@@ -21,3 +22,27 @@ export const dayQuery = (date: string | null, prefs: StoredPrefs) =>
   });
 
 export const useDay = (date: string | null, prefs: StoredPrefs) => useQuery(dayQuery(date, prefs));
+
+export const searchQuery = (term: string | null, leagues: League[]) =>
+  queryOptions({
+    queryKey: ['search', term, leagues],
+    // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without a term.
+    queryFn: () => api.searchPlayers(term!, new Set(leagues)),
+    enabled: term !== null,
+    // Results don't blank between keystrokes, but a league change drops them: a deselected
+    // league's players must not stay listed until the new results land.
+    placeholderData: (prev, prevQuery) =>
+      String(prevQuery?.queryKey[2]) === String(leagues) ? prev : undefined,
+  });
+
+export const useSearch = (term: string | null, leagues: League[]) =>
+  useQuery(searchQuery(term, leagues));
+
+// Callers pass sorted IDs, so equal lists give equal keys.
+export const usePlayers = (ids: PublicId[]) =>
+  useQuery({
+    queryKey: ['players', ids],
+    queryFn: () => api.players(ids),
+    enabled: ids.length > 0,
+    placeholderData: keepPreviousData,
+  });
