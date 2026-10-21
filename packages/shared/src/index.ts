@@ -31,8 +31,20 @@ export {
   statKindSchema,
 } from './enums';
 export {
+  dnpText,
+  finalLabel,
+  type LineStats,
+  lineText,
+  savePct,
+  sentenceCase,
+  signed,
+  toi,
+  upcomingText,
+} from './format';
+export {
   addDays,
   latestStartedGameDay,
+  localDate,
   nextGameDay,
   previousGameDay,
   usGameDay,

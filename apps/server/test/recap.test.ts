@@ -140,7 +140,7 @@ describe('formatRecap', () => {
   });
 
   it.each([
-    ["COACH'S DECISION", "DNP — COACH'S DECISION"],
+    ["COACH'S DECISION", "DNP — Coach's decision"],
     [null, 'DNP'],
   ])('a dnp row with reason %s reads %s', (reason, text) => {
     expect(recapOf([{ player, team: CBJ, kind: 'dnp', reason }])).toMatch(
@@ -151,6 +151,17 @@ describe('formatRecap', () => {
   it('a not-in-lineup row reads Not in lineup', () => {
     expect(recapOf([{ player, team: CBJ, kind: 'not-in-lineup' }])).toContain(
       'Elvis Merzlikins  CBJ  Not in lineup',
+    );
+  });
+
+  it.each<[Partial<DayGame>, string]>([
+    [{ status: 'SCHEDULED', awayScore: null, homeScore: null, endedIn: null }, 'Not started'],
+    [{ status: 'LIVE', endedIn: null }, 'In progress'],
+    [{ status: 'FINAL' }, 'Waiting for stats'],
+  ])('an upcoming row in a game %o reads %s', (over, text) => {
+    const g = game({ boxScoreStored: false, ...over });
+    expect(recapOf([{ player, team: CBJ, kind: 'upcoming' }], g)).toContain(
+      `Elvis Merzlikins  CBJ  ${text}`,
     );
   });
 

@@ -250,7 +250,7 @@ All responses are JSON validated by zod schemas in `packages/shared/src/contract
 | `GET /health` | Liveness for the host's health check: 200 when the DB answers, plus the last successful run per job. Never fails because upstream data is stale |
 | `GET /health/data` | Freshness for the uptime monitor: 503 when, during the season, results have gone stale |
 
-Errors: `{ "error": { "code": "BAD_REQUEST", "message": "..." } }`. Day and game responses send `Cache-Control: public, max-age=60, stale-while-revalidate=300`. Request logs omit query strings, so preferences are never logged — this covers the host's router and reverse-proxy access logs too, not only ours. CORS allows the web app's origin. A per-IP rate limit protects the small host (429 in the error format).
+Errors: `{ "error": { "code": "BAD_REQUEST", "message": "..." } }`. Day and game responses send `Cache-Control: public, max-age=0, s-maxage=60`: the browser and the phone always ask the server (the app's own cache is TanStack Query), a shared cache (CDN) may keep them 60 s (D-051). Request logs omit query strings, so preferences are never logged — this covers the host's router and reverse-proxy access logs too, not only ours. CORS allows the web app's origin. A per-IP rate limit protects the small host (429 in the error format).
 
 ## 11. Platforms, distribution and policies
 

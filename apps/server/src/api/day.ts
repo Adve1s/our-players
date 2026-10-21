@@ -44,6 +44,8 @@ function playerRow(game: DayGame, row: DayRow): PlayerRow {
       return { type: 'dnp', side, player, reason: row.reason };
     case 'not-in-lineup':
       return { type: 'not-in-lineup', side, player };
+    case 'upcoming':
+      return { type: 'upcoming', side, player };
   }
 }
 

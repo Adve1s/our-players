@@ -1,15 +1,26 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, type ErrorBoundaryProps, Tabs, ThemeProvider } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { AppState, Platform, View } from 'react-native';
 import { RetryMessage } from '../components/error-state';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
 
 // retry 1: the default 3 with backoff makes "API down" take ~7 s to show.
+// shortcut: the cache lives in memory only, so a cold start offline shows the error; persist it
+// when the v2 revisit item (offline after restart) comes up.
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 5 * 60_000 } },
 });
+
+// Web already refetches on visibilitychange; native needs AppState, so coming back to the app in
+// the morning refetches stale meta and moves Today to the new latest day.
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener((setFocused) => {
+    const sub = AppState.addEventListener('change', (status) => setFocused(status === 'active'));
+    return () => sub.remove();
+  });
+}
 
 // Until the stored prefs are in, queries would go out with the defaults and then again.
 function useHydrated(): boolean {

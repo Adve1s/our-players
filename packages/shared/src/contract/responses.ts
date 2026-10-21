@@ -77,6 +77,8 @@ export const playerRowSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('line'), side, player: playerRef, line: lineSchema }),
   z.object({ type: z.literal('dnp'), side, player: playerRef, reason: z.string().nullable() }),
   z.object({ type: z.literal('not-in-lineup'), side, player: playerRef }),
+  // No text field: the app words it from the game's status.
+  z.object({ type: z.literal('upcoming'), side, player: playerRef }),
 ]);
 export type PlayerRow = z.infer<typeof playerRowSchema>;
 

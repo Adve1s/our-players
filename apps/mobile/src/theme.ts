@@ -6,6 +6,8 @@ export type Theme = {
     surface: string;
     text: string;
     textMuted: string;
+    // Disabled controls only: dimmer than textMuted, so below 4.5:1 by design.
+    textDisabled: string;
     border: string;
     accent: string;
     onAccent: string;
@@ -29,6 +31,7 @@ const light: Theme = {
     surface: '#FFFFFF',
     text: '#1C1C1E',
     textMuted: '#5C5F66',
+    textDisabled: '#9A9DA3',
     border: '#D1D1D6',
     accent: '#1A5FB4',
     onAccent: '#FFFFFF',
@@ -47,6 +50,7 @@ const dark: Theme = {
     surface: '#1E1E20',
     text: '#F2F2F2',
     textMuted: '#A8A8AD',
+    textDisabled: '#6E6E73',
     border: '#3A3A3C',
     accent: '#8AB4F8',
     onAccent: '#0B1F3A',

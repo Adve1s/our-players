@@ -185,16 +185,27 @@ describe('gameDayRows', () => {
     expect(row?.team).toEqual(PIT);
   });
 
-  it("no not-in-lineup row when the game isn't FINAL", () => {
+  // D-049: a game without a box score says who plays instead of leaving him out.
+  it('a LIVE game without a box score gives an upcoming row', () => {
+    const p = player('nhl-10', PIT.id);
+    const live = game(G1, CBJ, PIT, { status: 'LIVE', boxScoreStored: false });
+    expect(rowsOf({ games: [live], lines: [], players: [p] })).toEqual([
+      { game: G1, rows: ['upcoming:nhl-10'] },
+    ]);
+  });
+
+  it('a LIVE game with a stored box score gives no row for a player not in it', () => {
     const p = player('nhl-10', PIT.id);
     const live = game(G1, CBJ, PIT, { status: 'LIVE' });
     expect(rowsOf({ games: [live], lines: [], players: [p] })).toEqual([]);
   });
 
-  it("no not-in-lineup row for a FINAL game whose box score isn't stored", () => {
+  it("a FINAL game whose box score isn't stored gives an upcoming row", () => {
     const p = player('nhl-10', PIT.id);
     const unfetched = game(G1, CBJ, PIT, { boxScoreStored: false });
-    expect(rowsOf({ games: [unfetched], lines: [], players: [p] })).toEqual([]);
+    expect(rowsOf({ games: [unfetched], lines: [], players: [p] })).toEqual([
+      { game: G1, rows: ['upcoming:nhl-10'] },
+    ]);
   });
 
   it('a line whose team is neither away nor home throws', () => {
@@ -290,5 +301,70 @@ describe('gameDayRows', () => {
         ],
       },
     ]);
+  });
+
+  describe('upcoming rows', () => {
+    const scheduled = game(G1, CBJ, PIT, {
+      status: 'SCHEDULED',
+      boxScoreStored: false,
+      awayScore: null,
+      homeScore: null,
+      endedIn: null,
+    });
+
+    it('a SCHEDULED game gives an upcoming row for the team the player is on', () => {
+      const p = player('nhl-10', PIT.id);
+      const [group] = gameDayRows({ games: [scheduled], lines: [], players: [p] }, prefs());
+      expect(group?.rows.map((r) => `${r.kind}:${r.player.publicId}`)).toEqual(['upcoming:nhl-10']);
+      expect(group?.rows[0]?.team).toEqual(PIT);
+    });
+
+    it.each(['POSTPONED', 'CANCELLED'] as const)('a %s game gives no upcoming row', (status) => {
+      const p = player('nhl-10', PIT.id);
+      const off = game(G1, CBJ, PIT, {
+        status,
+        boxScoreStored: false,
+        awayScore: null,
+        homeScore: null,
+        endedIn: null,
+      });
+      expect(rowsOf({ games: [off], lines: [], players: [p] })).toEqual([]);
+    });
+
+    it('a player with a line in another game that day gets no upcoming row', () => {
+      const p = player('nhl-10', PIT.id);
+      const day = {
+        games: [scheduled, game(G2, TBL, BOS)],
+        lines: [skaterLine(G2, p, TBL, 1)],
+        players: [p],
+      };
+      expect(rowsOf(day)).toEqual([{ game: G2, rows: ['line:nhl-10'] }]);
+    });
+
+    it('a hidden player gets no upcoming row', () => {
+      const p = player('nhl-10', PIT.id);
+      const day = { games: [scheduled], lines: [], players: [p] };
+      expect(rowsOf(day, prefs({ hidden: new Set(['nhl-10']) }))).toEqual([]);
+    });
+
+    it('a favorite from another country gets an upcoming row', () => {
+      const p = player('nhl-10', PIT.id, 'SWE');
+      const day = { games: [scheduled], lines: [], players: [p] };
+      expect(rowsOf(day, prefs({ favorites: new Set(['nhl-10']) }))).toEqual([
+        { game: G1, rows: ['upcoming:nhl-10'] },
+      ]);
+    });
+
+    it('a player with no current team gets no upcoming row', () => {
+      const p = player('nhl-10', null);
+      expect(rowsOf({ games: [scheduled], lines: [], players: [p] })).toEqual([]);
+    });
+
+    it('upcoming rows: away team first', () => {
+      const home = player('nhl-10', PIT.id);
+      const away = player('nhl-11', CBJ.id);
+      const day = { games: [scheduled], lines: [], players: [home, away] };
+      expect(rowsOf(day)).toEqual([{ game: G1, rows: ['upcoming:nhl-11', 'upcoming:nhl-10'] }]);
+    });
   });
 });

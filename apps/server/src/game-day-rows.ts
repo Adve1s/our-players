@@ -25,7 +25,7 @@ export type DayGame = {
   homeScore: number | null;
   endedIn: EndedIn | null;
   periodScores: PeriodScore[] | null;
-  // A FINAL game can be stored before its box score; without one, absence from it means nothing.
+  // A FINAL game can be stored before its box score; until then its shown players are upcoming, not out of the lineup (D-049).
   boxScoreStored: boolean;
 };
 export type DayPlayer = SelectablePlayer & {
@@ -38,12 +38,14 @@ export type DayRow = { player: DayPlayer; team: DayTeam } & (
   | { kind: 'line'; line: DayLine }
   | { kind: 'dnp'; reason: string | null }
   | { kind: 'not-in-lineup' }
+  | { kind: 'upcoming' }
 );
 
-// Within a team: played skaters and basketball players by points, then goalies, then DNP, then not in lineup.
+// Within a team: played skaters and basketball players by points, then goalies, then DNP, then not in lineup, then upcoming.
 function rank(row: DayRow): [number, number] {
   if (row.kind === 'dnp') return [2, 0];
   if (row.kind === 'not-in-lineup') return [3, 0];
+  if (row.kind === 'upcoming') return [4, 0];
   const { line } = row;
   if (line.kind === 'hockey_goalie') return [1, 0];
   return [0, line.played ? -line.stats.points : 0];
@@ -81,9 +83,13 @@ export function gameDayRows(
         // shortcut: the current team, not the team on that date, so older dates can be wrong after a trade (VISION §4.1); upgrade if rosters are kept per date
         const t = player.currentTeamId === null ? undefined : team(player.currentTeamId);
         // A line elsewhere that day means he played for another team (traded since), not that he sat out.
-        const playedElsewhere = day.lines.some((l) => l.playerPublicId === player.publicId);
-        return game.status === 'FINAL' && game.boxScoreStored && t && !playedElsewhere
-          ? [{ player, team: t, kind: 'not-in-lineup' }]
+        if (!t || day.lines.some((l) => l.playerPublicId === player.publicId)) return [];
+        // D-049: absence from a stored FINAL box score means not in lineup; with no box score yet he's upcoming.
+        if (game.boxScoreStored) {
+          return game.status === 'FINAL' ? [{ player, team: t, kind: 'not-in-lineup' }] : [];
+        }
+        return game.status === 'SCHEDULED' || game.status === 'LIVE' || game.status === 'FINAL'
+          ? [{ player, team: t, kind: 'upcoming' }]
           : [];
       });
       rows.sort((a, b) => {

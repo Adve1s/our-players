@@ -57,6 +57,22 @@ function score(): unknown {
   return raw;
 }
 
+// runJob records a failure instead of throwing and the log is silenced, so a broken seed must fail here.
+// A partial run passes: some seeds (a 404ing box score, stub players) are partial on purpose.
+export async function runSeedJob(
+  ctx: JobContext,
+  name: string,
+  job: Job,
+  args: JobArgs,
+): Promise<void> {
+  const result = await runJob(ctx, name, job, args);
+  if (result.status === 'failed' || result.status === 'skipped') {
+    const error = result.status === 'failed' ? result.error : 'skipped';
+    const what = [name, args.league, args.date].filter(Boolean).join(' ');
+    throw new Error(`seed: ${what} failed: ${error}`);
+  }
+}
+
 // Every API test's data, stored by the real jobs over recorded fixtures; any other URL is a 404.
 export async function seedApiDb(): Promise<DbHandle> {
   const handle = await createTestDb();
@@ -92,15 +108,7 @@ export async function seedApiDb(): Promise<DbHandle> {
     log: createLogger(() => {}),
     overrides: NO_OVERRIDES,
   };
-  // runJob records a failure instead of throwing and the log is silenced, so a broken seed must fail here.
-  const run = async (name: string, job: Job, args: JobArgs) => {
-    const result = await runJob(ctx, name, job, args);
-    if (result.status === 'failed' || result.status === 'skipped') {
-      const error = result.status === 'failed' ? result.error : 'skipped';
-      const what = [name, args.league, args.date].filter(Boolean).join(' ');
-      throw new Error(`seed: ${what} failed: ${error}`);
-    }
-  };
+  const run = (name: string, job: Job, args: JobArgs) => runSeedJob(ctx, name, job, args);
   await upsertPlayers(
     handle.db,
     [
@@ -137,4 +145,46 @@ export async function seedApiDb(): Promise<DbHandle> {
   await run('season-stats', seasonStatsJob, { league: 'NHL' });
   await run('season-stats', seasonStatsJob, { league: 'NBA' });
   return handle;
+}
+
+const UPCOMING_WEEK_GAME = '2025021127';
+const UPCOMING_DAY = '2026-10-16';
+const LIVE_GAME = 2026020119;
+
+// PIT@COL in progress: the recorded FUT day with the one game's state and score changed in memory.
+function liveScore(): unknown {
+  const raw = loadFixture('nhl', 'score', `${UPCOMING_DAY}-states`) as {
+    games: {
+      id: number;
+      gameState: string;
+      awayTeam: { score?: number };
+      homeTeam: { score?: number };
+    }[];
+  };
+  const game = raw.games.find((g) => g.id === LIVE_GAME);
+  if (!game) throw new Error(`seed: game ${LIVE_GAME} not in the 2026-10-16 fixture`);
+  game.gameState = 'LIVE';
+  game.awayTeam.score = 1;
+  game.homeTeam.score = 2;
+  return raw;
+}
+
+// Days with games but no box score yet, on top of seedApiDb: 2026-03-24 (every box score but MIN@TBL's 404s, so
+// that run is partial) and the 2026-10-16 FUT day, its PIT@COL LIVE with `live`.
+export async function seedUpcoming(handle: DbHandle, opts: { live?: boolean } = {}): Promise<void> {
+  const ctx: JobContext = {
+    db: handle.db,
+    client: fakeClient({
+      [nhlUrls.score(NHL_WEEK)]: loadFixture('nhl', 'score', NHL_WEEK),
+      [nhlUrls.boxscore(UPCOMING_WEEK_GAME)]: loadFixture('nhl', 'boxscore', UPCOMING_WEEK_GAME),
+      [nhlUrls.score(UPCOMING_DAY)]: opts.live
+        ? liveScore()
+        : loadFixture('nhl', 'score', `${UPCOMING_DAY}-states`),
+    }),
+    now: () => new Date(`${ROSTER_DAY}T12:00:00Z`),
+    log: createLogger(() => {}),
+    overrides: NO_OVERRIDES,
+  };
+  for (const date of [NHL_WEEK, UPCOMING_DAY])
+    await runSeedJob(ctx, 'results', resultsJob, { league: 'NHL', date });
 }

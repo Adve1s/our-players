@@ -49,7 +49,8 @@ export function parseQuery(c: Context): Prefs {
 const dateParam = z.object({ gameDate: gameDateSchema });
 const gameParam = z.object({ gameId: publicIdSchema });
 const playerParam = z.object({ playerId: publicIdSchema });
-const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
+// Browsers and the app's OkHttp keep nothing (they'd hand the app a stale day); a shared cache (CDN) may keep 60 s (D-051).
+const CACHE_CONTROL = 'public, max-age=0, s-maxage=60';
 
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);

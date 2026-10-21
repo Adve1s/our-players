@@ -1,19 +1,20 @@
 import type { GameStatus } from './enums';
 
-// The league's schedule date for "now" (CLAUDE.md rule 8). The last US games are on the West Coast,
-// so the Pacific date stays on last night's game day until every game of it has ended.
-export function usGameDay(now: Date): string {
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Los_Angeles',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-      .formatToParts(now)
-      .find((p) => p.type === type)?.value;
+// YYYY-MM-DD in a time zone (the device's when none is given).
+export function localDate(at: Date, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
+
+// The league's schedule date for "now" (CLAUDE.md rule 8). The last US games are on the West Coast,
+// so the Pacific date stays on last night's game day until every game of it has ended.
+export const usGameDay = (now: Date): string => localDate(now, 'America/Los_Angeles');
 
 // The game day the scheduler is "on": the latest one with a game that has started. ISO dates sort as strings.
 // A postponed or cancelled game never started, as in the server's playedOrPlaying.

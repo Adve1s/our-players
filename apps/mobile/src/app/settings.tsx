@@ -103,7 +103,7 @@ export default function Settings() {
 
   let status: ReactNode = null;
   if (isPending && fetchStatus === 'paused') {
-    // shortcut: TanStack Query only detects offline on web; add NetInfo if S09's offline banner needs it on Android.
+    // shortcut: only web detects offline (no NetInfo, S09), on Android an offline fetch fails and shows the error; add NetInfo if Android needs the offline state.
     status = <Caption>You're offline. Countries load when you're back online.</Caption>;
   } else if (isPending) {
     status = <ActivityIndicator color={t.colors.accent} />;
