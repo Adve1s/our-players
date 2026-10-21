@@ -7,10 +7,12 @@ import { useTheme } from '../theme';
 export function PlayerItem({
   player,
   dimmed = false,
+  divider = true,
   children,
 }: {
   player: PlayerSummary;
   dimmed?: boolean;
+  divider?: boolean;
   children: ReactNode;
 }) {
   const t = useTheme();
@@ -22,7 +24,7 @@ export function PlayerItem({
         gap: t.space.md,
         paddingVertical: t.space.sm,
         minHeight: t.space.xl * 2,
-        borderTopWidth: 1,
+        borderTopWidth: divider ? 1 : 0,
         borderTopColor: t.colors.border,
       }}
     >
@@ -34,7 +36,8 @@ export function PlayerItem({
           {playerMeta(player)}
         </Text>
       </View>
-      {children}
+      {/* The buttons' 48 px touch targets reach into the row's padding, so a row is as tall as a CountryItem. */}
+      <View style={{ flexDirection: 'row', marginVertical: -t.space.sm }}>{children}</View>
     </View>
   );
 }

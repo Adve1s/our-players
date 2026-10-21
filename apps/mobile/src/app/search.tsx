@@ -29,11 +29,16 @@ function MarkButton({
   checked,
   text,
   onPress,
+  fontSize,
+  trailing = false,
 }: {
   label: string;
   checked: boolean;
   text: string;
   onPress: () => void;
+  fontSize: number;
+  // Wide enough for "Hidden" and right-aligned, so Hide ↔ Hidden moves neither the star nor the edge.
+  trailing?: boolean;
 }) {
   const t = useTheme();
   return (
@@ -43,16 +48,16 @@ function MarkButton({
       accessibilityLabel={label}
       onPress={onPress}
       style={{
-        minWidth: t.space.xl * 2,
+        minWidth: t.space.xl * (trailing ? 3 : 2),
         minHeight: t.space.xl * 2,
-        alignItems: 'center',
+        alignItems: trailing ? 'flex-end' : 'center',
         justifyContent: 'center',
       }}
     >
       <Text
         style={{
           color: checked ? t.colors.accent : t.colors.textMuted,
-          fontSize: t.font.body,
+          fontSize,
           fontWeight: '600',
         }}
       >
@@ -62,27 +67,31 @@ function MarkButton({
   );
 }
 
-function ResultItem({ player }: { player: PlayerSummary }) {
+function ResultItem({ player, first }: { player: PlayerSummary; first: boolean }) {
+  const t = useTheme();
   const mark = usePrefs((s) => markOf(s, player.id));
   const toggleFavorite = usePrefs((s) => s.toggleFavorite);
   const toggleHidden = usePrefs((s) => s.toggleHidden);
   const name = `${player.firstName} ${player.lastName}`;
   return (
-    <PlayerItem player={player}>
-      <View style={{ flexDirection: 'row' }}>
-        <MarkButton
-          label={`Favorite ${name}`}
-          checked={mark === 'favorite'}
-          text={mark === 'favorite' ? '★' : '☆'}
-          onPress={() => toggleFavorite(player.id)}
-        />
-        <MarkButton
-          label={`Hide ${name}`}
-          checked={mark === 'hidden'}
-          text={mark === 'hidden' ? 'Hidden' : 'Hide'}
-          onPress={() => toggleHidden(player.id)}
-        />
-      </View>
+    // The card's top edge already bounds the first row.
+    <PlayerItem player={player} divider={!first}>
+      <MarkButton
+        label={`Favorite ${name}`}
+        checked={mark === 'favorite'}
+        text={mark === 'favorite' ? '★' : '☆'}
+        onPress={() => toggleFavorite(player.id)}
+        // At body size ☆ and ★ barely differ.
+        fontSize={t.font.title}
+      />
+      <MarkButton
+        label={`Hide ${name}`}
+        checked={mark === 'hidden'}
+        text={mark === 'hidden' ? 'Hidden' : 'Hide'}
+        onPress={() => toggleHidden(player.id)}
+        fontSize={t.font.body}
+        trailing
+      />
     </PlayerItem>
   );
 }
@@ -111,8 +120,8 @@ export default function Search() {
     // No gap between rows: each PlayerItem draws its own divider.
     body = (
       <View>
-        {result.data?.players.map((p) => (
-          <ResultItem key={p.id} player={p} />
+        {result.data?.players.map((p, i) => (
+          <ResultItem key={p.id} player={p} first={i === 0} />
         ))}
       </View>
     );

@@ -134,7 +134,8 @@ function PlayerList({
                 style={{
                   minWidth: t.space.xl * 2,
                   minHeight: t.space.xl * 2,
-                  alignItems: 'center',
+                  // Right-aligned: Remove ↔ Undo keeps the label on the card's edge.
+                  alignItems: 'flex-end',
                   justifyContent: 'center',
                 }}
               >
