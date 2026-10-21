@@ -66,3 +66,21 @@ export function restorePrefs(stored: unknown): StoredPrefs {
     hidden: sortedUnique(hidden),
   };
 }
+
+export type Mark = 'favorite' | 'hidden' | null;
+
+export function markOf(p: StoredPrefs, id: PublicId): Mark {
+  throw new Error('not implemented');
+}
+
+export function setMark(p: StoredPrefs, id: PublicId, mark: Mark): StoredPrefs {
+  throw new Error('not implemented');
+}
+
+export function toggleFavorite(p: StoredPrefs, id: PublicId): StoredPrefs {
+  throw new Error('not implemented');
+}
+
+export function toggleHidden(p: StoredPrefs, id: PublicId): StoredPrefs {
+  throw new Error('not implemented');
+}
