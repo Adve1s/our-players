@@ -1,6 +1,6 @@
 import type { PlayerSummary } from '@our-players/shared';
 import { describe, expect, it } from 'vitest';
-import { listRows, playerMeta, searchTerm } from '../src/lib/players';
+import { listIds, listRows, playerMeta, searchTerm } from '../src/lib/players';
 
 const porzingis: PlayerSummary = {
   id: 'nba-3102531',
@@ -85,5 +85,20 @@ describe('listRows', () => {
 
   it('gives no rows for no players', () => {
     expect(listRows([], ['NBA', 'NHL'], new Set())).toEqual([]);
+  });
+});
+
+describe('listIds', () => {
+  it('adds the IDs removed from this list, sorted and unique', () => {
+    const removed = new Map([
+      ['nhl-1', 'favorite'],
+      ['nhl-9', 'hidden'],
+    ] as const);
+    expect(listIds(['nhl-3', 'nhl-2'], removed, 'favorite')).toEqual(['nhl-1', 'nhl-2', 'nhl-3']);
+    expect(listIds(['nhl-9'], removed, 'hidden')).toEqual(['nhl-9']);
+  });
+
+  it('gives no IDs for an empty list with nothing removed', () => {
+    expect(listIds([], new Map(), 'favorite')).toEqual([]);
   });
 });

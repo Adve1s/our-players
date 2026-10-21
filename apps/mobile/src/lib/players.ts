@@ -1,5 +1,6 @@
 import type { League, PlayerSummary, PublicId } from '@our-players/shared';
 import type { QueryObserverResult } from '@tanstack/react-query';
+import type { Mark } from '../state/prefs';
 
 export const SEARCH_MIN = 2;
 export const SEARCH_MAX = 50;
@@ -44,4 +45,14 @@ export function listRows(
     .filter((player) => leagues.includes(player.league))
     .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName))
     .map((player) => ({ player, removed: removed.has(player.id) }));
+}
+
+export function listIds(
+  list: readonly PublicId[],
+  removed: ReadonlyMap<PublicId, Mark>,
+  mark: Mark,
+): PublicId[] {
+  // Removed IDs stay in the query, so Remove doesn't change its key and refetch.
+  const gone = [...removed].filter(([, m]) => m === mark).map(([id]) => id);
+  return [...new Set([...list, ...gone])].sort();
 }

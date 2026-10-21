@@ -1,11 +1,15 @@
-import type { League } from '@our-players/shared';
+import type { League, PublicId } from '@our-players/shared';
 import Constants from 'expo-constants';
-import { type ReactNode, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { type ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { useCountries } from '../api/queries';
+import { useCountries, usePlayers } from '../api/queries';
 import { ErrorState } from '../components/error-state';
+import { PlayerItem } from '../components/player-item';
 import { SearchField } from '../components/search-field';
 import { type CountryRow, countryRows } from '../lib/countries';
+import { listIds, listRows } from '../lib/players';
+import { type Mark, markOf } from '../state/prefs';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
 
@@ -82,6 +86,76 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
   );
 }
 
+function PlayerList({
+  title,
+  mark,
+  empty,
+  removed,
+  onRemove,
+  onUndo,
+}: {
+  title: string;
+  mark: 'favorite' | 'hidden';
+  empty: string;
+  removed: ReadonlyMap<PublicId, Mark>;
+  onRemove: (id: PublicId) => void;
+  onUndo: (id: PublicId) => void;
+}) {
+  const t = useTheme();
+  const leagues = usePrefs((s) => s.leagues);
+  const list = usePrefs((s) => (mark === 'favorite' ? s.favorites : s.hidden));
+  const ids = listIds(list, removed, mark);
+  const r = usePlayers(ids);
+  const rows = listRows(r.data?.players ?? [], leagues, new Set(removed.keys()));
+
+  let body: ReactNode;
+  if (ids.length === 0) {
+    body = <Caption>{empty}</Caption>;
+  } else if (r.fetchStatus === 'paused' && (r.isPending || r.isPlaceholderData)) {
+    // keepPreviousData makes a new key start as success, not pending; see searchView.
+    body = <Caption>You're offline. Your players load when you're back online.</Caption>;
+  } else if (r.isError) {
+    body = <ErrorState error={r.error} onRetry={() => void r.refetch()} />;
+  } else if (r.isPending) {
+    body = <ActivityIndicator color={t.colors.accent} />;
+  } else if (rows.length === 0) {
+    body = <Caption>{empty}</Caption>;
+  } else {
+    body = (
+      <View>
+        {rows.map(({ player, removed: gone }) => {
+          const name = `${player.firstName} ${player.lastName}`;
+          return (
+            <PlayerItem key={player.id} player={player} dimmed={gone}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={gone ? `Undo removing ${name}` : `Remove ${name}`}
+                onPress={() => (gone ? onUndo(player.id) : onRemove(player.id))}
+                style={{
+                  minWidth: t.space.xl * 2,
+                  minHeight: t.space.xl * 2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
+                  {gone ? 'Undo' : 'Remove'}
+                </Text>
+              </Pressable>
+            </PlayerItem>
+          );
+        })}
+      </View>
+    );
+  }
+
+  return (
+    <Card title={title} aside={`${rows.filter((row) => !row.removed).length}`}>
+      {body}
+    </Card>
+  );
+}
+
 export default function Settings() {
   const t = useTheme();
   const leagues = usePrefs((s) => s.leagues);
@@ -90,6 +164,22 @@ export default function Settings() {
   const toggleCountry = usePrefs((s) => s.toggleCountry);
   const { data, isPending, isError, error, fetchStatus, refetch } = useCountries();
   const [query, setQuery] = useState('');
+  const setMark = usePrefs((s) => s.setMark);
+  // The mark each player had before Remove; leaving Settings clears it, so removals become final.
+  const [removed, setRemoved] = useState<ReadonlyMap<PublicId, Mark>>(new Map());
+  useFocusEffect(useCallback(() => () => setRemoved(new Map()), []));
+  const remove = (id: PublicId) => {
+    setRemoved((m) => new Map(m).set(id, markOf(usePrefs.getState(), id)));
+    setMark(id, null);
+  };
+  const undo = (id: PublicId) => {
+    setMark(id, removed.get(id) ?? null);
+    setRemoved((m) => {
+      const next = new Map(m);
+      next.delete(id);
+      return next;
+    });
+  };
   // Without data (loading, error) this still lists the selected countries, so they can be unticked.
   const rows = countryRows(data?.countries ?? [], countries, query);
 
@@ -159,6 +249,23 @@ export default function Settings() {
           <Caption>No country matches "{query.trim()}".</Caption>
         ) : null}
       </Card>
+
+      <PlayerList
+        title="Favorites"
+        mark="favorite"
+        empty="No favorites yet. Star players in Search."
+        removed={removed}
+        onRemove={remove}
+        onUndo={undo}
+      />
+      <PlayerList
+        title="Hidden"
+        mark="hidden"
+        empty="Nobody hidden. Hidden players never show on Today."
+        removed={removed}
+        onRemove={remove}
+        onUndo={undo}
+      />
 
       <Card title="About">
         <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
