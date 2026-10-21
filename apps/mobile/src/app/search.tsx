@@ -27,18 +27,13 @@ function Caption({ children }: { children: ReactNode }) {
 function MarkButton({
   label,
   checked,
-  text,
   onPress,
-  fontSize,
-  trailing = false,
+  children,
 }: {
   label: string;
   checked: boolean;
-  text: string;
   onPress: () => void;
-  fontSize: number;
-  // Wide enough for "Hidden" and right-aligned, so Hide ↔ Hidden moves neither the star nor the edge.
-  trailing?: boolean;
+  children: ReactNode;
 }) {
   const t = useTheme();
   return (
@@ -48,21 +43,13 @@ function MarkButton({
       accessibilityLabel={label}
       onPress={onPress}
       style={{
-        minWidth: t.space.xl * (trailing ? 3 : 2),
+        minWidth: t.space.xl * 2,
         minHeight: t.space.xl * 2,
-        alignItems: trailing ? 'flex-end' : 'center',
+        alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text
-        style={{
-          color: checked ? t.colors.accent : t.colors.textMuted,
-          fontSize,
-          fontWeight: '600',
-        }}
-      >
-        {text}
-      </Text>
+      {children}
     </Pressable>
   );
 }
@@ -74,24 +61,38 @@ function ResultItem({ player, first }: { player: PlayerSummary; first: boolean }
   const toggleHidden = usePrefs((s) => s.toggleHidden);
   const name = `${player.firstName} ${player.lastName}`;
   return (
-    // The card's top edge already bounds the first row.
-    <PlayerItem player={player} divider={!first}>
-      <MarkButton
-        label={`Favorite ${name}`}
-        checked={mark === 'favorite'}
-        text={mark === 'favorite' ? '★' : '☆'}
-        onPress={() => toggleFavorite(player.id)}
-        // At body size ☆ and ★ barely differ.
-        fontSize={t.font.title}
-      />
+    // The card's top edge already bounds the first row; a hidden player's name dims like a removed one.
+    <PlayerItem player={player} divider={!first} dimmed={mark === 'hidden'}>
+      {/* Hide is the secondary action: small, quiet, away from the edge. */}
       <MarkButton
         label={`Hide ${name}`}
         checked={mark === 'hidden'}
-        text={mark === 'hidden' ? 'Hidden' : 'Hide'}
         onPress={() => toggleHidden(player.id)}
-        fontSize={t.font.body}
-        trailing
-      />
+      >
+        <Text
+          style={{
+            color: mark === 'hidden' ? t.colors.accent : t.colors.textMuted,
+            fontSize: t.font.caption,
+          }}
+        >
+          {mark === 'hidden' ? 'Hidden' : 'Hide'}
+        </Text>
+      </MarkButton>
+      {/* The star is why people search: on the edge, large, in text colour even when off. */}
+      <MarkButton
+        label={`Favorite ${name}`}
+        checked={mark === 'favorite'}
+        onPress={() => toggleFavorite(player.id)}
+      >
+        <Text
+          style={{
+            color: mark === 'favorite' ? t.colors.accent : t.colors.text,
+            fontSize: t.font.title * 1.4,
+          }}
+        >
+          {mark === 'favorite' ? '★' : '☆'}
+        </Text>
+      </MarkButton>
     </PlayerItem>
   );
 }

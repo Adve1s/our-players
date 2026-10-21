@@ -170,7 +170,9 @@ export default function Settings() {
   const [removed, setRemoved] = useState<ReadonlyMap<PublicId, Mark>>(new Map());
   useFocusEffect(useCallback(() => () => setRemoved(new Map()), []));
   const remove = (id: PublicId) => {
-    setRemoved((m) => new Map(m).set(id, markOf(usePrefs.getState(), id)));
+    // Read before setMark: React may run the updater after it, and then the old mark is null.
+    const prev = markOf(usePrefs.getState(), id);
+    setRemoved((m) => new Map(m).set(id, prev));
     setMark(id, null);
   };
   const undo = (id: PublicId) => {
