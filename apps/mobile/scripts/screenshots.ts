@@ -405,9 +405,11 @@ const SHOTS: Shot[] = [
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs' }).click();
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: true }).waitFor();
       await switchTo(page, 'Today');
-      // Gone first, then the day's other line: so the day is loaded, not just a skeleton.
+      // The date first: while Today is still aria-hidden, "gone" would pass on no match at all.
+      // Once it's on screen, keepPreviousData holds the old day until the refetch lands.
+      await seen(page, 'Mon, Mar 16');
       await gone(page, 'Silovs');
-      await seen(page, 'Mon, Mar 16', 'Porzingis');
+      await seen(page, 'Porzingis');
       await switchTo(page, 'Search');
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs' }).click();
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: false }).waitFor();
