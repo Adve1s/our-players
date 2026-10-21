@@ -87,7 +87,7 @@ function ResultItem({ player, first }: { player: PlayerSummary; first: boolean }
         <Text
           style={{
             color: mark === 'favorite' ? t.colors.accent : t.colors.text,
-            fontSize: t.font.title * 1.4,
+            fontSize: t.font.icon,
           }}
         >
           {mark === 'favorite' ? '★' : '☆'}

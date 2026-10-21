@@ -8,7 +8,7 @@ import { ErrorState } from '../components/error-state';
 import { PlayerItem } from '../components/player-item';
 import { SearchField } from '../components/search-field';
 import { type CountryRow, countryRows } from '../lib/countries';
-import { listIds, listRows } from '../lib/players';
+import { listIds, listRows, listView } from '../lib/players';
 import { type Mark, markOf } from '../state/prefs';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
@@ -90,6 +90,7 @@ function PlayerList({
   title,
   mark,
   empty,
+  noneShown,
   removed,
   onRemove,
   onUndo,
@@ -97,6 +98,7 @@ function PlayerList({
   title: string;
   mark: 'favorite' | 'hidden';
   empty: string;
+  noneShown: string;
   removed: ReadonlyMap<PublicId, Mark>;
   onRemove: (id: PublicId) => void;
   onUndo: (id: PublicId) => void;
@@ -106,20 +108,20 @@ function PlayerList({
   const list = usePrefs((s) => (mark === 'favorite' ? s.favorites : s.hidden));
   const ids = listIds(list, removed, mark);
   const r = usePlayers(ids);
-  const rows = listRows(r.data?.players ?? [], leagues, new Set(removed.keys()));
+  const rows = listRows(r.data?.players ?? [], ids, leagues, new Set(removed.keys()));
+  const view = listView(ids, r, rows);
 
   let body: ReactNode;
-  if (ids.length === 0) {
+  if (view === 'empty') {
     body = <Caption>{empty}</Caption>;
-  } else if (r.fetchStatus === 'paused' && (r.isPending || r.isPlaceholderData)) {
-    // keepPreviousData makes a new key start as success, not pending; see searchView.
+  } else if (view === 'offline') {
     body = <Caption>You're offline. Your players load when you're back online.</Caption>;
-  } else if (r.isError) {
+  } else if (view === 'error') {
     body = <ErrorState error={r.error} onRetry={() => void r.refetch()} />;
-  } else if (r.isPending) {
+  } else if (view === 'loading') {
     body = <ActivityIndicator color={t.colors.accent} />;
-  } else if (rows.length === 0) {
-    body = <Caption>{empty}</Caption>;
+  } else if (view === 'none-shown') {
+    body = <Caption>{noneShown}</Caption>;
   } else {
     body = (
       <View>
@@ -150,8 +152,13 @@ function PlayerList({
     );
   }
 
+  // No count until the list is in: "0" beside a spinner reads as "your favorites are gone".
+  const counted = view === 'empty' || view === 'none-shown' || view === 'rows';
   return (
-    <Card title={title} aside={`${rows.filter((row) => !row.removed).length}`}>
+    <Card
+      title={title}
+      aside={counted ? `${rows.filter((row) => !row.removed).length}` : undefined}
+    >
       {body}
     </Card>
   );
@@ -257,6 +264,7 @@ export default function Settings() {
         title="Favorites"
         mark="favorite"
         empty="No favorites yet. Star players in Search."
+        noneShown="None of your favorites play in the leagues you have on."
         removed={removed}
         onRemove={remove}
         onUndo={undo}
@@ -265,6 +273,7 @@ export default function Settings() {
         title="Hidden"
         mark="hidden"
         empty="Nobody hidden. Hidden players never show on Today."
+        noneShown="None of your hidden players play in the leagues you have on."
         removed={removed}
         onRemove={remove}
         onUndo={undo}

@@ -23,14 +23,16 @@ export const dayQuery = (date: string | null, prefs: StoredPrefs) =>
 
 export const useDay = (date: string | null, prefs: StoredPrefs) => useQuery(dayQuery(date, prefs));
 
-// Results don't blank between keystrokes.
 export const searchQuery = (term: string | null, leagues: League[]) =>
   queryOptions({
     queryKey: ['search', term, leagues],
     // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without a term.
     queryFn: () => api.searchPlayers(term!, new Set(leagues)),
     enabled: term !== null,
-    placeholderData: keepPreviousData,
+    // Results don't blank between keystrokes, but a league change drops them: a deselected
+    // league's players must not stay listed until the new results land.
+    placeholderData: (prev, prevQuery) =>
+      String(prevQuery?.queryKey[2]) === String(leagues) ? prev : undefined,
   });
 
 export const useSearch = (term: string | null, leagues: League[]) =>

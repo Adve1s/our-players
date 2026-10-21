@@ -67,7 +67,8 @@ export function restorePrefs(stored: unknown): StoredPrefs {
     leagues: sortedUnique(leagues),
     countries: sortedUnique(countries),
     // One bad ID drops only itself, so a stale entry doesn't wipe the user's lists.
-    favorites: sortedUnique(validIds(favorites)),
+    // Tampered storage can hold an ID in both lists; hidden wins, as in markOf.
+    favorites: sortedUnique(validIds(favorites).filter((id) => !hidden.includes(id))),
     hidden: sortedUnique(validIds(hidden)),
   };
 }

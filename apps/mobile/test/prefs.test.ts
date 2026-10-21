@@ -126,6 +126,17 @@ describe('restorePrefs', () => {
     });
   });
 
+  it('keeps an ID found in both lists only in hidden, like markOf', () => {
+    expect(restorePrefs({ ...valid, favorites: ['nhl-8476878'], hidden: ['nhl-8476878'] })).toEqual(
+      {
+        leagues: ['NBA', 'NHL'],
+        countries: ['LVA', 'SWE'],
+        favorites: [],
+        hidden: ['nhl-8476878'],
+      },
+    );
+  });
+
   it('drops only the malformed hidden ID', () => {
     expect(restorePrefs({ ...valid, hidden: ['bad id', 'nhl-8481668'] })).toEqual({
       leagues: ['NBA', 'NHL'],

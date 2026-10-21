@@ -1,6 +1,6 @@
 import type { PlayerSummary } from '@our-players/shared';
 import { describe, expect, it } from 'vitest';
-import { listIds, listRows, playerMeta, searchTerm } from '../src/lib/players';
+import { listIds, listRows, listView, playerMeta, searchTerm } from '../src/lib/players';
 
 const porzingis: PlayerSummary = {
   id: 'nba-3102531',
@@ -63,19 +63,29 @@ describe('listRows', () => {
   const zemgus = player('nhl-2', 'NHL', 'Zemgus', 'Berzins');
   const andris = player('nhl-1', 'NHL', 'Andris', 'Berzins');
   const nbaPlayer = player('nba-4', 'NBA', 'Davis', 'Bertans');
+  const all = ['nhl-1', 'nhl-2', 'nhl-3'];
+
+  it('drops players whose IDs were not asked for (an older placeholder result)', () => {
+    const rows = listRows([ozolins, zemgus, andris], ['nhl-2'], ['NHL'], new Set());
+    expect(rows.map((r) => r.player.id)).toEqual(['nhl-2']);
+  });
+
+  it('gives no rows when no IDs were asked for', () => {
+    expect(listRows([ozolins], [], ['NHL'], new Set())).toEqual([]);
+  });
 
   it('drops players of leagues that are not selected', () => {
-    const rows = listRows([nbaPlayer, andris], ['NHL'], new Set());
+    const rows = listRows([nbaPlayer, andris], ['nba-4', 'nhl-1'], ['NHL'], new Set());
     expect(rows.map((r) => r.player.id)).toEqual(['nhl-1']);
   });
 
   it('sorts by last name, then first name', () => {
-    const rows = listRows([ozolins, zemgus, andris], ['NBA', 'NHL'], new Set());
+    const rows = listRows([ozolins, zemgus, andris], all, ['NBA', 'NHL'], new Set());
     expect(rows.map((r) => r.player.id)).toEqual(['nhl-1', 'nhl-2', 'nhl-3']);
   });
 
   it('marks removed exactly for the IDs in the set', () => {
-    const rows = listRows([ozolins, zemgus, andris], ['NHL'], new Set(['nhl-2']));
+    const rows = listRows([ozolins, zemgus, andris], all, ['NHL'], new Set(['nhl-2']));
     expect(rows.map((r) => [r.player.id, r.removed])).toEqual([
       ['nhl-1', false],
       ['nhl-2', true],
@@ -84,7 +94,7 @@ describe('listRows', () => {
   });
 
   it('gives no rows for no players', () => {
-    expect(listRows([], ['NBA', 'NHL'], new Set())).toEqual([]);
+    expect(listRows([], [], ['NBA', 'NHL'], new Set())).toEqual([]);
   });
 });
 
@@ -100,5 +110,47 @@ describe('listIds', () => {
 
   it('gives no IDs for an empty list with nothing removed', () => {
     expect(listIds([], new Map(), 'favorite')).toEqual([]);
+  });
+});
+
+describe('listView', () => {
+  const idle = {
+    data: undefined,
+    isPending: true,
+    isError: false,
+    fetchStatus: 'idle',
+    isPlaceholderData: false,
+  } as const;
+  const loaded = { ...idle, data: { players: [] as PlayerSummary[] }, isPending: false };
+  const row = { player: porzingis, removed: false };
+
+  it('empty with no IDs', () => {
+    expect(listView([], idle, [])).toBe('empty');
+  });
+
+  it('loading while the first result is on its way', () => {
+    expect(listView(['nba-3102531'], { ...idle, fetchStatus: 'fetching' }, [])).toBe('loading');
+  });
+
+  it('offline while paused without a result', () => {
+    expect(listView(['nba-3102531'], { ...idle, fetchStatus: 'paused' }, [])).toBe('offline');
+  });
+
+  it('error when the fetch failed and nothing is loaded', () => {
+    expect(listView(['nba-3102531'], { ...idle, isPending: false, isError: true }, [])).toBe(
+      'error',
+    );
+  });
+
+  it('keeps the rows when a background refetch fails', () => {
+    expect(listView(['nba-3102531'], { ...loaded, isError: true }, [row])).toBe('rows');
+  });
+
+  it('none shown when the list has IDs but no row (a deselected league)', () => {
+    expect(listView(['nba-3102531'], loaded, [])).toBe('none-shown');
+  });
+
+  it('rows when there are rows', () => {
+    expect(listView(['nba-3102531'], loaded, [row])).toBe('rows');
   });
 });

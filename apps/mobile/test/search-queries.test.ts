@@ -64,6 +64,37 @@ describe('searchView', () => {
     expect(searchView('porzi', await after([], { offline: false }))).toBe('loading');
   });
 
+  it('keeps the results when a background refetch fails', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let fail = false;
+    const observer = new QueryObserver(qc, {
+      ...searchQuery('porz', ['NBA']),
+      queryFn: async () => {
+        if (fail) throw new TypeError('Network request failed');
+        return { players: [porzingis] };
+      },
+    });
+    await observer.refetch();
+    fail = true;
+    await observer.refetch();
+    expect(observer.getCurrentResult().isError).toBe(true);
+    expect(searchView('porz', observer.getCurrentResult())).toBe('results');
+  });
+
+  it("drops the old results when the leagues change, so a deselected league's players go at once", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const observer = new QueryObserver(qc, {
+      ...searchQuery('porz', ['NBA', 'NHL']),
+      queryFn: async () => ({ players: [porzingis] }),
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    await observer.refetch();
+    observer.setOptions({ ...searchQuery('porz', ['NHL']), queryFn: never });
+    const result = observer.getCurrentResult();
+    unsubscribe();
+    expect(searchView('porz', result)).toBe('loading');
+  });
+
   it('empty once the new term resolves with nothing', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const observer = new QueryObserver(qc, {
