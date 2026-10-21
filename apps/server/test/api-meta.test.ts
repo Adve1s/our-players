@@ -67,25 +67,30 @@ describe('GET /v1/meta', () => {
       extra: [{ job: 'results', status: 'partial', at: T5 } satisfies Run],
       expected: T5,
     },
-  ])('dataUpdatedAt: $label', async ({ extra, expected }) => {
-    const handle = await createTestDb();
-    try {
-      // Explicit times: the database's now() can't give distinct, ordered ones.
-      await handle.db.insert(jobRuns).values(
-        [...runs, ...extra].map(({ job, status, at }) => ({
-          job,
-          status,
-          args: {},
-          startedAt: new Date(at),
-          finishedAt: new Date(at),
-        })),
-      );
+  ])(
+    'dataUpdatedAt: $label',
+    async ({ extra, expected }) => {
+      const handle = await createTestDb();
+      try {
+        // Explicit times: the database's now() can't give distinct, ordered ones.
+        await handle.db.insert(jobRuns).values(
+          [...runs, ...extra].map(({ job, status, at }) => ({
+            job,
+            status,
+            args: {},
+            startedAt: new Date(at),
+            finishedAt: new Date(at),
+          })),
+        );
 
-      expect((await meta(handle.db)).dataUpdatedAt).toBe(expected);
-    } finally {
-      await handle.close();
-    }
-  });
+        expect((await meta(handle.db)).dataUpdatedAt).toBe(expected);
+      } finally {
+        await handle.close();
+      }
+      // Its own migrated PGlite: past Vitest's 5 s default when the whole suite runs in parallel.
+    },
+    30_000,
+  );
 
   it('an empty database has no season, no game day and no update time', async () => {
     expect(await meta(empty.db)).toEqual({
