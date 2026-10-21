@@ -8,6 +8,7 @@ import type {
 import { describe, expect, it } from 'vitest';
 import {
   dateParam,
+  dateParamFor,
   dayLabel,
   latestDate,
   rowLabel,
@@ -238,6 +239,20 @@ describe('latestDate', () => {
     ['the selected league has no date: null', meta('2026-01-17', null), ['NBA'], null],
   ])('%s', (_label, m, leagues, date) => {
     expect(latestDate(m, leagues)).toBe(date);
+  });
+});
+
+describe('dateParamFor', () => {
+  it('stepping onto the latest game day drops the param, so Today follows the latest again', () => {
+    expect(dateParamFor('2026-03-23', '2026-03-23')).toBeUndefined();
+  });
+
+  it('any other day is kept in the URL', () => {
+    expect(dateParamFor('2026-03-22', '2026-03-23')).toBe('2026-03-22');
+  });
+
+  it('without a latest day (meta failed) the day is kept', () => {
+    expect(dateParamFor('2026-03-22', null)).toBe('2026-03-22');
   });
 });
 

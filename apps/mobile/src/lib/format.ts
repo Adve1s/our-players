@@ -1,14 +1,17 @@
 import {
   type DayGameResponse,
+  dnpText,
   finalLabel,
   type GameStatus,
   gameDateSchema,
   type League,
   type LineStats,
   lineText,
+  localDate,
   type MetaResponse,
   type PlayerRow,
   savePct,
+  sentenceCase,
   upcomingText,
 } from '@our-players/shared';
 
@@ -24,16 +27,9 @@ export function startTime(
 ): string {
   const at = new Date(iso);
   const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(at);
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(at);
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
-  const localDate = `${part('year')}-${part('month')}-${part('day')}`;
-  if (localDate === gameDate) return time;
-  return `${abbr(WEEKDAYS, new Date(`${localDate}T00:00:00Z`).getUTCDay())} ${time}`;
+  const day = localDate(at, timeZone);
+  if (day === gameDate) return time;
+  return `${abbr(WEEKDAYS, new Date(`${day}T00:00:00Z`).getUTCDay())} ${time}`;
 }
 
 const WEEKDAYS = 'SunMonTueWedThuFriSat';
@@ -71,18 +67,12 @@ export function scoreText({ away, home }: Pick<DayGameResponse, 'away' | 'home'>
     : `${away.abbrev} ${away.score} – ${home.score} ${home.abbrev}`;
 }
 
-// ESPN sends reasons in capitals ("COACH'S DECISION").
-const sentenceCase = (s: string) => {
-  const lower = s.toLowerCase();
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
-};
-
 export function rowText(row: PlayerRow, status: GameStatus): string[] {
   switch (row.type) {
     case 'line':
       return lineText(row.line);
     case 'dnp':
-      return [row.reason === null ? 'DNP' : `DNP — ${sentenceCase(row.reason)}`];
+      return [dnpText(row.reason)];
     case 'not-in-lineup':
       return ['Not in lineup'];
     case 'upcoming':
@@ -163,4 +153,10 @@ export function latestDate(meta: MetaResponse, leagues: readonly League[]): stri
 // A repeated `?date=` arrives as an array; anything but one valid YYYY-MM-DD means the latest day.
 export function dateParam(raw: string | string[] | undefined): string | null {
   return typeof raw === 'string' && gameDateSchema.safeParse(raw).success ? raw : null;
+}
+
+// The URL param for a stepped-to day: none on the latest, or the screen would stay pinned to it after the
+// latest moves on (and Latest, disabled on that day, couldn't unpin it).
+export function dateParamFor(day: string, latest: string | null): string | undefined {
+  return day === latest ? undefined : day;
 }

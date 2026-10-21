@@ -61,3 +61,12 @@ export function upcomingText(status: GameStatus): string {
       return 'Cancelled';
   }
 }
+
+// ESPN sends reasons in capitals ("COACH'S DECISION").
+export const sentenceCase = (s: string): string => {
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+};
+
+export const dnpText = (reason: string | null): string =>
+  reason === null ? 'DNP' : `DNP — ${sentenceCase(reason)}`;

@@ -140,7 +140,7 @@ describe('formatRecap', () => {
   });
 
   it.each([
-    ["COACH'S DECISION", "DNP — COACH'S DECISION"],
+    ["COACH'S DECISION", "DNP — Coach's decision"],
     [null, 'DNP'],
   ])('a dnp row with reason %s reads %s', (reason, text) => {
     expect(recapOf([{ player, team: CBJ, kind: 'dnp', reason }])).toMatch(

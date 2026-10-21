@@ -2,10 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addDays,
   latestStartedGameDay,
+  localDate,
   nextGameDay,
   previousGameDay,
   usGameDay,
 } from '../src/index';
+
+describe('localDate', () => {
+  it.each([
+    ['Europe/Riga', '2026-03-17'],
+    ['America/Los_Angeles', '2026-03-16'],
+    ['UTC', '2026-03-17'],
+  ])('in %s, 02:30 UTC on Mar 17 is %s', (zone, day) => {
+    expect(localDate(new Date('2026-03-17T02:30:00Z'), zone)).toBe(day);
+  });
+});
 
 describe('usGameDay', () => {
   it.each([

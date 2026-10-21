@@ -1,5 +1,6 @@
 import {
   type CountryCode,
+  dnpText,
   finalLabel,
   leagueSchema,
   lineText,
@@ -126,18 +127,16 @@ export async function loadRecap(
   };
 }
 
-const dnp = (reason: string | null) => (reason === null ? 'DNP' : `DNP — ${reason}`);
-
 // Card text per VISION §4.1, shared with the app; the terminal joins basketball's two lines into one.
 const card = (line: DayLine): string =>
-  line.played ? lineText(line).join(' · ') : dnp(line.dnpReason);
+  line.played ? lineText(line).join(' · ') : dnpText(line.dnpReason);
 
 function rowText(row: DayRow, game: DayGame): string {
   switch (row.kind) {
     case 'line':
       return card(row.line);
     case 'dnp':
-      return dnp(row.reason);
+      return dnpText(row.reason);
     case 'not-in-lineup':
       return 'Not in lineup';
     case 'upcoming':

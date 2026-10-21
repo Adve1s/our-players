@@ -8,7 +8,7 @@ import { ErrorState } from '../components/error-state';
 import { GameCard } from '../components/game-card';
 import { OtherGames } from '../components/other-games';
 import { type DayMessage, dayMessage, refreshBanner } from '../lib/day-message';
-import { dateParam, latestDate } from '../lib/format';
+import { dateParam, dateParamFor, latestDate } from '../lib/format';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
 
@@ -104,7 +104,7 @@ export default function Today() {
     }
   };
 
-  const go = (d: string) => router.setParams({ date: d });
+  const go = (d: string) => router.setParams({ date: dateParamFor(d, latest) });
   const screen = (child: ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>{child}</View>
   );
@@ -146,8 +146,9 @@ export default function Today() {
     <>
       <DayStepper
         date={data.gameDate}
-        prev={data.prevGameDate}
-        next={data.nextGameDate}
+        // While the next day loads, the old day's neighbours would step from the wrong day.
+        prev={day.isPlaceholderData ? null : data.prevGameDate}
+        next={day.isPlaceholderData ? null : data.nextGameDate}
         onLatest={param === null || param === latest}
         onGo={go}
         // undefined drops the param, so the day follows the latest again.

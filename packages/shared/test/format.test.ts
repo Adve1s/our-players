@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type BasketballPlayerStats,
+  dnpText,
   type EndedIn,
   finalLabel,
   type GameStatus,
@@ -114,5 +115,16 @@ describe('upcomingText', () => {
     ['CANCELLED', 'Cancelled'],
   ])('an upcoming row in a %s game reads %s', (status, text) => {
     expect(upcomingText(status)).toBe(text);
+  });
+});
+
+describe('dnpText', () => {
+  // ESPN sends reasons in capitals.
+  it.each<[string | null, string]>([
+    ["COACH'S DECISION", "DNP — Coach's decision"],
+    ['INJURY/ILLNESS', 'DNP — Injury/illness'],
+    [null, 'DNP'],
+  ])('a DNP with reason %s reads %s', (reason, text) => {
+    expect(dnpText(reason)).toBe(text);
   });
 });
