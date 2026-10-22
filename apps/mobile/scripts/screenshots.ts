@@ -124,6 +124,7 @@ const BALINSKIS = 'nhl-8484304';
 const EMBIID = 'nba-3059318';
 // The seed loads only page 1 of ESPN's season stats, which has Flagg but not Porziņģis.
 const FLAGG = 'nba-5041939';
+const CBJ_PIT = 'nhl-2025020760';
 // The stack header's back arrow (headerBackTitle 'Back' in the root layout); a link on web.
 const BACK = 'Go back';
 
@@ -139,6 +140,11 @@ async function seen(page: Page, ...texts: string[]): Promise<void> {
   for (const text of texts) await shown(page, text).first().waitFor();
 }
 
+// A period column ('SO', 'OT'): exact, since a card or log caption has "Final/SO" too.
+async function column(page: Page, label: string): Promise<void> {
+  await shown(page, label, true).first().waitFor();
+}
+
 async function gone(page: Page, text: string, exact = false): Promise<void> {
   await shown(page, text, exact).first().waitFor({ state: 'hidden' });
 }
@@ -149,6 +155,10 @@ async function day(page: Page, date?: string): Promise<void> {
 
 async function player(page: Page, id: string): Promise<void> {
   await page.goto(`${WEB}/player/${id}`);
+}
+
+async function game(page: Page, id: string): Promise<void> {
+  await page.goto(`${WEB}/game/${id}`);
 }
 
 async function tab(page: Page, label: string): Promise<void> {
@@ -496,6 +506,98 @@ const SHOTS: Shot[] = [
     after: async (page) => {
       await page.getByLabel(BACK, { exact: true }).click();
       await seen(page, 'Other games');
+    },
+  },
+  {
+    // AC3/AC4: the shootout table, and the CBJ section opens with Merzļikins, marked.
+    name: 'game-hockey',
+    take: async (page) => {
+      await game(page, CBJ_PIT);
+      await column(page, 'SO');
+      await seen(page, 'Not in lineup');
+      await page
+        .getByRole('button', { name: /^Elvis Merzlikins, CBJ, .*, your player$/ })
+        .waitFor();
+    },
+  },
+  {
+    name: 'game-basketball',
+    take: async (page) => {
+      await game(page, 'nba-401810899');
+      await seen(page, 'Q4', 'Final/OT');
+      await page.getByRole('button', { name: /^Kristaps Porzingis, .*, your player$/ }).waitFor();
+    },
+  },
+  {
+    name: 'game-regulation',
+    take: async (page) => {
+      await game(page, 'nhl-2025021067');
+      await seen(page, 'PIT 7 – 2 COL', 'Silovs');
+    },
+  },
+  {
+    name: 'game-ot',
+    take: async (page) => {
+      await game(page, 'nhl-2025021064');
+      await seen(page, 'Final/OT', 'NJD');
+      await column(page, 'OT');
+    },
+  },
+  {
+    name: 'game-upcoming',
+    take: async (page) => {
+      await game(page, 'nhl-2026020119');
+      await seen(page, 'Not started', 'Silovs');
+    },
+    // No period scores yet, so no table.
+    after: async (page) => {
+      if ((await page.getByLabel(/total/).count()) > 0) throw new Error('a period table');
+    },
+  },
+  {
+    name: 'game-not-found',
+    take: async (page) => {
+      await game(page, 'nhl-1');
+      await seen(page, 'No such game.');
+    },
+    after: async (page) => {
+      await game(page, 'abc');
+      await seen(page, 'No such game.');
+    },
+  },
+  {
+    // AC2's other half: a card on Today opens its game.
+    name: 'flow-today-to-game',
+    take: async (page) => {
+      await day(page, '2026-01-17');
+      await page.getByRole('button', { name: /CBJ .* PIT, .*open game$/ }).click();
+      await column(page, 'SO');
+    },
+  },
+  {
+    name: 'flow-game-to-player',
+    take: async (page) => {
+      await game(page, CBJ_PIT);
+      await page.getByRole('button', { name: /^Elvis Merzlikins, / }).click();
+      await seen(page, '3.40');
+    },
+    // Back on the game, the box score is still there: no skeleton while it refetches.
+    after: async (page) => {
+      await page.getByLabel(BACK, { exact: true }).last().click();
+      await column(page, 'SO');
+      if ((await page.getByRole('progressbar', { name: 'Loading' }).count()) > 0) {
+        throw new Error('a skeleton after going back');
+      }
+    },
+  },
+  {
+    // AC2: a log row opens its game.
+    name: 'flow-log-to-game',
+    take: async (page) => {
+      await player(page, PORZINGIS);
+      await page.getByRole('button', { name: /GS 137 – 131 DAL.*open game$/ }).click();
+      await shown(page, 'Final/OT', true).first().waitFor();
+      await column(page, 'OT');
     },
   },
   {
