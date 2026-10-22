@@ -286,6 +286,37 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    // Mar 23's previous game day in the seed is Mar 16: the step fails, Mar 23 stays on screen.
+    name: 'today-step-failed',
+    take: async (page) => {
+      await day(page, '2026-03-23');
+      await seen(page, 'Other games (9)', 'Porzingis');
+      await page.context().route(`${API}/v1/days/**`, (r) => r.abort());
+      await page.getByRole('button', { name: 'Previous game day' }).click();
+      await seen(page, "Couldn't load Mon, Mar 16.", 'Try again');
+      await page.getByRole('heading', { name: 'Mon, Mar 23' }).waitFor();
+      // Not `aria-disabled="false"`: react-native-web leaves the attribute out when it's false.
+      await page.getByRole('button', { name: 'Previous game day', disabled: false }).waitFor();
+    },
+    // Tapping ‹ again toward the day that failed tries it again.
+    after: async (page) => {
+      await page.context().unroute(`${API}/v1/days/**`);
+      await page.getByRole('button', { name: 'Previous game day' }).click();
+      await page.getByRole('heading', { name: 'Mon, Mar 16' }).waitFor();
+      await gone(page, "Couldn't load Mon, Mar 16.");
+    },
+  },
+  {
+    name: 'today-step-offline',
+    take: async (page) => {
+      await day(page, '2026-03-23');
+      await seen(page, 'Other games (9)', 'Porzingis');
+      await page.context().setOffline(true);
+      await page.getByRole('button', { name: 'Previous game day' }).click();
+      await seen(page, "You're offline — couldn't open Mon, Mar 16.");
+    },
+  },
+  {
     name: 'search-empty',
     take: async (page) => {
       await tab(page, 'Search');

@@ -13,7 +13,8 @@
     "db:reset": "tsx src/db/cli.ts reset",
     "job": "tsx scripts/job.ts",
     "recap": "tsx scripts/recap.ts",
-    "latency": "tsx scripts/latency.ts"
+    "latency": "tsx scripts/latency.ts",
+    "probe": "tsx scripts/probe.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.10",
