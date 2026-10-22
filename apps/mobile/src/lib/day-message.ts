@@ -27,14 +27,38 @@ export function dayMessage(
   };
 }
 
-type QueryState = Pick<QueryObserverResult, 'fetchStatus' | 'isRefetchError'>;
+type QueryState = Pick<
+  QueryObserverResult,
+  'fetchStatus' | 'isRefetchError' | 'isLoadingError' | 'isPlaceholderData'
+>;
 
-// The line above a day that is on screen, or null when it is fresh.
-export function refreshBanner(meta: QueryState, day: QueryState): string | null {
+export type DayBanner = { text: string; retry: boolean };
+
+// The line above the day on screen (`shown`), or null when it is the fresh `requested` day.
+export function refreshBanner(
+  meta: QueryState,
+  day: QueryState,
+  requested: string,
+  shown: string,
+): DayBanner | null {
+  const paused = day.fetchStatus === 'paused' && day.isPlaceholderData;
+  // A failed step names the day asked for, so it outranks a meta failure.
+  if (day.isLoadingError || paused) {
+    if (requested !== shown)
+      return paused
+        ? { text: `You're offline — couldn't open ${dayLabel(requested)}.`, retry: false }
+        : { text: `Couldn't load ${dayLabel(requested)}.`, retry: true };
+    return {
+      text: paused
+        ? "You're offline — showing saved data."
+        : "Couldn't refresh — showing saved data.",
+      retry: false,
+    };
+  }
   if (meta.fetchStatus === 'paused' || day.fetchStatus === 'paused')
-    return "You're offline — showing saved data.";
+    return { text: "You're offline — showing saved data.", retry: false };
   // A first-load failure has no saved data to show, so only refetch errors count.
   return day.isRefetchError || meta.isRefetchError
-    ? "Couldn't refresh — showing saved data."
+    ? { text: "Couldn't refresh — showing saved data.", retry: false }
     : null;
 }

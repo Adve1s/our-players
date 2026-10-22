@@ -1,7 +1,9 @@
+import type { DayResponse } from '@our-players/shared';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useDay, useMeta } from '../../api/queries';
+import { AccentButton } from '../../components/accent-button';
 import { DayMessageCard } from '../../components/day-message';
 import { DayStepper } from '../../components/day-stepper';
 import { ErrorState } from '../../components/error-state';
@@ -19,7 +21,7 @@ const ACTION_LABELS = {
   settings: 'Open Settings',
 } as const;
 
-function Banner({ text }: { text: string }) {
+function Banner({ text, onRetry }: { text: string; onRetry?: () => void }) {
   const t = useTheme();
   return (
     <View
@@ -31,9 +33,12 @@ function Banner({ text }: { text: string }) {
         paddingVertical: t.space.md,
         // Minus the 1px border so the text lines up with card content.
         paddingHorizontal: t.space.lg - 1,
+        gap: t.space.md,
+        alignItems: 'flex-start',
       }}
     >
       <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{text}</Text>
+      {onRetry ? <AccentButton label="Try again" onPress={onRetry} /> : null}
     </View>
   );
 }
@@ -51,6 +56,12 @@ export default function Today() {
   const date = param ?? latest;
   const day = useDay(date, { leagues, countries, favorites, hidden });
   const [refreshing, setRefreshing] = useState(false);
+  // TanStack drops the placeholder when a new key errors, so the screen keeps the last day itself.
+  const last = useRef<DayResponse | undefined>(undefined);
+  useEffect(() => {
+    if (day.data && !day.isPlaceholderData) last.current = day.data;
+  }, [day.data, day.isPlaceholderData]);
+  const data = day.data ?? (day.isLoadingError ? last.current : undefined);
 
   const retry = () => {
     void meta.refetch();
@@ -72,7 +83,7 @@ export default function Today() {
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>{child}</View>
   );
 
-  if (!day.data) {
+  if (!data) {
     // A paused query never errors: with nothing cached, offline on web reads as "can't reach".
     const offline = meta.fetchStatus === 'paused' || day.fetchStatus === 'paused';
     if (date === null) {
@@ -90,7 +101,6 @@ export default function Today() {
     return screen(<Skeleton />);
   }
 
-  const data = day.data;
   const message: DayMessage | null = dayMessage(
     data,
     latest,
@@ -98,20 +108,23 @@ export default function Today() {
   );
   const shown = data.games.filter((g) => g.rows.length > 0);
   const others = data.games.filter((g) => g.rows.length === 0);
+  const loading = day.isPlaceholderData && day.fetchStatus === 'fetching';
   const actions = {
     prev: () => data.prevGameDate && go(data.prevGameDate),
     next: () => data.nextGameDate && go(data.nextGameDate),
     settings: () => router.navigate('/settings'),
   };
-  const banner = refreshBanner(meta, day);
+  // date is non-null here: without one there is no day data.
+  const banner = refreshBanner(meta, day, date ?? data.gameDate, data.gameDate);
 
   return screen(
     <>
       <DayStepper
         date={data.gameDate}
-        // While the next day loads, the old day's neighbours would step from the wrong day.
-        prev={day.isPlaceholderData ? null : data.prevGameDate}
-        next={day.isPlaceholderData ? null : data.nextGameDate}
+        // While the next day loads, the old day's neighbours would step from the wrong day; once
+        // the step has failed (paused or error) they are right for the kept day on screen.
+        prev={loading ? null : data.prevGameDate}
+        next={loading ? null : data.nextGameDate}
         onLatest={param === null || param === latest}
         onGo={go}
         // undefined drops the param, so the day follows the latest again.
@@ -129,7 +142,7 @@ export default function Today() {
           />
         }
       >
-        {banner ? <Banner text={banner} /> : null}
+        {banner ? <Banner text={banner.text} onRetry={banner.retry ? retry : undefined} /> : null}
         {message ? (
           <DayMessageCard
             text={message.text}
