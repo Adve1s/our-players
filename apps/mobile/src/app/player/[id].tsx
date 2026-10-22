@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { usePlayer } from '../../api/queries';
 import { Caption } from '../../components/caption';
+import { Card } from '../../components/card';
 import { DayMessageCard } from '../../components/day-message';
 import { ErrorState } from '../../components/error-state';
 import { MarkButton } from '../../components/mark-button';
@@ -20,30 +21,6 @@ import { bioLines, logCaption, logLines, seasonCells, seasonHeading } from '../.
 import { markOf } from '../../state/prefs';
 import { usePrefs } from '../../state/prefs-store';
 import { useTheme } from '../../theme';
-
-function Card({ title, children }: { title?: string; children: ReactNode }) {
-  const t = useTheme();
-  return (
-    <View
-      style={{
-        backgroundColor: t.colors.surface,
-        borderRadius: t.radius,
-        padding: t.space.lg,
-        gap: t.space.md,
-      }}
-    >
-      {title ? (
-        <Text
-          accessibilityRole="header"
-          style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}
-        >
-          {title}
-        </Text>
-      ) : null}
-      {children}
-    </View>
-  );
-}
 
 function Bio({ player }: { player: PlayerResponse }) {
   const t = useTheme();
