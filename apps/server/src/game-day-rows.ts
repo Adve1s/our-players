@@ -122,7 +122,12 @@ export function boxScoreRows(
   game: DayGame,
   prefs: Prefs,
 ): (DayRow & { shown: boolean })[] {
+  // Only this game's players and shown players can have a row; the rest of the day's ~1,000 are skipped.
+  const inGame = new Set(
+    day.lines.filter((l) => l.gamePublicId === game.publicId).map((l) => l.playerPublicId),
+  );
   return day.players
+    .filter((player) => inGame.has(player.publicId) || isShown(player, prefs))
     .flatMap((player) => {
       const shown = isShown(player, prefs);
       return playerRows(day, game, player, shown).map((row) => ({ ...row, shown }));
