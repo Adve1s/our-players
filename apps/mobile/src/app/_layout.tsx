@@ -8,15 +8,15 @@ import {
 } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { AppState, Platform, View } from 'react-native';
+import { retryQuery } from '../api/queries';
 import { RetryMessage } from '../components/error-state';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
 
-// retry 1: the default 3 with backoff makes "API down" take ~7 s to show.
 // shortcut: the cache lives in memory only, so a cold start offline shows the error; persist it
 // when the v2 revisit item (offline after restart) comes up.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 5 * 60_000 } },
+  defaultOptions: { queries: { retry: retryQuery, staleTime: 5 * 60_000 } },
 });
 
 // Web already refetches on visibilitychange; native needs AppState, so coming back to the app in

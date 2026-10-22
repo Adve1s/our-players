@@ -1,7 +1,12 @@
-import type { League, PublicId } from '@our-players/shared';
+import { ApiError, type League, type PublicId } from '@our-players/shared';
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
 import { type StoredPrefs, toPrefs } from '../state/prefs';
 import { api } from './client';
+
+// Once, since the default 3 with backoff makes "API down" take ~7 s to show; never a 404, which
+// can't change on retry ("No such player." would show ~1 s late).
+export const retryQuery = (failures: number, error: unknown) =>
+  failures < 1 && !(error instanceof ApiError && error.status === 404);
 
 // Both leagues always, so the list doesn't change when a league is toggled.
 export const useCountries = () =>
