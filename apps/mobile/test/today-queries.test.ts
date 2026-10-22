@@ -176,7 +176,7 @@ describe('refreshBanner', () => {
     expect(refreshBanner(meta, day, B, B)).toBeNull();
   });
 
-  it('new prefs for the same day that error keep the saved day', async () => {
+  it('new prefs for the same day that error keep the saved day and offer a retry', async () => {
     const qc = client();
     const meta = await freshMeta(qc);
     const { observer, unsubscribe } = await showingA(qc);
@@ -188,7 +188,7 @@ describe('refreshBanner', () => {
     unsubscribe();
     expect(refreshBanner(meta, day, A, A)).toEqual({
       text: "Couldn't refresh — showing saved data.",
-      retry: false,
+      retry: true,
     });
   });
 

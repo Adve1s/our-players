@@ -298,6 +298,13 @@ const SHOTS: Shot[] = [
       // Not `aria-disabled="false"`: react-native-web leaves the attribute out when it's false.
       await page.getByRole('button', { name: 'Previous game day', disabled: false }).waitFor();
     },
+    // Tapping ‹ again toward the day that failed tries it again.
+    after: async (page) => {
+      await page.context().unroute(`${API}/v1/days/**`);
+      await page.getByRole('button', { name: 'Previous game day' }).click();
+      await page.getByRole('heading', { name: 'Mon, Mar 16' }).waitFor();
+      await gone(page, "Couldn't load Mon, Mar 16.");
+    },
   },
   {
     name: 'today-step-offline',

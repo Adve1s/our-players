@@ -79,7 +79,9 @@ export default function Today() {
     }
   };
 
-  const go = (d: string) => router.setParams({ date: dateParamFor(d, latest) });
+  // The same date is no URL change, so a step back toward a day that failed would do nothing.
+  const go = (d: string) =>
+    d === date ? retry() : router.setParams({ date: dateParamFor(d, latest) });
   const screen = (child: ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>{child}</View>
   );

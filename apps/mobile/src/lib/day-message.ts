@@ -52,7 +52,8 @@ export function refreshBanner(
       text: paused
         ? "You're offline — showing saved data."
         : "Couldn't refresh — showing saved data.",
-      retry: false,
+      // The shown day has the old prefs, and web has no pull to refresh.
+      retry: !paused,
     };
   }
   if (meta.fetchStatus === 'paused' || day.fetchStatus === 'paused')
