@@ -61,6 +61,7 @@ export default function Today() {
   useEffect(() => {
     if (day.data && !day.isPlaceholderData) last.current = day.data;
   }, [day.data, day.isPlaceholderData]);
+  // shortcut: reads a ref during render (React forbids it; the React Compiler already skips Today), keep the last day in state if Today is ever made compilable.
   const data = day.data ?? (day.isLoadingError ? last.current : undefined);
 
   const retry = () => {

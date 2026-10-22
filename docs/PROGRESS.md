@@ -39,6 +39,7 @@ Owner topics to look at once v1 (S00–S15) is done, when planning v2 changes. O
 
 ## Parking lot
 Ideas that came up but are out of scope for now.
+- `createTestDb()`'s `beforeAll(..., 30_000)` hook times out under heavy machine load (seen twice on 2026-10-22: right after boot, load average 12 on 8 cores; and once in an implementer's first `pnpm verify`), skipping that file's tests; reruns pass. May cause CI noise: raise the hook timeout or migrate the template once globally if it shows up in CI (S10a final review).
 - Today: a `?date=` link to a day that fails to load (no old day to keep) replaces the whole screen with "Try again", stepper included. Show Latest beside the error if that ever happens; the ‹/› case is in Current state's S10a fix (PR #18 review).
 - S10b, if the host has a CDN: `s-maxage=60` (D-051) lets a refetch within 60 s of a results run get the old day, which TanStack's 5 min `staleTime` then keeps until focus or a pull. Purge the CDN after a `results` run, or keep `/v1` off the CDN (PR #18 final review).
 - Today pull to refresh (`apps/mobile/src/app/index.tsx` `onRefresh`) refetches the old day beside meta; when the new meta moves the latest day, that fetch is wasted and the spinner stops before the new day lands (the old day stays on screen meanwhile, `keepPreviousData`). Fix by refetching meta first and then fetching the day it picks (`dayQuery`), if a morning pull ever feels off (PR #18 review).
