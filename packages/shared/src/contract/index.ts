@@ -6,6 +6,8 @@ export {
   searchQuerySchema,
 } from './params';
 export {
+  type BoxScoreRow,
+  boxScoreRowSchema,
   type CountriesResponse,
   countriesResponseSchema,
   type DayGameResponse,

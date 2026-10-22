@@ -9,6 +9,7 @@ import { eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { games } from '../db/schema';
 import {
+  boxScoreRows,
   byStartTime,
   type DayGame,
   type DayLine,
@@ -20,7 +21,7 @@ import { loadRecap } from '../recap';
 type Recap = Awaited<ReturnType<typeof loadRecap>>;
 type Line = Extract<PlayerRow, { type: 'line' }>['line'];
 
-// gameDayRows only makes a line row from a played line; the switch lets TS pair each kind with its stats.
+// gameDayRows and boxScoreRows only make a line row from a played line; the switch lets TS pair each kind with its stats.
 function contractLine(line: DayLine): Line {
   if (!line.played) throw new Error(`line ${line.gamePublicId}/${line.playerPublicId}: not played`);
   switch (line.kind) {
@@ -58,6 +59,13 @@ export function dayGames(data: Recap, prefs: Prefs): DayGameResponse[] {
     .sort(byStartTime)
     .map((game) => ({ game, rows: [] }));
   return [...shown, ...rest].map(({ game, rows }) => ({
+    ...summary(game),
+    rows: rows.map((r) => playerRow(game, r)),
+  }));
+}
+
+function summary(game: DayGame) {
+  return {
     id: game.publicId,
     league: game.league,
     seasonType: game.seasonType,
@@ -67,8 +75,7 @@ export function dayGames(data: Recap, prefs: Prefs): DayGameResponse[] {
     endedIn: game.endedIn,
     away: { abbrev: game.away.abbrev, score: game.awayScore },
     home: { abbrev: game.home.abbrev, score: game.homeScore },
-    rows: rows.map((r) => playerRow(game, r)),
-  }));
+  };
 }
 
 export async function loadDay(db: Db, date: string, prefs: Prefs): Promise<DayResponse> {
@@ -102,8 +109,14 @@ export async function loadGame(db: Db, gameId: string, prefs: Prefs): Promise<Ga
   if (!found) return null;
   // The whole day, not one game: "played for another team that day" needs every line of the date.
   const data = await loadRecap(db, found.gameDate);
-  const game = dayGames(data, prefs).find((g) => g.id === gameId);
   const stored = data.games.find((g) => g.publicId === gameId);
-  if (!game || !stored) throw new Error(`game ${gameId}: not in its own day ${found.gameDate}`);
-  return { ...game, periodScores: stored.periodScores };
+  if (!stored) throw new Error(`game ${gameId}: not in its own day ${found.gameDate}`);
+  return {
+    ...summary(stored),
+    rows: boxScoreRows(data, stored, prefs).map((r) => ({
+      ...playerRow(stored, r),
+      shown: r.shown,
+    })),
+    periodScores: stored.periodScores,
+  };
 }

@@ -1,15 +1,18 @@
 import {
+  type BoxScoreRow,
   type DayGameResponse,
   dayResponseSchema,
   errorResponseSchema,
   gameResponseSchema,
   type PlayerRow,
 } from '@our-players/shared';
+import { eq } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import { createApp } from '../src/api/app';
 import type { DbHandle } from '../src/db/client';
+import { games, players, statLines } from '../src/db/schema';
 import { createLogger } from '../src/jobs/runner';
 import {
   FREE_AGENT,
@@ -20,6 +23,7 @@ import {
   RUST,
   SILOVS,
   seedApiDb,
+  seedMixedNight,
 } from './api-seed';
 import { createTestDb } from './db';
 
@@ -210,22 +214,129 @@ describe('GET /v1/days/:gameDate', () => {
 });
 
 describe('GET /v1/games/:gameId', () => {
+  // Its own DB: the 2026-03-16 NHL games would change the /v1/days tests' night.
+  let mixed: DbHandle;
+
+  beforeAll(async () => {
+    mixed = await seedApiDb();
+    await seedMixedNight(mixed);
+  }, 60_000);
+
+  afterAll(() => mixed.close());
+
   const gameAt = async (path: string) =>
-    (await setup().get(`/v1/games/${path}`, 200, gameResponseSchema)).body;
+    (await setup(mixed.db).get(`/v1/games/${path}`, 200, gameResponseSchema)).body;
 
-  it('returns the game with its date, Q1–Q4 period scores and the shown rows', async () => {
-    const g = await gameAt('nba-401810839?countries=LVA');
+  const CBJ_PIT = 'nhl-2025020760';
+  const GS_DAL = 'nba-401810899';
 
-    expect(g.gameDate).toBe('2026-03-16');
-    expect(g.periodScores?.map((p) => p.period)).toEqual(['Q1', 'Q2', 'Q3', 'Q4']);
-    expect(g.rows.map((r) => r.player.id)).toEqual([PORZINGIS]);
+  const storedLines = async (gameId: string) =>
+    (
+      await mixed.db
+        .select({ player: players.publicId })
+        .from(statLines)
+        .innerJoin(games, eq(games.id, statLines.gameId))
+        .innerJoin(players, eq(players.id, statLines.playerId))
+        .where(eq(games.publicId, gameId))
+    ).map((r) => r.player);
+
+  // rank()'s order, restated: played skaters and basketball players by points, goalies, DNP, not in lineup, upcoming.
+  const rankKey = (r: BoxScoreRow): [number, number] => {
+    if (r.type === 'dnp') return [2, 0];
+    if (r.type === 'not-in-lineup') return [3, 0];
+    if (r.type === 'upcoming') return [4, 0];
+    return r.line.kind === 'hockey_goalie' ? [1, 0] : [0, -r.line.stats.points];
+  };
+
+  it("CBJ@PIT (nhl-2025020760) returns every stored line of both teams plus Girgensons' not-in-lineup row", async () => {
+    const g = await gameAt(`${CBJ_PIT}?countries=LVA`);
+
+    const played = g.rows.filter((r) => r.type === 'line' || r.type === 'dnp');
+    const stored = await storedLines(CBJ_PIT);
+    expect(stored.length).toBeGreaterThan(30);
+    expect(played.map((r) => r.player.id).sort()).toEqual(stored.sort());
+    const other = g.rows.filter((r) => r.type !== 'line' && r.type !== 'dnp');
+    expect(other.map((r) => ({ type: r.type, id: r.player.id, side: r.side }))).toEqual([
+      { type: 'not-in-lineup', id: GIRGENSONS, side: 'away' },
+    ]);
   });
 
-  it('a game in a deselected league is still returned, without rows', async () => {
+  it('shown players come first in their team and are the only ones marked', async () => {
+    const g = await gameAt(`${CBJ_PIT}?countries=LVA`);
+
+    const away = g.rows.filter((r) => r.side === 'away');
+    const home = g.rows.filter((r) => r.side === 'home');
+    expect(g.rows).toEqual([...away, ...home]);
+    expect(away.slice(0, 3).map((r) => [r.player.id, r.shown])).toEqual([
+      [MERZLIKINS, true],
+      [GIRGENSONS, true],
+      [expect.any(String), false],
+    ]);
+    expect(home.slice(0, 2).map((r) => [r.player.id, r.shown])).toEqual([
+      [SILOVS, true],
+      [expect.any(String), false],
+    ]);
+    expect(g.rows.filter((r) => r.shown).map((r) => r.player.id)).toEqual([
+      MERZLIKINS,
+      GIRGENSONS,
+      SILOVS,
+    ]);
+  });
+
+  it.each([CBJ_PIT, GS_DAL])('%s: each group keeps rank() order', async (id) => {
+    const g = await gameAt(`${id}?countries=LVA`);
+
+    const groups = (['away', 'home'] as const).flatMap((side) =>
+      [true, false].map((shown) => g.rows.filter((r) => r.side === side && r.shown === shown)),
+    );
+    const ranked = groups.flatMap((rows) =>
+      [...rows].sort((a, b) => {
+        const [ka, pa] = rankKey(a);
+        const [kb, pb] = rankKey(b);
+        return ka - kb || pa - pb || a.player.id.localeCompare(b.player.id);
+      }),
+    );
+    expect(g.rows.map((r) => r.player.id)).toEqual(ranked.map((r) => r.player.id));
+    expect(new Set(g.rows.map((r) => rankKey(r)[0])).size).toBeGreaterThan(1);
+  });
+
+  it('a hidden player who played is listed, unmarked', async () => {
+    const g = await gameAt(`${CBJ_PIT}?countries=LVA&hide=nhl-8478007`);
+
+    const r = g.rows.find((x) => x.player.id === MERZLIKINS);
+    expect(r?.type).toBe('line');
+    expect(r?.shown).toBe(false);
+    expect(g.rows.filter((x) => x.side === 'away')[0]?.player.id).toBe(GIRGENSONS);
+  });
+
+  it('GS@DAL (nba-401810899) includes DNP lines and marks Porziņģis first in GS', async () => {
+    const g = await gameAt(`${GS_DAL}?countries=LVA`);
+
+    expect(g.rows.find((r) => r.player.id === LEONS)).toEqual(
+      expect.objectContaining({ type: 'dnp', reason: "COACH'S DECISION" }),
+    );
+    const [first] = g.rows.filter((r) => r.side === 'away');
+    expect(first?.player.id).toBe(PORZINGIS);
+    expect(first?.shown).toBe(true);
+  });
+
+  it('a game in a deselected league returns the full box score with nobody marked', async () => {
     const g = await gameAt('nba-401810839?countries=LVA&leagues=NHL');
 
-    expect(g.id).toBe('nba-401810839');
-    expect(g.rows).toEqual([]);
+    expect(g.rows).toHaveLength((await storedLines('nba-401810839')).length);
+    expect(g.rows.length).toBeGreaterThan(0);
+    expect(g.rows.every((r) => !r.shown)).toBe(true);
+  });
+
+  it.each([
+    ['nhl-2025021067', ['1', '2', '3']],
+    ['nhl-2025021064', ['1', '2', '3', 'OT']],
+    ['nhl-2025020760', ['1', '2', '3', 'OT', 'SO']],
+    ['nba-401810899', ['Q1', 'Q2', 'Q3', 'Q4', 'OT']],
+  ])('%s has period labels %j', async (id, periods) => {
+    const g = await gameAt(id);
+
+    expect(g.periodScores?.map((p) => p.period)).toEqual(periods);
   });
 
   it('a schedule-only game has no period scores and no rows', async () => {

@@ -1,6 +1,7 @@
 import {
   type DayGameResponse,
   dayResponseSchema,
+  gameResponseSchema,
   type PlayerRow,
   type Prefs,
 } from '@our-players/shared';
@@ -153,6 +154,19 @@ describe('upcoming rows (games without a box score)', () => {
 
       expect(games[1]?.id).toBe(BOS_ANA);
       expect(games[1]?.rows).toEqual([]);
+    });
+
+    it('a scheduled game returns its upcoming rows and no box score', async () => {
+      const g = await setup(handle.db).get(
+        `/v1/games/${PIT_COL}?countries=LVA`,
+        200,
+        gameResponseSchema,
+      );
+
+      expect(g.periodScores).toBeNull();
+      expect(
+        g.rows.map((r) => ({ type: r.type, side: r.side, id: r.player.id, shown: r.shown })),
+      ).toEqual([{ type: 'upcoming', side: 'away', id: SILOVS, shown: true }]);
     });
 
     it('pnpm recap prints Silovs as Not started', async () => {

@@ -188,3 +188,30 @@ export async function seedUpcoming(handle: DbHandle, opts: { live?: boolean } = 
   for (const date of [NHL_WEEK, UPCOMING_DAY])
     await runSeedJob(ctx, 'results', resultsJob, { league: 'NHL', date });
 }
+
+const MIXED_DAY = '2026-03-16';
+const MIXED_GAMES = ['2025021064', '2025021067'];
+
+// BOS@NJD (OT) and PIT@COL (Silovs and Rust next to Porziņģis's NBA line that night) only.
+function mixedScore(): unknown {
+  const raw = loadFixture('nhl', 'score', MIXED_DAY) as { games: { id: number }[] };
+  raw.games = raw.games.filter((g) => MIXED_GAMES.includes(String(g.id)));
+  return raw;
+}
+
+// The 2026-03-16 NHL results on top of seedApiDb. Players not on a recorded roster (COL, BOS, NJD) become stubs.
+export async function seedMixedNight(handle: DbHandle): Promise<void> {
+  const ctx: JobContext = {
+    db: handle.db,
+    client: fakeClient({
+      [nhlUrls.score(MIXED_DAY)]: mixedScore(),
+      ...Object.fromEntries(
+        MIXED_GAMES.map((id) => [nhlUrls.boxscore(id), loadFixture('nhl', 'boxscore', id)]),
+      ),
+    }),
+    now: () => new Date(`${ROSTER_DAY}T12:00:00Z`),
+    log: createLogger(() => {}),
+    overrides: NO_OVERRIDES,
+  };
+  await runSeedJob(ctx, 'results', resultsJob, { league: 'NHL', date: MIXED_DAY });
+}

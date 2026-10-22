@@ -93,7 +93,12 @@ export const dayResponseSchema = z.object({
 });
 export type DayResponse = z.infer<typeof dayResponseSchema>;
 
-export const gameResponseSchema = dayGameSchema.extend({
+// A box-score row also says whether the player is one of the viewer's (isShown), so the app marks him.
+export const boxScoreRowSchema = playerRowSchema.and(z.object({ shown: z.boolean() }));
+export type BoxScoreRow = z.infer<typeof boxScoreRowSchema>;
+
+export const gameResponseSchema = gameSummary.extend({
+  rows: z.array(boxScoreRowSchema),
   // null: a schedule-only game with no box score yet.
   periodScores: z.array(z.object({ period: z.string(), away: z.int(), home: z.int() })).nullable(),
 });

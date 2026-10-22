@@ -176,7 +176,7 @@ const SHOTS: Shot[] = [
     prefs: { favorites: [RUST] },
     take: async (page) => {
       await day(page, '2026-03-16');
-      await seen(page, 'Other games (7)', 'Silovs', 'Rust', 'Porzingis');
+      await seen(page, 'Other games (8)', 'Silovs', 'Rust', 'Porzingis');
     },
   },
   {
@@ -184,10 +184,10 @@ const SHOTS: Shot[] = [
     prefs: { favorites: [RUST] },
     take: async (page) => {
       await day(page, '2026-03-16');
-      await page.getByRole('button', { name: 'Other games (7)' }).click();
+      await page.getByRole('button', { name: 'Other games (8)' }).click();
       await seen(page, 'ORL 112 – 124 ATL');
       await page
-        .getByText('Other games (7)')
+        .getByText('Other games (8)')
         .evaluate((el) => el.scrollIntoView({ block: 'start' }));
     },
   },
