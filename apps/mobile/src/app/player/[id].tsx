@@ -13,27 +13,20 @@ import { Caption } from '../../components/caption';
 import { Card } from '../../components/card';
 import { DayMessageCard } from '../../components/day-message';
 import { ErrorState } from '../../components/error-state';
-import { MarkButton } from '../../components/mark-button';
+import { MarkToggles } from '../../components/mark-button';
 import { Skeleton } from '../../components/skeleton';
-import { rowLabel } from '../../lib/format';
-import { pageId } from '../../lib/game-page';
+import { pageId, rowLabel } from '../../lib/format';
 import { bioLines, logCaption, logLines, seasonCells, seasonHeading } from '../../lib/player-page';
-import { markOf } from '../../state/prefs';
-import { usePrefs } from '../../state/prefs-store';
 import { useTheme } from '../../theme';
 
 function Bio({ player }: { player: PlayerResponse }) {
   const t = useTheme();
-  const mark = usePrefs((s) => markOf(s, player.id));
-  const toggleFavorite = usePrefs((s) => s.toggleFavorite);
-  const toggleHidden = usePrefs((s) => s.toggleHidden);
-  const name = `${player.firstName} ${player.lastName}`;
   return (
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space.md }}>
         <View style={{ flex: 1, gap: t.space.xs }}>
           <Text style={{ color: t.colors.text, fontSize: t.font.title, fontWeight: '700' }}>
-            {name}
+            {`${player.firstName} ${player.lastName}`}
           </Text>
           {bioLines(player, localDate(new Date())).map((line) => (
             <Text key={line} style={{ color: t.colors.textMuted, fontSize: t.font.body }}>
@@ -43,34 +36,7 @@ function Bio({ player }: { player: PlayerResponse }) {
         </View>
         {/* Search's pair: the star on the edge, Hide beside it; the targets reach into the padding. */}
         <View style={{ flexDirection: 'row', marginTop: -t.space.md }}>
-          <MarkButton
-            label={`Hide ${name}`}
-            checked={mark === 'hidden'}
-            onPress={() => toggleHidden(player.id)}
-          >
-            <Text
-              style={{
-                color: mark === 'hidden' ? t.colors.accent : t.colors.textMuted,
-                fontSize: t.font.caption,
-              }}
-            >
-              {mark === 'hidden' ? 'Hidden' : 'Hide'}
-            </Text>
-          </MarkButton>
-          <MarkButton
-            label={`Favorite ${name}`}
-            checked={mark === 'favorite'}
-            onPress={() => toggleFavorite(player.id)}
-          >
-            <Text
-              style={{
-                color: mark === 'favorite' ? t.colors.accent : t.colors.text,
-                fontSize: t.font.icon,
-              }}
-            >
-              {mark === 'favorite' ? '★' : '☆'}
-            </Text>
-          </MarkButton>
+          <MarkToggles player={player} />
         </View>
       </View>
     </Card>

@@ -10,8 +10,8 @@ import { ErrorState } from '../../components/error-state';
 import { PeriodTableView } from '../../components/period-table';
 import { PlayerRow } from '../../components/player-row';
 import { Skeleton } from '../../components/skeleton';
-import { scoreText, statusLabel } from '../../lib/format';
-import { boxSections, gameWhen, pageId, periodTable } from '../../lib/game-page';
+import { pageId, scoreText, statusLabel } from '../../lib/format';
+import { boxSections, gameWhen, periodTable } from '../../lib/game-page';
 import { usePrefs } from '../../state/prefs-store';
 import { useTheme } from '../../theme';
 

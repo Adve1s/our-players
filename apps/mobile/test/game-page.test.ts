@@ -1,6 +1,12 @@
 import type { BoxScoreRow, GameResponse } from '@our-players/shared';
 import { describe, expect, it } from 'vitest';
-import { boxSections, gameWhen, type PeriodTable, pageId, periodTable } from '../src/lib/game-page';
+import {
+  boxSections,
+  gameWhen,
+  type PeriodTable,
+  periodTable,
+  periodTableLabel,
+} from '../src/lib/game-page';
 
 const hockey: GameResponse = {
   id: 'nhl-2025021126',
@@ -20,17 +26,27 @@ const hockey: GameResponse = {
   ],
 };
 
-describe('pageId', () => {
-  it('a public ID is the page ID', () => {
-    expect(pageId('nhl-8478007')).toBe('nhl-8478007');
+describe('periodTableLabel', () => {
+  it('names each period beside its goals', () => {
+    const table: PeriodTable = {
+      labels: ['1', '2', '3', 'OT', 'SO', 'T'],
+      rows: [
+        { abbrev: 'CBJ', cells: ['1', '1', '1', '0', '1', '4'] },
+        { abbrev: 'PIT', cells: ['0', '2', '1', '0', '0', '3'] },
+      ],
+    };
+    expect(periodTableLabel(table)).toBe(
+      'CBJ, period 1: 1, period 2: 1, period 3: 1, OT: 0, SO: 1, total: 4; ' +
+        'PIT, period 1: 0, period 2: 2, period 3: 1, OT: 0, SO: 0, total: 3',
+    );
   });
 
-  it.each<[string, string | string[] | undefined]>([
-    ['not a public ID', 'abc'],
-    ['a repeated param', ['nhl-1', 'nhl-2']],
-    ['no param', undefined],
-  ])('%s is no page ID', (_, raw) => {
-    expect(pageId(raw)).toBeNull();
+  it('a quarter keeps its own name', () => {
+    const table: PeriodTable = {
+      labels: ['Q1', 'Q2', 'Q3', 'Q4', 'T'],
+      rows: [{ abbrev: 'DAL', cells: ['30', '25', '28', '27', '110'] }],
+    };
+    expect(periodTableLabel(table)).toBe('DAL, Q1: 30, Q2: 25, Q3: 28, Q4: 27, total: 110');
   });
 });
 

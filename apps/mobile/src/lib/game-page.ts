@@ -1,14 +1,5 @@
-import {
-  type BoxScoreRow,
-  type GameResponse,
-  type PublicId,
-  publicIdSchema,
-} from '@our-players/shared';
+import type { BoxScoreRow, GameResponse } from '@our-players/shared';
 import { dayLabel, startTime } from './format';
-
-// A repeated `?id=` arrives as an array; anything but one valid public ID is no page.
-export const pageId = (raw: string | string[] | undefined): PublicId | null =>
-  typeof raw === 'string' && publicIdSchema.safeParse(raw).success ? raw : null;
 
 export type PeriodTable = { labels: string[]; rows: { abbrev: string; cells: string[] }[] };
 
@@ -26,6 +17,17 @@ export function periodTable(game: GameResponse): PeriodTable | null {
       return { abbrev: game[side].abbrev, cells: [...goals, total].map(String) };
     }),
   };
+}
+
+// A screen reader gets each number with its period, or "1, 1, 1, 0, 1" can't tell OT from SO.
+export function periodTableLabel(table: PeriodTable): string {
+  const last = table.labels.length - 1;
+  const names = table.labels.map((l, i) =>
+    i === last ? 'total' : /^\d+$/.test(l) ? `period ${l}` : l,
+  );
+  return table.rows
+    .map((r) => [r.abbrev, ...r.cells.map((c, i) => `${names[i]}: ${c}`)].join(', '))
+    .join('; ');
 }
 
 export type BoxSection = { side: 'away' | 'home'; abbrev: string; rows: BoxScoreRow[] };

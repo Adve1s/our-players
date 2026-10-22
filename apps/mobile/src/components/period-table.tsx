@@ -1,5 +1,5 @@
 import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import type { PeriodTable } from '../lib/game-page';
+import { type PeriodTable, periodTableLabel } from '../lib/game-page';
 import { useTheme } from '../theme';
 
 // Fixed widths line the columns up across rows; the horizontal scroll takes a 4OT playoff game.
@@ -10,9 +10,7 @@ export function PeriodTableView({ table }: { table: PeriodTable }) {
   const first = t.space.xl * 2 * fontScale;
   const cell = (t.space.xl + t.space.md) * fontScale;
   const last = table.labels.length - 1;
-  const label = table.rows
-    .map((r) => `${r.abbrev} ${r.cells.slice(0, -1).join(', ')}, total ${r.cells.at(-1)}`)
-    .join('; ');
+  const label = periodTableLabel(table);
   const line = (head: string, cells: string[], muted: boolean) => (
     <View key={head} style={{ flexDirection: 'row' }}>
       <Text
