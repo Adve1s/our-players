@@ -1,5 +1,6 @@
 import type { DayGameResponse } from '@our-players/shared';
-import { Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
 import { scoreText, statusLabel } from '../lib/format';
 import { useTheme } from '../theme';
 import { PlayerRow } from './player-row';
@@ -18,10 +19,18 @@ export function GameCard({ game, compact = false }: { game: DayGameResponse; com
         gap: t.space.md,
       }}
     >
-      <View
-        accessible
-        accessibilityLabel={`${game.league}, ${score}, ${status}`}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}
+      {/* The 48 px target reaches into the card's padding and the gap below, so the card barely grows. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${game.league}, ${score}, ${status}, open game`}
+        onPress={() => router.push(`/game/${game.id}`)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space.sm,
+          minHeight: t.space.xl * 2,
+          marginVertical: -t.space.md,
+        }}
       >
         <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption, fontWeight: '600' }}>
           {game.league}
@@ -30,7 +39,7 @@ export function GameCard({ game, compact = false }: { game: DayGameResponse; com
           {score}
         </Text>
         <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{status}</Text>
-      </View>
+      </Pressable>
       {game.rows.map((row) => (
         <PlayerRow
           key={row.player.id}

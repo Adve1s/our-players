@@ -121,6 +121,11 @@ const PORZINGIS = 'nba-3102531';
 const MERZLIKINS = 'nhl-8478007';
 const GIRGENSONS = 'nhl-8476878';
 const BALINSKIS = 'nhl-8484304';
+const EMBIID = 'nba-3059318';
+// The seed loads only page 1 of ESPN's season stats, which has Flagg but not Porziņģis.
+const FLAGG = 'nba-5041939';
+// The stack header's back arrow (headerBackTitle 'Back' in the root layout); a link on web.
+const BACK = 'Go back';
 
 // Tabs stay mounted on web: a tab left behind sits under the current one, aria-hidden but
 // "visible" to Playwright, so text only counts outside an aria-hidden subtree.
@@ -140,6 +145,10 @@ async function gone(page: Page, text: string, exact = false): Promise<void> {
 
 async function day(page: Page, date?: string): Promise<void> {
   await page.goto(date ? `${WEB}/?date=${date}` : WEB);
+}
+
+async function player(page: Page, id: string): Promise<void> {
+  await page.goto(`${WEB}/player/${id}`);
 }
 
 async function tab(page: Page, label: string): Promise<void> {
@@ -415,6 +424,78 @@ const SHOTS: Shot[] = [
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: false }).waitFor();
       await switchTo(page, 'Today');
       await seen(page, 'Mon, Mar 16', 'Silovs', 'Porzingis');
+    },
+  },
+  {
+    name: 'player-skater',
+    take: async (page) => {
+      await player(page, RUST);
+      await seen(page, 'Regular season 2025-26', 'TOI/GP', 'Mon, Mar 16 · PIT 7 – 2 COL · Final');
+    },
+  },
+  {
+    name: 'player-goalie',
+    take: async (page) => {
+      await player(page, MERZLIKINS);
+      // GAA 3.40 and SV% .883 from the seeded 2025-26 row.
+      await seen(page, '3.40', '.883', 'Sat, Jan 17');
+    },
+  },
+  {
+    name: 'player-basketball',
+    take: async (page) => {
+      await player(page, FLAGG);
+      // 1473 points in 70 games: the per-game value, not the total.
+      await seen(page, '3P%', '21.0', 'GS 137 – 131 DAL');
+    },
+  },
+  {
+    name: 'player-override',
+    take: async (page) => {
+      await player(page, EMBIID);
+      await seen(page, '(override)', 'No season stats yet.', 'No games yet.');
+    },
+  },
+  {
+    name: 'player-not-found',
+    take: async (page) => {
+      await player(page, 'nhl-1');
+      await seen(page, 'No such player.');
+    },
+    // A malformed ID never reaches the API.
+    after: async (page) => {
+      await player(page, 'abc');
+      await seen(page, 'No such player.');
+    },
+  },
+  {
+    name: 'player-api-down',
+    take: async (page) => {
+      await page.context().route(`${API}/v1/players/**`, (r) => r.abort());
+      await player(page, RUST);
+      await seen(page, "Can't reach the server");
+    },
+  },
+  {
+    name: 'flow-search-to-player',
+    take: async (page) => {
+      await tab(page, 'Search');
+      await search(page, 'porzingis');
+      await page.getByRole('button', { name: 'Open Kristaps Porzingis' }).click();
+      await seen(page, 'Born Liepaja, LVA', 'Mon, Mar 23 · GS 137 – 131 DAL');
+    },
+  },
+  {
+    // AC5: a deep link renders, and Today sits under it (anchor), so back goes somewhere.
+    name: 'flow-deep-link',
+    take: async (page) => {
+      await player(page, MERZLIKINS);
+      await seen(page, '3.40');
+      await page.getByLabel(BACK, { exact: true }).waitFor();
+    },
+    after: async (page) => {
+      await page.getByLabel(BACK, { exact: true }).click();
+      await seen(page, 'Other games');
     },
   },
   {

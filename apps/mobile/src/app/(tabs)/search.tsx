@@ -1,14 +1,16 @@
 import type { PlayerSummary } from '@our-players/shared';
 import { type ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { useSearch } from '../api/queries';
-import { ErrorState } from '../components/error-state';
-import { PlayerItem } from '../components/player-item';
-import { SearchField } from '../components/search-field';
-import { SEARCH_MAX, searchTerm, searchView } from '../lib/players';
-import { markOf } from '../state/prefs';
-import { usePrefs } from '../state/prefs-store';
-import { useTheme } from '../theme';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { useSearch } from '../../api/queries';
+import { Caption } from '../../components/caption';
+import { ErrorState } from '../../components/error-state';
+import { MarkButton } from '../../components/mark-button';
+import { PlayerItem } from '../../components/player-item';
+import { SearchField } from '../../components/search-field';
+import { SEARCH_MAX, searchTerm, searchView } from '../../lib/players';
+import { markOf } from '../../state/prefs';
+import { usePrefs } from '../../state/prefs-store';
+import { useTheme } from '../../theme';
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -17,41 +19,6 @@ function useDebounced<T>(value: T, ms: number): T {
     return () => clearTimeout(id);
   }, [value, ms]);
   return debounced;
-}
-
-function Caption({ children }: { children: ReactNode }) {
-  const t = useTheme();
-  return <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{children}</Text>;
-}
-
-function MarkButton({
-  label,
-  checked,
-  onPress,
-  children,
-}: {
-  label: string;
-  checked: boolean;
-  onPress: () => void;
-  children: ReactNode;
-}) {
-  const t = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="checkbox"
-      aria-checked={checked}
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={{
-        minWidth: t.space.xl * 2,
-        minHeight: t.space.xl * 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {children}
-    </Pressable>
-  );
 }
 
 function ResultItem({ player, first }: { player: PlayerSummary; first: boolean }) {

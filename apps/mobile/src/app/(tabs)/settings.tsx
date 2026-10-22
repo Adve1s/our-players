@@ -3,15 +3,16 @@ import Constants from 'expo-constants';
 import { useFocusEffect } from 'expo-router';
 import { type ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { useCountries, usePlayers } from '../api/queries';
-import { ErrorState } from '../components/error-state';
-import { PlayerItem } from '../components/player-item';
-import { SearchField } from '../components/search-field';
-import { type CountryRow, countryRows } from '../lib/countries';
-import { listIds, listRows, listView } from '../lib/players';
-import { type Mark, markOf } from '../state/prefs';
-import { usePrefs } from '../state/prefs-store';
-import { useTheme } from '../theme';
+import { useCountries, usePlayers } from '../../api/queries';
+import { Caption } from '../../components/caption';
+import { ErrorState } from '../../components/error-state';
+import { PlayerItem } from '../../components/player-item';
+import { SearchField } from '../../components/search-field';
+import { type CountryRow, countryRows } from '../../lib/countries';
+import { listIds, listRows, listView } from '../../lib/players';
+import { type Mark, markOf } from '../../state/prefs';
+import { usePrefs } from '../../state/prefs-store';
+import { useTheme } from '../../theme';
 
 const LEAGUES: League[] = ['NHL', 'NBA'];
 
@@ -37,11 +38,6 @@ function Card({ title, aside, children }: { title: string; aside?: string; child
       {children}
     </View>
   );
-}
-
-function Caption({ children }: { children: ReactNode }) {
-  const t = useTheme();
-  return <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{children}</Text>;
 }
 
 function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void }) {

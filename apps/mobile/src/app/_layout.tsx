@@ -1,5 +1,11 @@
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, type ErrorBoundaryProps, Tabs, ThemeProvider } from 'expo-router';
+import {
+  DarkTheme,
+  DefaultTheme,
+  type ErrorBoundaryProps,
+  Stack,
+  ThemeProvider,
+} from 'expo-router';
 import { useEffect, useState } from 'react';
 import { AppState, Platform, View } from 'react-native';
 import { RetryMessage } from '../components/error-state';
@@ -21,6 +27,9 @@ if (Platform.OS !== 'web') {
     return () => sub.remove();
   });
 }
+
+// A deep-linked page (/player/…) gets Today beneath it, so its back arrow has somewhere to go.
+export const unstable_settings = { anchor: '(tabs)' };
 
 // Until the stored prefs are in, queries would go out with the defaults and then again.
 function useHydrated(): boolean {
@@ -54,27 +63,17 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={navTheme}>
-        <Tabs
+        <Stack
           screenOptions={{
-            tabBarIcon: () => null,
-            // Without this the empty icon slot pushes the label down and clips it.
-            tabBarIconStyle: { display: 'none' },
-            // Below-icon items are top-aligned, so a label alone sits high; beside-icon items center.
-            tabBarLabelPosition: 'beside-icon',
-            tabBarInactiveTintColor: t.colors.textMuted,
-            // Zero the beside-icon margins (meant for the gap to an icon) so labels center in their tab.
-            tabBarLabelStyle: {
-              fontSize: t.font.body,
-              fontWeight: '600',
-              marginStart: 0,
-              marginEnd: 0,
-            },
+            headerStyle: { backgroundColor: t.colors.surface },
+            headerTintColor: t.colors.text,
+            contentStyle: { backgroundColor: t.colors.background },
+            // The screen below is the tab group, titled "(tabs)"; "Back" makes the label "Go back".
+            headerBackTitle: 'Back',
           }}
         >
-          <Tabs.Screen name="index" options={{ title: 'Today' }} />
-          <Tabs.Screen name="search" options={{ title: 'Search' }} />
-          <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
-        </Tabs>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
       </ThemeProvider>
     </QueryClientProvider>
   );

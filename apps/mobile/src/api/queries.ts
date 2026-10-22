@@ -46,3 +46,22 @@ export const usePlayers = (ids: PublicId[]) =>
     enabled: ids.length > 0,
     placeholderData: keepPreviousData,
   });
+
+// The endpoint takes no prefs: the page shows the player whatever is followed.
+export const usePlayer = (id: PublicId | null) =>
+  useQuery({
+    queryKey: ['player', id],
+    // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without an ID.
+    queryFn: () => api.player(id!),
+    enabled: id !== null,
+  });
+
+export const useGame = (id: PublicId | null, prefs: StoredPrefs) =>
+  useQuery({
+    queryKey: ['game', id, prefs.leagues, prefs.countries, prefs.favorites, prefs.hidden],
+    // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without an ID.
+    queryFn: () => api.game(id!, toPrefs(prefs)),
+    enabled: id !== null,
+    // A prefs change keeps the game on screen while the marks refetch; another game never shows this one.
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === id ? prev : undefined),
+  });
