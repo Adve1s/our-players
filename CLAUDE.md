@@ -24,7 +24,6 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `pnpm job <name> [--league nhl|nba] [--date YYYY-MM-DD] [--from --to]` — run one ingestion job now (S04a+)
 - `pnpm recap --date YYYY-MM-DD [--countries LVA]` — terminal morning recap from the DB (S04a+)
 - `pnpm latency --date YYYY-MM-DD [--countries LVA]` — the in-process p95 of 100 day requests on the dev DB; stop the dev server first
-- `pnpm probe` — one request through the polite client to every upstream endpoint the jobs use; prints status, latency and size per endpoint, exits 1 on any failure. Run it from a host to check the APIs answer there (S10a, again in S10b)
 - `pnpm inspect <source> <endpoint> <fixture-id>` — print the normalized result of a fixture (S03+)
 - `pnpm fixtures:record <source> <endpoint> <id-or-date> [--as <name>]` — record a raw upstream response (S01+); `--as` saves it under another file name
 - `pnpm db:generate` (new migration after schema change) · `pnpm db:migrate` · `pnpm db:reset` (local only)
