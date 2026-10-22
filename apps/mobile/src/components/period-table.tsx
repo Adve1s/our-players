@@ -1,12 +1,14 @@
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import type { PeriodTable } from '../lib/game-page';
 import { useTheme } from '../theme';
 
 // Fixed widths line the columns up across rows; the horizontal scroll takes a 4OT playoff game.
 export function PeriodTableView({ table }: { table: PeriodTable }) {
   const t = useTheme();
-  const first = t.space.xl * 2;
-  const cell = t.space.xl + t.space.md;
+  // Widths grow with the system font scale, so "137" and "DAL" still fit their columns.
+  const { fontScale } = useWindowDimensions();
+  const first = t.space.xl * 2 * fontScale;
+  const cell = (t.space.xl + t.space.md) * fontScale;
   const last = table.labels.length - 1;
   const label = table.rows
     .map((r) => `${r.abbrev} ${r.cells.slice(0, -1).join(', ')}, total ${r.cells.at(-1)}`)

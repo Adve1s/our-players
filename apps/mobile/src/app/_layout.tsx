@@ -73,6 +73,9 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* Until the page sets its own title, the header would show the route name. */}
+          <Stack.Screen name="player/[id]" options={{ title: 'Player' }} />
+          <Stack.Screen name="game/[id]" options={{ title: 'Game' }} />
         </Stack>
       </ThemeProvider>
     </QueryClientProvider>
