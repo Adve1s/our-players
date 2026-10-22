@@ -1,3 +1,4 @@
+import { usGameDay } from '@our-players/shared';
 import { createPoliteClient, HttpError } from './http/polite-client';
 import { espnUrls } from './sources/espn-nba/client';
 import { nhlUrls } from './sources/nhl/client';
@@ -6,8 +7,9 @@ export type ProbeTarget = { name: string; url: string };
 
 // One request per upstream endpoint the jobs use, IDs taken from recorded fixtures.
 export function probeTargets(now: Date): ProbeTarget[] {
-  const today = now.toISOString().slice(0, 10);
-  const start = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+  const today = usGameDay(now);
+  // From October the new season is under way (NHL games, NBA preseason); before that, the last one is complete.
+  const start = now.getUTCMonth() >= 9 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
   const season = `${start}${start + 1}`;
   return [
     { name: 'nhl score', url: nhlUrls.score(today) },
@@ -31,15 +33,13 @@ export async function runProbe(
   targets: ProbeTarget[],
   o: { userAgent: string; fetch: typeof fetch; minIntervalMs?: number },
 ): Promise<{ lines: string[]; failed: number }> {
-  let lastMs = 0;
-  const timed: typeof fetch = async (input, init) => {
-    const t = performance.now();
-    try {
-      return await o.fetch(input, init);
-    } finally {
-      lastMs = Math.round(performance.now() - t);
-    }
+  // Starts when the request leaves (after the per-host wait); stops once the body has been read.
+  let started = 0;
+  const timed: typeof fetch = (input, init) => {
+    started = performance.now();
+    return o.fetch(input, init);
   };
+  const ms = () => String(Math.round(performance.now() - started)).padStart(5);
   // No retries: the probe shows the first answer each host gives.
   const client = createPoliteClient({
     userAgent: o.userAgent,
@@ -54,6 +54,7 @@ export async function runProbe(
     const host = new URL(url).hostname;
     try {
       const r = await client.get(url);
+      const took = ms();
       let note = '';
       try {
         JSON.parse(r.text);
@@ -63,14 +64,14 @@ export async function runProbe(
       if (note) failed++;
       const kb = (r.bytes / 1024).toFixed(1).padStart(7);
       lines.push(
-        `${note ? 'FAIL' : 'ok  '} ${r.status} ${String(lastMs).padStart(5)} ms ${kb} kB  ${name.padEnd(22)} ${host}${note}`,
+        `${note ? 'FAIL' : 'ok  '} ${r.status} ${took} ms ${kb} kB  ${name.padEnd(22)} ${host}${note}`,
       );
     } catch (e) {
       failed++;
       const status = e instanceof HttpError && e.status !== null ? String(e.status) : '---';
       const msg = e instanceof Error ? e.message : String(e);
       lines.push(
-        `FAIL ${status} ${String(lastMs).padStart(5)} ms            ${name.padEnd(22)} ${host}  ${msg}`,
+        `FAIL ${status} ${ms()} ms ${' '.repeat(7)}     ${name.padEnd(22)} ${host}  ${msg}`,
       );
     }
   }
