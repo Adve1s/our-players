@@ -4,7 +4,7 @@ Read this first in every session. **Current state** is rewritten at each `/hando
 
 ## Current state
 - **Last session:** S10a — Hosting choice + upstream probe, 2026-10-22/23. Hosting picked (owner): **Linode / Akamai Cloud Nanode 1 GB, Frankfurt, $5/month + VAT, Ubuntu 24.04, Docker Compose (API + Postgres + Caddy)**, deployed in S10b (D-054; memo and probe output in `docs/superpowers/specs/2026-10-22-s10a-hosting-probe.md`). `pnpm probe` is a tested deliverable: one request per upstream endpoint the jobs use, through the polite client without retries, a line per endpoint (status, ms, kB, host), exit 1 on any FAIL; 14/14 ok from a throwaway Linode (deleted, owner confirmed). Today: a day stepped to with ‹/›, Latest or an overnight new latest day that can't load keeps the shown day, stepper included, with "Couldn't load Mon, Mar 16." + Try again, or "You're offline — couldn't open Mon, Mar 16." on web; a failed prefs change on the same date reads "showing saved data"; ‹/› work from the kept day (D-055).
-- **Branch / PR:** `s10a-hosting-probe` → `main`, PR opened at this handoff (owner merges once CI passes).
+- **Branch / PR:** `s10a-hosting-probe` → `main`, PR #21 (owner merges once CI passes).
 - **What works:** `pnpm verify` (69 test files, 1396 tests). `pnpm screenshots` → 90 PNGs (45 states, light/dark; new: `today-step-failed`, `today-step-offline`). Not checked by the owner yet: the Today fix on Android (Expo Go; offline there reads "Couldn't load …", since there is no NetInfo).
 - **How to try it:** `pnpm probe` (needs the network; ~15 s, prints 14 lines and `14/14 ok`). Today: `pnpm dev:server` and `pnpm dev:mobile` → `w`, open a day, stop the dev server (or go offline in the browser's dev tools), tap ‹. Screenshots: `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium pnpm screenshots`. Tests: `pnpm test probe today-queries`.
 - **Next session:** S14a — Web build as a home-screen app (local). Launch order unchanged (D-048): S10b → S14b → S11b → S15. S11a runs whenever Play Console finishes verifying the owner's identity.
@@ -426,7 +426,7 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Reviewer: approve; 0 findings; minors fixed (`retry: 1` in PROGRESS and D-053; the declined reason recorded in D-053).
 - Verify under load: with a second vitest beside it (load ~20), PGlite hooks time out in server suites the change doesn't touch (parked); alone it is green.
 
-### S10a — Hosting choice + upstream probe — 2026-10-22/23 — PR (`s10a-hosting-probe`)
+### S10a — Hosting choice + upstream probe — 2026-10-22/23 — PR #21 (`s10a-hosting-probe`)
 - Changed: `apps/server/src/probe.ts` + `scripts/probe.ts` + `test/probe.test.ts` (the spike made a tested module; `probe` scripts in both package.json); `apps/mobile/src/lib/day-message.ts` (`refreshBanner(meta, day, requested, shown)` → `{ text, retry }`), `src/app/(tabs)/index.tsx` (kept day, banner Try again, stepper grey only while loading), `test/today-queries.test.ts`, `scripts/screenshots.ts` (2 states). +13 tests (1396).
 - Decisions: D-054 (Linode Nanode, owner), D-055 (kept day; owner agreed both edge cases: same date → "showing saved data", the latest day failing = any step, Latest stays marked).
 - Hosting research and probe runs were done in an earlier chat (owner pasted memo data and output); not repeated.
