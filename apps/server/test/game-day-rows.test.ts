@@ -1,6 +1,7 @@
 import type { CountryCode, HockeyGoalieStats, HockeySkaterStats, Prefs } from '@our-players/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  boxScoreRows,
   type DayGame,
   type DayLine,
   type DayPlayer,
@@ -366,5 +367,24 @@ describe('gameDayRows', () => {
       const day = { games: [scheduled], lines: [], players: [home, away] };
       expect(rowsOf(day)).toEqual([{ game: G1, rows: ['upcoming:nhl-11', 'upcoming:nhl-10'] }]);
     });
+  });
+});
+
+describe('boxScoreRows', () => {
+  it("boxScoreRows lists an unshown player's line", () => {
+    const p = player('nhl-10', CBJ.id, 'SWE');
+    const rows = boxScoreRows(
+      { games: [one], lines: [skaterLine(G1, p, CBJ, 2)], players: [p] },
+      one,
+      prefs(),
+    );
+    expect(rows.map((r) => `${r.kind}:${r.player.publicId}:${r.shown}`)).toEqual([
+      'line:nhl-10:false',
+    ]);
+  });
+
+  it('boxScoreRows gives an unshown player of the team no not-in-lineup row', () => {
+    const p = player('nhl-10', PIT.id, 'SWE');
+    expect(boxScoreRows({ games: [one], lines: [], players: [p] }, one, prefs())).toEqual([]);
   });
 });

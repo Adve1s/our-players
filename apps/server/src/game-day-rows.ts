@@ -55,54 +55,82 @@ function rank(row: DayRow): [number, number] {
 export const byStartTime = (a: DayGame, b: DayGame): number =>
   a.startTimeUtc.localeCompare(b.startTimeUtc) || a.publicId.localeCompare(b.publicId);
 
+type Day = { games: DayGame[]; lines: DayLine[]; players: DayPlayer[] };
+
+// One player's row in one game: his line there if any; otherwise, for a shown player only, the absence rows.
+function playerRows(day: Day, game: DayGame, player: DayPlayer, shown: boolean): DayRow[] {
+  const teams = [game.away, game.home];
+  const team = (id: number) => teams.find((t) => t.id === id);
+  const line = day.lines.find(
+    (l) => l.gamePublicId === game.publicId && l.playerPublicId === player.publicId,
+  );
+  if (line) {
+    const t = team(line.teamId);
+    if (!t)
+      throw new Error(
+        `stat line ${game.publicId}/${player.publicId}: team ${line.teamId} not in the game`,
+      );
+    return line.played
+      ? [{ player, team: t, kind: 'line', line }]
+      : [{ player, team: t, kind: 'dnp', reason: line.dnpReason }];
+  }
+  if (!shown) return [];
+  // shortcut: the current team, not the team on that date, so older dates can be wrong after a trade (VISION §4.1); upgrade if rosters are kept per date
+  const t = player.currentTeamId === null ? undefined : team(player.currentTeamId);
+  // A line elsewhere that day means he played for another team (traded since), not that he sat out.
+  if (!t || day.lines.some((l) => l.playerPublicId === player.publicId)) return [];
+  // D-049: absence from a stored FINAL box score means not in lineup; with no box score yet he's upcoming.
+  if (game.boxScoreStored) {
+    return game.status === 'FINAL' ? [{ player, team: t, kind: 'not-in-lineup' }] : [];
+  }
+  return game.status === 'SCHEDULED' || game.status === 'LIVE' || game.status === 'FINAL'
+    ? [{ player, team: t, kind: 'upcoming' }]
+    : [];
+}
+
+// Away team first, then `before` (if any), then rank(), ties by public ID.
+function rowOrder<R extends DayRow>(game: DayGame, before: (a: R, b: R) => number = () => 0) {
+  const teams = [game.away, game.home];
+  return (a: R, b: R): number => {
+    const [ka, pa] = rank(a);
+    const [kb, pb] = rank(b);
+    return (
+      teams.indexOf(a.team) - teams.indexOf(b.team) ||
+      before(a, b) ||
+      ka - kb ||
+      pa - pb ||
+      a.player.publicId.localeCompare(b.player.publicId)
+    );
+  };
+}
+
 // VISION §4.1's rows for one game day; S06's /v1/days reuses this so the recap and the app can't drift.
-export function gameDayRows(
-  day: { games: DayGame[]; lines: DayLine[]; players: DayPlayer[] },
-  prefs: Prefs,
-): { game: DayGame; rows: DayRow[] }[] {
+export function gameDayRows(day: Day, prefs: Prefs): { game: DayGame; rows: DayRow[] }[] {
   const shown = day.players.filter((p) => isShown(p, prefs));
   return [...day.games]
     .sort(byStartTime)
-    .map((game) => {
-      const teams = [game.away, game.home];
-      const team = (id: number) => teams.find((t) => t.id === id);
-      const rows = shown.flatMap((player): DayRow[] => {
-        const line = day.lines.find(
-          (l) => l.gamePublicId === game.publicId && l.playerPublicId === player.publicId,
-        );
-        if (line) {
-          const t = team(line.teamId);
-          if (!t)
-            throw new Error(
-              `stat line ${game.publicId}/${player.publicId}: team ${line.teamId} not in the game`,
-            );
-          return line.played
-            ? [{ player, team: t, kind: 'line', line }]
-            : [{ player, team: t, kind: 'dnp', reason: line.dnpReason }];
-        }
-        // shortcut: the current team, not the team on that date, so older dates can be wrong after a trade (VISION §4.1); upgrade if rosters are kept per date
-        const t = player.currentTeamId === null ? undefined : team(player.currentTeamId);
-        // A line elsewhere that day means he played for another team (traded since), not that he sat out.
-        if (!t || day.lines.some((l) => l.playerPublicId === player.publicId)) return [];
-        // D-049: absence from a stored FINAL box score means not in lineup; with no box score yet he's upcoming.
-        if (game.boxScoreStored) {
-          return game.status === 'FINAL' ? [{ player, team: t, kind: 'not-in-lineup' }] : [];
-        }
-        return game.status === 'SCHEDULED' || game.status === 'LIVE' || game.status === 'FINAL'
-          ? [{ player, team: t, kind: 'upcoming' }]
-          : [];
-      });
-      rows.sort((a, b) => {
-        const [ka, pa] = rank(a);
-        const [kb, pb] = rank(b);
-        return (
-          teams.indexOf(a.team) - teams.indexOf(b.team) ||
-          ka - kb ||
-          pa - pb ||
-          a.player.publicId.localeCompare(b.player.publicId)
-        );
-      });
-      return { game, rows };
-    })
+    .map((game) => ({
+      game,
+      rows: shown.flatMap((p) => playerRows(day, game, p, true)).sort(rowOrder(game)),
+    }))
     .filter((g) => g.rows.length > 0);
+}
+
+// /v1/games' rows: every line of the game, shown or not, plus the shown players' absence rows; shown first per team.
+export function boxScoreRows(
+  day: Day,
+  game: DayGame,
+  prefs: Prefs,
+): (DayRow & { shown: boolean })[] {
+  // Only this game's players and shown players can have a row; the rest of the day's ~1,000 are skipped.
+  const inGame = new Set(
+    day.lines.filter((l) => l.gamePublicId === game.publicId).map((l) => l.playerPublicId),
+  );
+  return day.players
+    .filter((player) => inGame.has(player.publicId) || isShown(player, prefs))
+    .flatMap((player) => {
+      const shown = isShown(player, prefs);
+      return playerRows(day, game, player, shown).map((row) => ({ ...row, shown }));
+    })
+    .sort(rowOrder(game, (a, b) => Number(b.shown) - Number(a.shown)));
 }

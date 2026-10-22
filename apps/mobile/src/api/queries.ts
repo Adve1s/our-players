@@ -1,7 +1,12 @@
-import type { League, PublicId } from '@our-players/shared';
+import { ApiError, type League, type PublicId } from '@our-players/shared';
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
 import { type StoredPrefs, toPrefs } from '../state/prefs';
 import { api } from './client';
+
+// Once, since the default 3 with backoff makes "API down" take ~7 s to show; never a 404, which
+// can't change on retry ("No such player." would show ~1 s late).
+export const retryQuery = (failures: number, error: unknown) =>
+  failures < 1 && !(error instanceof ApiError && error.status === 404);
 
 // Both leagues always, so the list doesn't change when a league is toggled.
 export const useCountries = () =>
@@ -45,4 +50,23 @@ export const usePlayers = (ids: PublicId[]) =>
     queryFn: () => api.players(ids),
     enabled: ids.length > 0,
     placeholderData: keepPreviousData,
+  });
+
+// The endpoint takes no prefs: the page shows the player whatever is followed.
+export const usePlayer = (id: PublicId | null) =>
+  useQuery({
+    queryKey: ['player', id],
+    // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without an ID.
+    queryFn: () => api.player(id!),
+    enabled: id !== null,
+  });
+
+export const useGame = (id: PublicId | null, prefs: StoredPrefs) =>
+  useQuery({
+    queryKey: ['game', id, prefs.leagues, prefs.countries, prefs.favorites, prefs.hidden],
+    // biome-ignore lint/style/noNonNullAssertion: `enabled` keeps this from running without an ID.
+    queryFn: () => api.game(id!, toPrefs(prefs)),
+    enabled: id !== null,
+    // A prefs change keeps the game on screen while the marks refetch; another game never shows this one.
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === id ? prev : undefined),
   });

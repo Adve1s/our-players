@@ -11,6 +11,7 @@ import {
   dateParamFor,
   dayLabel,
   latestDate,
+  pageId,
   rowLabel,
   rowText,
   scoreText,
@@ -253,6 +254,20 @@ describe('dateParamFor', () => {
 
   it('without a latest day (meta failed) the day is kept', () => {
     expect(dateParamFor('2026-03-22', null)).toBe('2026-03-22');
+  });
+});
+
+describe('pageId', () => {
+  it('a public ID is the page ID', () => {
+    expect(pageId('nhl-8478007')).toBe('nhl-8478007');
+  });
+
+  it.each<[string, string | string[] | undefined]>([
+    ['not a public ID', 'abc'],
+    ['a repeated param', ['nhl-1', 'nhl-2']],
+    ['no param', undefined],
+  ])('%s is no page ID', (_, raw) => {
+    expect(pageId(raw)).toBeNull();
   });
 });
 

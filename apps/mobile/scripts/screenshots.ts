@@ -121,6 +121,12 @@ const PORZINGIS = 'nba-3102531';
 const MERZLIKINS = 'nhl-8478007';
 const GIRGENSONS = 'nhl-8476878';
 const BALINSKIS = 'nhl-8484304';
+const EMBIID = 'nba-3059318';
+// The seed loads only page 1 of ESPN's season stats, which has Flagg but not Porziņģis.
+const FLAGG = 'nba-5041939';
+const CBJ_PIT = 'nhl-2025020760';
+// The stack header's back arrow (headerBackTitle 'Back' in the root layout); a link on web.
+const BACK = 'Go back';
 
 // Tabs stay mounted on web: a tab left behind sits under the current one, aria-hidden but
 // "visible" to Playwright, so text only counts outside an aria-hidden subtree.
@@ -134,12 +140,25 @@ async function seen(page: Page, ...texts: string[]): Promise<void> {
   for (const text of texts) await shown(page, text).first().waitFor();
 }
 
+// A period column ('SO', 'OT'): exact, since a card or log caption has "Final/SO" too.
+async function column(page: Page, label: string): Promise<void> {
+  await shown(page, label, true).first().waitFor();
+}
+
 async function gone(page: Page, text: string, exact = false): Promise<void> {
   await shown(page, text, exact).first().waitFor({ state: 'hidden' });
 }
 
 async function day(page: Page, date?: string): Promise<void> {
   await page.goto(date ? `${WEB}/?date=${date}` : WEB);
+}
+
+async function player(page: Page, id: string): Promise<void> {
+  await page.goto(`${WEB}/player/${id}`);
+}
+
+async function game(page: Page, id: string): Promise<void> {
+  await page.goto(`${WEB}/game/${id}`);
 }
 
 async function tab(page: Page, label: string): Promise<void> {
@@ -176,7 +195,7 @@ const SHOTS: Shot[] = [
     prefs: { favorites: [RUST] },
     take: async (page) => {
       await day(page, '2026-03-16');
-      await seen(page, 'Other games (7)', 'Silovs', 'Rust', 'Porzingis');
+      await seen(page, 'Other games (8)', 'Silovs', 'Rust', 'Porzingis');
     },
   },
   {
@@ -184,10 +203,10 @@ const SHOTS: Shot[] = [
     prefs: { favorites: [RUST] },
     take: async (page) => {
       await day(page, '2026-03-16');
-      await page.getByRole('button', { name: 'Other games (7)' }).click();
+      await page.getByRole('button', { name: 'Other games (8)' }).click();
       await seen(page, 'ORL 112 – 124 ATL');
       await page
-        .getByText('Other games (7)')
+        .getByText('Other games (8)')
         .evaluate((el) => el.scrollIntoView({ block: 'start' }));
     },
   },
@@ -415,6 +434,170 @@ const SHOTS: Shot[] = [
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: false }).waitFor();
       await switchTo(page, 'Today');
       await seen(page, 'Mon, Mar 16', 'Silovs', 'Porzingis');
+    },
+  },
+  {
+    name: 'player-skater',
+    take: async (page) => {
+      await player(page, RUST);
+      await seen(page, 'Regular season 2025-26', 'TOI/GP', 'Mon, Mar 16 · PIT 7 – 2 COL · Final');
+    },
+  },
+  {
+    name: 'player-goalie',
+    take: async (page) => {
+      await player(page, MERZLIKINS);
+      // GAA 3.40 and SV% .883 from the seeded 2025-26 row.
+      await seen(page, '3.40', '.883', 'Sat, Jan 17');
+    },
+  },
+  {
+    name: 'player-basketball',
+    take: async (page) => {
+      await player(page, FLAGG);
+      // 1473 points in 70 games: the per-game value, not the total.
+      await seen(page, '3P%', '21.0', 'GS 137 – 131 DAL');
+    },
+  },
+  {
+    name: 'player-override',
+    take: async (page) => {
+      await player(page, EMBIID);
+      await seen(page, '(override)', 'No season stats yet.', 'No games yet.');
+    },
+  },
+  {
+    name: 'player-not-found',
+    take: async (page) => {
+      await player(page, 'nhl-1');
+      await seen(page, 'No such player.');
+    },
+    // A malformed ID never reaches the API.
+    after: async (page) => {
+      await player(page, 'abc');
+      await seen(page, 'No such player.');
+    },
+  },
+  {
+    name: 'player-api-down',
+    take: async (page) => {
+      await page.context().route(`${API}/v1/players/**`, (r) => r.abort());
+      await player(page, RUST);
+      await seen(page, "Can't reach the server");
+    },
+  },
+  {
+    name: 'flow-search-to-player',
+    take: async (page) => {
+      await tab(page, 'Search');
+      await search(page, 'porzingis');
+      await page.getByRole('button', { name: 'Open Kristaps Porzingis' }).click();
+      await seen(page, 'Born Liepaja, LVA', 'Mon, Mar 23 · GS 137 – 131 DAL');
+    },
+  },
+  {
+    // AC5: a deep link renders, and Today sits under it (anchor), so back goes somewhere.
+    name: 'flow-deep-link',
+    take: async (page) => {
+      await player(page, MERZLIKINS);
+      await seen(page, '3.40');
+      await page.getByLabel(BACK, { exact: true }).waitFor();
+    },
+    after: async (page) => {
+      await page.getByLabel(BACK, { exact: true }).click();
+      await seen(page, 'Other games');
+    },
+  },
+  {
+    // AC3/AC4: the shootout table, and the CBJ section opens with Merzļikins, marked.
+    name: 'game-hockey',
+    take: async (page) => {
+      await game(page, CBJ_PIT);
+      await column(page, 'SO');
+      await seen(page, 'Not in lineup');
+      await page
+        .getByRole('button', { name: /^Elvis Merzlikins, CBJ, .*, your player$/ })
+        .waitFor();
+    },
+  },
+  {
+    name: 'game-basketball',
+    take: async (page) => {
+      await game(page, 'nba-401810899');
+      await seen(page, 'Q4', 'Final/OT');
+      await page.getByRole('button', { name: /^Kristaps Porzingis, .*, your player$/ }).waitFor();
+    },
+  },
+  {
+    name: 'game-regulation',
+    take: async (page) => {
+      await game(page, 'nhl-2025021067');
+      await seen(page, 'PIT 7 – 2 COL', 'Silovs');
+    },
+  },
+  {
+    name: 'game-ot',
+    take: async (page) => {
+      await game(page, 'nhl-2025021064');
+      await seen(page, 'Final/OT', 'NJD');
+      await column(page, 'OT');
+    },
+  },
+  {
+    name: 'game-upcoming',
+    take: async (page) => {
+      await game(page, 'nhl-2026020119');
+      await seen(page, 'Not started', 'Silovs');
+    },
+    // No period scores yet, so no table.
+    after: async (page) => {
+      if ((await page.getByLabel(/total/).count()) > 0) throw new Error('a period table');
+    },
+  },
+  {
+    name: 'game-not-found',
+    take: async (page) => {
+      await game(page, 'nhl-1');
+      await seen(page, 'No such game.');
+    },
+    after: async (page) => {
+      await game(page, 'abc');
+      await seen(page, 'No such game.');
+    },
+  },
+  {
+    // AC2's other half: a card on Today opens its game.
+    name: 'flow-today-to-game',
+    take: async (page) => {
+      await day(page, '2026-01-17');
+      await page.getByRole('button', { name: /CBJ .* PIT, .*open game$/ }).click();
+      await column(page, 'SO');
+    },
+  },
+  {
+    name: 'flow-game-to-player',
+    take: async (page) => {
+      await game(page, CBJ_PIT);
+      await page.getByRole('button', { name: /^Elvis Merzlikins, / }).click();
+      await seen(page, '3.40');
+    },
+    // Back on the game, the box score is still there: no skeleton while it refetches.
+    after: async (page) => {
+      await page.getByLabel(BACK, { exact: true }).last().click();
+      await column(page, 'SO');
+      if ((await page.getByRole('progressbar', { name: 'Loading' }).count()) > 0) {
+        throw new Error('a skeleton after going back');
+      }
+    },
+  },
+  {
+    // AC2: a log row opens its game.
+    name: 'flow-log-to-game',
+    take: async (page) => {
+      await player(page, PORZINGIS);
+      await page.getByRole('button', { name: /GS 137 – 131 DAL.*open game$/ }).click();
+      await shown(page, 'Final/OT', true).first().waitFor();
+      await column(page, 'OT');
     },
   },
   {

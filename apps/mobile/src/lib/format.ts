@@ -10,6 +10,8 @@ import {
   localDate,
   type MetaResponse,
   type PlayerRow,
+  type PublicId,
+  publicIdSchema,
   savePct,
   sentenceCase,
   upcomingText,
@@ -154,6 +156,10 @@ export function latestDate(meta: MetaResponse, leagues: readonly League[]): stri
 export function dateParam(raw: string | string[] | undefined): string | null {
   return typeof raw === 'string' && gameDateSchema.safeParse(raw).success ? raw : null;
 }
+
+// Likewise for `?id=`: anything but one valid public ID is no page.
+export const pageId = (raw: string | string[] | undefined): PublicId | null =>
+  typeof raw === 'string' && publicIdSchema.safeParse(raw).success ? raw : null;
 
 // The URL param for a stepped-to day: none on the latest, or the screen would stay pinned to it after the
 // latest moves on (and Latest, disabled on that day, couldn't unpin it).

@@ -1,60 +1,23 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useDay, useMeta } from '../api/queries';
-import { DayMessageCard } from '../components/day-message';
-import { DayStepper } from '../components/day-stepper';
-import { ErrorState } from '../components/error-state';
-import { GameCard } from '../components/game-card';
-import { OtherGames } from '../components/other-games';
-import { type DayMessage, dayMessage, refreshBanner } from '../lib/day-message';
-import { dateParam, dateParamFor, latestDate } from '../lib/format';
-import { usePrefs } from '../state/prefs-store';
-import { useTheme } from '../theme';
+import { useDay, useMeta } from '../../api/queries';
+import { DayMessageCard } from '../../components/day-message';
+import { DayStepper } from '../../components/day-stepper';
+import { ErrorState } from '../../components/error-state';
+import { GameCard } from '../../components/game-card';
+import { OtherGames } from '../../components/other-games';
+import { Skeleton } from '../../components/skeleton';
+import { type DayMessage, dayMessage, refreshBanner } from '../../lib/day-message';
+import { dateParam, dateParamFor, latestDate } from '../../lib/format';
+import { usePrefs } from '../../state/prefs-store';
+import { useTheme } from '../../theme';
 
 const ACTION_LABELS = {
   prev: 'Previous game day',
   next: 'Next game day',
   settings: 'Open Settings',
 } as const;
-
-function Skeleton() {
-  const t = useTheme();
-  const bar = (width: `${number}%`) => (
-    <View
-      style={{
-        height: t.space.md,
-        width,
-        backgroundColor: t.colors.border,
-        borderRadius: t.radius,
-      }}
-    />
-  );
-  return (
-    <View
-      accessible
-      accessibilityRole="progressbar"
-      accessibilityLabel="Loading"
-      style={{ padding: t.space.lg, gap: t.space.lg }}
-    >
-      <View style={{ alignItems: 'center', paddingVertical: t.space.md }}>{bar('40%')}</View>
-      {[0, 1, 2].map((i) => (
-        <View
-          key={i}
-          style={{
-            backgroundColor: t.colors.surface,
-            borderRadius: t.radius,
-            padding: t.space.lg,
-            gap: t.space.md,
-          }}
-        >
-          {bar('60%')}
-          {bar('85%')}
-        </View>
-      ))}
-    </View>
-  );
-}
 
 function Banner({ text }: { text: string }) {
   const t = useTheme();

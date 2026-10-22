@@ -3,46 +3,19 @@ import Constants from 'expo-constants';
 import { useFocusEffect } from 'expo-router';
 import { type ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { useCountries, usePlayers } from '../api/queries';
-import { ErrorState } from '../components/error-state';
-import { PlayerItem } from '../components/player-item';
-import { SearchField } from '../components/search-field';
-import { type CountryRow, countryRows } from '../lib/countries';
-import { listIds, listRows, listView } from '../lib/players';
-import { type Mark, markOf } from '../state/prefs';
-import { usePrefs } from '../state/prefs-store';
-import { useTheme } from '../theme';
+import { useCountries, usePlayers } from '../../api/queries';
+import { Caption } from '../../components/caption';
+import { Card } from '../../components/card';
+import { ErrorState } from '../../components/error-state';
+import { PlayerItem } from '../../components/player-item';
+import { SearchField } from '../../components/search-field';
+import { type CountryRow, countryRows } from '../../lib/countries';
+import { listIds, listRows, listView } from '../../lib/players';
+import { type Mark, markOf } from '../../state/prefs';
+import { usePrefs } from '../../state/prefs-store';
+import { useTheme } from '../../theme';
 
 const LEAGUES: League[] = ['NHL', 'NBA'];
-
-function Card({ title, aside, children }: { title: string; aside?: string; children: ReactNode }) {
-  const t = useTheme();
-  return (
-    <View
-      style={{
-        backgroundColor: t.colors.surface,
-        borderRadius: t.radius,
-        padding: t.space.lg,
-        gap: t.space.md,
-      }}
-    >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: t.colors.text, fontSize: t.font.title, fontWeight: '600' }}>
-          {title}
-        </Text>
-        {aside ? (
-          <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{aside}</Text>
-        ) : null}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function Caption({ children }: { children: ReactNode }) {
-  const t = useTheme();
-  return <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{children}</Text>;
-}
 
 function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void }) {
   const t = useTheme();
@@ -156,6 +129,7 @@ function PlayerList({
   const counted = view === 'empty' || view === 'none-shown' || view === 'rows';
   return (
     <Card
+      large
       title={title}
       aside={counted ? `${rows.filter((row) => !row.removed).length}` : undefined}
     >
@@ -209,7 +183,7 @@ export default function Settings() {
       contentContainerStyle={{ padding: t.space.lg, gap: t.space.lg }}
       keyboardShouldPersistTaps="handled"
     >
-      <Card title="Leagues">
+      <Card large title="Leagues">
         {LEAGUES.map((l) => {
           const on = leagues.includes(l);
           const locked = on && leagues.length === 1;
@@ -241,7 +215,7 @@ export default function Settings() {
         {leagues.length === 1 ? <Caption>At least one league stays on.</Caption> : null}
       </Card>
 
-      <Card title="Countries" aside={`${countries.length} selected`}>
+      <Card large title="Countries" aside={`${countries.length} selected`}>
         <SearchField value={query} onChangeText={setQuery} label="Search countries" />
         {countries.length === 0 ? (
           <Caption>No countries selected — Today stays empty until you pick one.</Caption>
@@ -279,7 +253,7 @@ export default function Settings() {
         onUndo={undo}
       />
 
-      <Card title="About">
+      <Card large title="About">
         <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
           Our Players
         </Text>

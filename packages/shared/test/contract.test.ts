@@ -4,6 +4,7 @@ import {
   countriesResponseSchema,
   dayResponseSchema,
   gameDateSchema,
+  gameResponseSchema,
   idsQuerySchema,
   playerSummarySchema,
   prefsQuerySchema,
@@ -273,5 +274,38 @@ describe('playerSummarySchema', () => {
       active: true,
     };
     expect(playerSummarySchema.parse({ ...summary, extra: 1 })).toEqual(summary);
+  });
+});
+
+describe('gameResponseSchema', () => {
+  const response = (row: Record<string, unknown>) => ({
+    id: 'nhl-2025020760',
+    league: 'NHL',
+    seasonType: 'REG',
+    gameDate: '2026-01-17',
+    startTimeUtc: '2026-01-18T00:00:00Z',
+    status: 'FINAL',
+    endedIn: 'SO',
+    away: { abbrev: 'CBJ', score: 4 },
+    home: { abbrev: 'PIT', score: 3 },
+    periodScores: null,
+    rows: [
+      {
+        type: 'not-in-lineup',
+        side: 'away',
+        player: {
+          id: 'nhl-8476878',
+          firstName: 'Zemgus',
+          lastName: 'Girgensons',
+          nationality: 'LVA',
+        },
+        ...row,
+      },
+    ],
+  });
+
+  it('gameResponseSchema rejects a row without shown', () => {
+    expect(gameResponseSchema.safeParse(response({ shown: true })).success).toBe(true);
+    expect(gameResponseSchema.safeParse(response({})).success).toBe(false);
   });
 });

@@ -1,14 +1,16 @@
 import type { PlayerSummary } from '@our-players/shared';
 import { type ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { useSearch } from '../api/queries';
-import { ErrorState } from '../components/error-state';
-import { PlayerItem } from '../components/player-item';
-import { SearchField } from '../components/search-field';
-import { SEARCH_MAX, searchTerm, searchView } from '../lib/players';
-import { markOf } from '../state/prefs';
-import { usePrefs } from '../state/prefs-store';
-import { useTheme } from '../theme';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { useSearch } from '../../api/queries';
+import { Caption } from '../../components/caption';
+import { ErrorState } from '../../components/error-state';
+import { MarkToggles } from '../../components/mark-button';
+import { PlayerItem } from '../../components/player-item';
+import { SearchField } from '../../components/search-field';
+import { SEARCH_MAX, searchTerm, searchView } from '../../lib/players';
+import { markOf } from '../../state/prefs';
+import { usePrefs } from '../../state/prefs-store';
+import { useTheme } from '../../theme';
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -19,80 +21,12 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced;
 }
 
-function Caption({ children }: { children: ReactNode }) {
-  const t = useTheme();
-  return <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{children}</Text>;
-}
-
-function MarkButton({
-  label,
-  checked,
-  onPress,
-  children,
-}: {
-  label: string;
-  checked: boolean;
-  onPress: () => void;
-  children: ReactNode;
-}) {
-  const t = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="checkbox"
-      aria-checked={checked}
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={{
-        minWidth: t.space.xl * 2,
-        minHeight: t.space.xl * 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {children}
-    </Pressable>
-  );
-}
-
 function ResultItem({ player, first }: { player: PlayerSummary; first: boolean }) {
-  const t = useTheme();
   const mark = usePrefs((s) => markOf(s, player.id));
-  const toggleFavorite = usePrefs((s) => s.toggleFavorite);
-  const toggleHidden = usePrefs((s) => s.toggleHidden);
-  const name = `${player.firstName} ${player.lastName}`;
   return (
     // The card's top edge already bounds the first row; a hidden player's name dims like a removed one.
     <PlayerItem player={player} divider={!first} dimmed={mark === 'hidden'}>
-      {/* Hide is the secondary action: small, quiet, away from the edge. */}
-      <MarkButton
-        label={`Hide ${name}`}
-        checked={mark === 'hidden'}
-        onPress={() => toggleHidden(player.id)}
-      >
-        <Text
-          style={{
-            color: mark === 'hidden' ? t.colors.accent : t.colors.textMuted,
-            fontSize: t.font.caption,
-          }}
-        >
-          {mark === 'hidden' ? 'Hidden' : 'Hide'}
-        </Text>
-      </MarkButton>
-      {/* The star is why people search: on the edge, large, in text colour even when off. */}
-      <MarkButton
-        label={`Favorite ${name}`}
-        checked={mark === 'favorite'}
-        onPress={() => toggleFavorite(player.id)}
-      >
-        <Text
-          style={{
-            color: mark === 'favorite' ? t.colors.accent : t.colors.text,
-            fontSize: t.font.icon,
-          }}
-        >
-          {mark === 'favorite' ? '★' : '☆'}
-        </Text>
-      </MarkButton>
+      <MarkToggles player={player} />
     </PlayerItem>
   );
 }
