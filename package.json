@@ -23,7 +23,8 @@
     "db:migrate": "pnpm --filter @our-players/server db:migrate",
     "db:reset": "pnpm --filter @our-players/server db:reset",
     "screenshots": "pnpm --filter @our-players/mobile screenshots",
-    "serve:web": "pnpm --filter @our-players/mobile serve:web"
+    "serve:web": "pnpm --filter @our-players/mobile serve:web",
+    "build:web": "pnpm --filter @our-players/mobile build:web"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

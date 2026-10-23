@@ -9,7 +9,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "screenshots": "tsx scripts/screenshots.ts",
-    "serve:web": "tsx scripts/serve-web.ts"
+    "serve:web": "tsx scripts/serve-web.ts",
+    "build:web": "expo export -p web",
+    "icons": "tsx scripts/icons.ts"
   },
   "dependencies": {
     "@our-players/shared": "workspace:*",
