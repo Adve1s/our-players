@@ -1,12 +1,12 @@
 // TS 6 loads no @types by default, and this Node script needs them.
 /// <reference types="node" />
 import { type ChildProcess, spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
-import { extname, join, resolve, sep } from 'node:path';
+import type { Server } from 'node:http';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { type Browser, chromium, type Page } from 'playwright';
 import { DEFAULT_PREFS, type StoredPrefs } from '../src/state/prefs';
+import { serveWeb } from './web-server';
 
 // Own ports, so this runs next to `pnpm dev:server` (:3001) and `pnpm dev:mobile` (:8081).
 const API_PORT = 3101;
@@ -66,43 +66,6 @@ function run(cmd: string, args: string[], env: NodeJS.ProcessEnv): Promise<void>
     const child = spawn(cmd, args, { stdio: 'inherit', env });
     child.once('error', fail);
     child.once('exit', (code) => (code === 0 ? ok() : fail(new Error(`exited with ${code}`))));
-  });
-}
-
-const TYPES: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.ttf': 'font/ttf',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-};
-
-// `expo serve` only serves <project>/dist, so a tiny static server with the single-page fallback.
-function serveWeb(): Promise<Server> {
-  const s = createServer(async (req, res) => {
-    const path = decodeURIComponent(new URL(req.url ?? '/', WEB).pathname);
-    const file = resolve(WEB_DIR, `.${path}`);
-    let body: Buffer;
-    let type = TYPES[extname(file)] ?? 'application/octet-stream';
-    try {
-      if (!file.startsWith(WEB_DIR + sep)) throw new Error('outside the export');
-      body = await readFile(file);
-    } catch {
-      // Unknown paths (deep links like /settings, directories) get the app's index.html.
-      body = await readFile(join(WEB_DIR, 'index.html'));
-      type = TYPES['.html'] ?? 'text/html';
-    }
-    res.writeHead(200, { 'content-type': type }).end(body);
-  });
-  return new Promise((ok, fail) => {
-    s.once('error', fail);
-    s.listen(WEB_PORT, '127.0.0.1', () => ok(s));
   });
 }
 
@@ -670,7 +633,9 @@ async function main(): Promise<void> {
       EXPO_PUBLIC_API_URL: API,
     }),
   );
-  server = await step('serve web', serveWeb);
+  server = await step('serve web', () =>
+    serveWeb({ dir: WEB_DIR, port: WEB_PORT, host: '127.0.0.1' }),
+  );
   const b = await step('launch browser', () =>
     chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined }),
   );

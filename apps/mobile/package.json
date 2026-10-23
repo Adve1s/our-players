@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "screenshots": "tsx scripts/screenshots.ts"
+    "screenshots": "tsx scripts/screenshots.ts",
+    "serve:web": "tsx scripts/serve-web.ts"
   },
   "dependencies": {
     "@our-players/shared": "workspace:*",
