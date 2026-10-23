@@ -124,6 +124,31 @@ async function game(page: Page, id: string): Promise<void> {
   await page.goto(`${WEB}/game/${id}`);
 }
 
+// A file missing from the export comes back as index.html with 200, so the type is the check.
+async function checkManifest(): Promise<void> {
+  const get = async (path: string, type: string): Promise<Response> => {
+    const res = await fetch(`${WEB}${path}`);
+    const got = res.headers.get('content-type') ?? '';
+    console.log(`  ${path} ${res.status} ${got}`);
+    if (res.status !== 200 || !got.startsWith(type))
+      throw new Error(`${path}: ${res.status} ${got}`);
+    return res;
+  };
+  const html = await (await get('/', 'text/html')).text();
+  for (const rel of ['rel="manifest"', 'rel="apple-touch-icon"']) {
+    if (!html.includes(rel)) throw new Error(`/: no ${rel}`);
+  }
+  const manifest = (await (await get('/manifest.json', 'application/json')).json()) as {
+    display?: unknown;
+    icons?: { src: string }[];
+  };
+  if (manifest.display !== 'standalone')
+    throw new Error('/manifest.json: display is not standalone');
+  if (!manifest.icons?.length) throw new Error('/manifest.json: no icons');
+  for (const icon of manifest.icons) await get(icon.src, 'image/png');
+  await get('/apple-touch-icon.png', 'image/png');
+}
+
 async function tab(page: Page, label: string): Promise<void> {
   await page.goto(WEB);
   await page.getByRole('tab', { name: label }).click();
@@ -595,6 +620,13 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    name: 'install',
+    take: async (page) => {
+      await page.goto(`${WEB}/install`);
+      await seen(page, 'Add to Home Screen', 'iPhone or iPad');
+    },
+  },
+  {
     name: 'settings-api-down',
     take: async (page) => {
       await page.context().route(`${API}/**`, (r) => r.abort());
@@ -636,6 +668,7 @@ async function main(): Promise<void> {
   server = await step('serve web', () =>
     serveWeb({ dir: WEB_DIR, port: WEB_PORT, host: '127.0.0.1' }),
   );
+  await step('check manifest', checkManifest);
   const b = await step('launch browser', () =>
     chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined }),
   );
