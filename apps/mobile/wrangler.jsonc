@@ -1,0 +1,11 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "our-players",
+  "compatibility_date": "2026-10-23",
+  // Static files only, no Worker code. A path that isn't a file gets index.html with 200, so
+  // deep links (/player/…) survive a reload.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
