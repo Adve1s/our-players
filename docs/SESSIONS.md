@@ -682,7 +682,7 @@ Then plan and build the repo work. Console and host steps are mine: after the fi
 
 **Goal:** PC users open the web app in a browser; iPhone friends add it to their home screen.
 
-**In scope:** switch on S14a's deploy config (its push trigger) with the production API URL; check the production API's `CORS_ORIGINS` (set in S10b) matches the live web origin; the help page reachable from the site.
+**In scope:** switch on S14a's deploy config (its push trigger) with the production API URL; check the production API's `CORS_ORIGINS` (set in S10b) matches the live web origin; the help page reachable from the site. If you've bought a domain by then, the site goes there instead of `workers.dev` (DNS on Cloudflare, a Workers custom domain), and the web origin, deep links and home-screen install are re-checked on that address.
 
 **Out of scope:** new features.
 

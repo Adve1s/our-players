@@ -1,12 +1,12 @@
 // TS 6 loads no @types by default, and this Node script needs them.
 /// <reference types="node" />
 import { type ChildProcess, spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
-import { extname, join, resolve, sep } from 'node:path';
+import type { Server } from 'node:http';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { type Browser, chromium, type Page } from 'playwright';
 import { DEFAULT_PREFS, type StoredPrefs } from '../src/state/prefs';
+import { serveWeb } from './web-server';
 
 // Own ports, so this runs next to `pnpm dev:server` (:3001) and `pnpm dev:mobile` (:8081).
 const API_PORT = 3101;
@@ -69,43 +69,6 @@ function run(cmd: string, args: string[], env: NodeJS.ProcessEnv): Promise<void>
   });
 }
 
-const TYPES: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.ttf': 'font/ttf',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-};
-
-// `expo serve` only serves <project>/dist, so a tiny static server with the single-page fallback.
-function serveWeb(): Promise<Server> {
-  const s = createServer(async (req, res) => {
-    const path = decodeURIComponent(new URL(req.url ?? '/', WEB).pathname);
-    const file = resolve(WEB_DIR, `.${path}`);
-    let body: Buffer;
-    let type = TYPES[extname(file)] ?? 'application/octet-stream';
-    try {
-      if (!file.startsWith(WEB_DIR + sep)) throw new Error('outside the export');
-      body = await readFile(file);
-    } catch {
-      // Unknown paths (deep links like /settings, directories) get the app's index.html.
-      body = await readFile(join(WEB_DIR, 'index.html'));
-      type = TYPES['.html'] ?? 'text/html';
-    }
-    res.writeHead(200, { 'content-type': type }).end(body);
-  });
-  return new Promise((ok, fail) => {
-    s.once('error', fail);
-    s.listen(WEB_PORT, '127.0.0.1', () => ok(s));
-  });
-}
-
 // Stored prefs other than the defaults, written before the first load as the app's persist layer does.
 // `after` runs once the image is taken: checks that belong to the shot but not to its picture.
 type Shot = {
@@ -159,6 +122,31 @@ async function player(page: Page, id: string): Promise<void> {
 
 async function game(page: Page, id: string): Promise<void> {
   await page.goto(`${WEB}/game/${id}`);
+}
+
+// A file missing from the export comes back as index.html with 200, so the type is the check.
+async function checkManifest(): Promise<void> {
+  const get = async (path: string, type: string): Promise<Response> => {
+    const res = await fetch(`${WEB}${path}`);
+    const got = res.headers.get('content-type') ?? '';
+    console.log(`  ${path} ${res.status} ${got}`);
+    if (res.status !== 200 || !got.startsWith(type))
+      throw new Error(`${path}: ${res.status} ${got}`);
+    return res;
+  };
+  const html = await (await get('/', 'text/html')).text();
+  for (const rel of ['rel="manifest"', 'rel="apple-touch-icon"']) {
+    if (!html.includes(rel)) throw new Error(`/: no ${rel}`);
+  }
+  const manifest = (await (await get('/manifest.json', 'application/json')).json()) as {
+    display?: unknown;
+    icons?: { src: string }[];
+  };
+  if (manifest.display !== 'standalone')
+    throw new Error('/manifest.json: display is not standalone');
+  if (!manifest.icons?.length) throw new Error('/manifest.json: no icons');
+  for (const icon of manifest.icons) await get(icon.src, 'image/png');
+  await get('/apple-touch-icon.png', 'image/png');
 }
 
 async function tab(page: Page, label: string): Promise<void> {
@@ -632,6 +620,13 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    name: 'install',
+    take: async (page) => {
+      await page.goto(`${WEB}/install`);
+      await seen(page, 'Add to Home Screen', 'iPhone or iPad');
+    },
+  },
+  {
     name: 'settings-api-down',
     take: async (page) => {
       await page.context().route(`${API}/**`, (r) => r.abort());
@@ -670,7 +665,10 @@ async function main(): Promise<void> {
       EXPO_PUBLIC_API_URL: API,
     }),
   );
-  server = await step('serve web', serveWeb);
+  server = await step('serve web', () =>
+    serveWeb({ dir: WEB_DIR, port: WEB_PORT, host: '127.0.0.1' }),
+  );
+  await step('check manifest', checkManifest);
   const b = await step('launch browser', () =>
     chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined }),
   );

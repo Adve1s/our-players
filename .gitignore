@@ -13,6 +13,9 @@ apps/mobile/.screenshots/
 apps/mobile/.expo/
 web-build/
 
+# Wrangler (Cloudflare) local state from `wrangler deploy --dry-run`
+.wrangler/
+
 # Environment and secrets
 .env
 .env.*

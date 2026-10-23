@@ -69,7 +69,7 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
 2. **Repo.** Public GitHub repo with this kit on `main` (done). Public is the easy path: free branch protection, GitHub Pages and Actions minutes.
 3. **Repo settings** (Settings → General → Pull Requests): allow merge commits; turn on **Automatically delete head branches**.
 4. **Protect `main`** (Settings → Branches → rule for `main`): **Require a pull request before merging** with no required approvals, and **Do not allow bypassing the above settings** (otherwise admins — you, and Claude through your `gh` login — skip the rule). After S00's first CI run, add **Require status checks to pass** with `verify (22)` and `verify (24)`.
-5. **Firewall, for phone testing.** `sudo ufw allow proto tcp from 192.168.0.0/16 to any port 8081,3001` (adjust the range to your network).
+5. **Firewall, for phone testing.** `sudo ufw allow proto tcp from 192.168.0.0/16 to any port 8081,3001,8090` (8090: `pnpm serve:web`; adjust the range to your network).
 6. **Plugins.** In Claude Code, choosing **project** scope except where noted:
    ```
    /plugin install superpowers@claude-plugins-official
