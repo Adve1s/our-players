@@ -33,7 +33,14 @@ export function serveWeb(opts: { dir: string; port: number; host: string }): Pro
       body = await readFile(file);
     } catch {
       // Unknown paths (deep links like /settings, directories) get the app's index.html.
-      body = await readFile(join(dir, 'index.html'));
+      try {
+        body = await readFile(join(dir, 'index.html'));
+      } catch {
+        // `expo export` empties dist/ first, so a rebuild while serving lands here; answer, don't crash.
+        res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
+        res.end('index.html is missing: run pnpm build:web');
+        return;
+      }
       type = TYPES['.html'] ?? 'text/html';
     }
     res.writeHead(200, { 'content-type': type }).end(body);

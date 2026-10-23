@@ -12,8 +12,11 @@ let tmp: string;
 let server: Server;
 
 // node:http, not fetch: the test setup disables fetch, and the raw path must reach the server unnormalised.
-function request(path: string): Promise<{ status: number; type: string; body: string }> {
-  const { port } = server.address() as AddressInfo;
+function request(
+  path: string,
+  to: Server = server,
+): Promise<{ status: number; type: string; body: string }> {
+  const { port } = to.address() as AddressInfo;
   return new Promise((ok, fail) => {
     get({ host: '127.0.0.1', port, path }, (res) => {
       let body = '';
@@ -71,5 +74,20 @@ describe('serveWeb', () => {
     expect(res.status).toBe(200);
     expect(res.body).toBe('<p>app</p>');
     expect((await request('/manifest.json')).status).toBe(200);
+  });
+
+  it('answers 500 and keeps serving when the export has no index.html (a rebuild in progress)', async () => {
+    const empty = await mkdtemp(join(tmpdir(), 'web-server-empty-'));
+    await writeFile(join(empty, 'manifest.json'), '{}');
+    const bare = await serveWeb({ dir: empty, port: 0, host: '127.0.0.1' });
+    try {
+      const res = await request('/player/nhl-1', bare);
+      expect(res.status).toBe(500);
+      expect(res.body).toBe('index.html is missing: run pnpm build:web');
+      expect((await request('/manifest.json', bare)).status).toBe(200);
+    } finally {
+      await new Promise((ok) => bare.close(ok));
+      await rm(empty, { recursive: true, force: true });
+    }
   });
 });

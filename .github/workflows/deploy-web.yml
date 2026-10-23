@@ -11,6 +11,8 @@ concurrency: deploy-web
 
 jobs:
   deploy:
+    # Only main is reviewed and CI-checked; a hand-started run on another branch skips.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       EXPO_PUBLIC_API_URL: ${{ vars.WEB_API_URL }}
