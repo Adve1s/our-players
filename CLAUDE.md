@@ -27,7 +27,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `pnpm inspect <source> <endpoint> <fixture-id>` — print the normalized result of a fixture (S03+)
 - `pnpm fixtures:record <source> <endpoint> <id-or-date> [--as <name>]` — record a raw upstream response (S01+); `--as` saves it under another file name
 - `pnpm db:generate` (new migration after schema change) · `pnpm db:migrate` · `pnpm db:reset` (local only)
-- `pnpm build:web` — static web export to `apps/mobile/dist/`; API URL from `EXPO_PUBLIC_API_URL` (default `http://localhost:3001`)
+- `pnpm build:web` — static web export to `apps/mobile/dist/`; API URL from `EXPO_PUBLIC_API_URL` (env or `apps/mobile/.env`; `http://localhost:3001` when neither sets it)
 - `pnpm serve:web` — serve that export on :8090 over the LAN with the SPA fallback
 - `pnpm screenshots` — capture the web build's key screens to `apps/mobile/.screenshots/` (S08+)
 
