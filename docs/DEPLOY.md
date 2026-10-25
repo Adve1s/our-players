@@ -2,9 +2,10 @@
 
 How the API, the ingestion scheduler and Postgres run on the Linode host, and how to set them up from zero, deploy, roll back, rebuild the data and rotate secrets. Design: `docs/superpowers/specs/2026-10-25-s10b-deploy.md` (D-054).
 
-**Placeholders.** Replace these three everywhere, including the `<` `>`:
+The API lives at `https://api.players.adveis.dev`: the domain `adveis.dev` is registered at Cloudflare, which also hosts its DNS.
+
+**Placeholders.** Replace these two everywhere, including the `<` `>`:
 - `<server-ip>`: the Linode's public IPv4 address (Linode console → the Linode → Network).
-- `<name>`: your deSEC name, so the API lives at `https://<name>.dedyn.io`.
 - `<cf-subdomain>`: your Cloudflare `workers.dev` subdomain (Cloudflare dashboard → Workers & Pages → the subdomain on the right).
 
 **Where commands run.** Each block says **On your computer** (from the repo root) or **On the host**. Host commands run as `root` and start with `cd /opt/our-players`, because `docker compose` reads `compose.yaml` and `.env` from the current directory.
@@ -29,7 +30,7 @@ internet ──443/80──▶ caddy (TLS, Let's Encrypt) ──▶ api:3001 (Ho
 
 | Key | Value | Notes |
 | --- | --- | --- |
-| `API_HOST` | `<name>.dedyn.io` | Caddy gets the certificate for this name. |
+| `API_HOST` | `api.players.adveis.dev` | Caddy gets the certificate for this name. |
 | `POSTGRES_PASSWORD` | `openssl rand -hex 24` | **Hex only:** compose puts it into `DATABASE_URL` unescaped, so `@`, `/` or `:` would break the URL. |
 | `CORS_ORIGINS` | `https://our-players.<cf-subdomain>.workers.dev` | Browser origins allowed to read `/v1` (the web build, S14b). Comma-separated. |
 | `API_TAG` | git short SHA | `deploy.sh` writes it. |
@@ -40,7 +41,7 @@ internet ──443/80──▶ caddy (TLS, Let's Encrypt) ──▶ api:3001 (Ho
 
 ### 2.1 Consoles
 
-1. **deSEC:** sign up at desec.io and create the name `<name>.dedyn.io`.
+1. **Domain:** `adveis.dev`, registered at Cloudflare (Domains → Registrations), auto-renew on.
 2. **SSH key** (skip if `ls ~/.ssh/id_ed25519.pub` already prints a file). **On your computer:**
    ```bash
    ssh-keygen -t ed25519
@@ -48,9 +49,9 @@ internet ──443/80──▶ caddy (TLS, Let's Encrypt) ──▶ api:3001 (Ho
    ```
    Press Enter for the default file; a passphrase is recommended. The second command prints the public key to paste into Linode.
 3. **Linode:** create a Linode: Nanode 1 GB, region Frankfurt, image Ubuntu 24.04 LTS, a strong root password (saved in your password manager), and your SSH public key under "SSH Keys". Note its IPv4 address: that's `<server-ip>`.
-4. **deSEC:** add an `A` record for `<name>.dedyn.io` with the value `<server-ip>` (optionally an `AAAA` record with the Linode's IPv6 address). Check **on your computer**:
+4. **Cloudflare DNS:** adveis.dev → DNS → Records → Add record: type `A`, name `api.players`, IPv4 address `<server-ip>`, proxy status **DNS only** (grey cloud). Caddy gets its own certificate, and behind Cloudflare's proxy every visitor would share Cloudflare's addresses in the rate limit. Optionally an `AAAA` record with the Linode's IPv6 address, also DNS only. Check **on your computer**:
    ```bash
-   getent hosts <name>.dedyn.io
+   getent hosts api.players.adveis.dev
    ```
    Success: it prints `<server-ip>` (or the IPv6 address). If it prints nothing, wait a few minutes for DNS.
 
@@ -151,7 +152,7 @@ scp deploy/.env.example root@<server-ip>:/opt/our-players/.env
 cd /opt/our-players
 chmod 600 .env
 sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
-sed -i 's/^API_HOST=.*/API_HOST=<name>.dedyn.io/' .env
+sed -i 's/^API_HOST=.*/API_HOST=api.players.adveis.dev/' .env
 sed -i 's|^CORS_ORIGINS=.*|CORS_ORIGINS=https://our-players.<cf-subdomain>.workers.dev|' .env
 grep -v '^POSTGRES_PASSWORD=' .env
 grep -cE '^POSTGRES_PASSWORD=[0-9a-f]{48}$' .env
@@ -183,7 +184,7 @@ Run section 5, "Rebuild from scratch", steps 1–5 (it ends by starting everythi
 
 **On your computer:**
 ```bash
-curl -fsS https://<name>.dedyn.io/health; echo
+curl -fsS https://api.players.adveis.dev/health; echo
 curl -sS -m 5 http://<server-ip>:3001/health; echo "exit=$?"
 ```
 Success: the first prints `{"ok":true,…}`. The second must fail (`exit=7` or `exit=28`): port 3001 isn't reachable from outside. If the first fails with a certificate error, Caddy may still be getting its certificate: wait a minute and retry, and check `docker compose logs caddy | grep -i certif` on the host.
@@ -308,7 +309,7 @@ Paste the output into the session; it goes in the table below. `duration` is wal
 
 ## 6. Rotating secrets
 
-No API keys exist: both upstream APIs are keyless. The secrets are the database password, your SSH key and, if you made one, a deSEC token.
+No API keys exist: both upstream APIs are keyless. The secrets are the database password, your SSH key and your Cloudflare login (it controls the DNS).
 
 ### Database password
 
@@ -334,9 +335,9 @@ ssh -i ~/.ssh/id_ed25519_new root@<server-ip> echo new key works
 ```
 Success: `new key works`. Then **on the host** remove the old key's line (it ends with the old key's comment, e.g. `you@yourcomputer`) from `/root/.ssh/authorized_keys` with `nano /root/.ssh/authorized_keys`, and on your computer move the new key into place (`mv ~/.ssh/id_ed25519_new ~/.ssh/id_ed25519` and the same for `.pub`). Also replace the key in Linode's "SSH Keys" profile, so a rebuilt Linode gets the new one.
 
-### deSEC token
+### Cloudflare
 
-Only if you created one (the `A` record itself needs none): deSEC → Token Management → delete the token and create a new one where it's used.
+Change the password under Manage account → Authentication, and keep two-factor authentication on. S14b's `CLOUDFLARE_API_TOKEN`: My Profile → API Tokens → roll it, then update the repo secret (`gh secret set CLOUDFLARE_API_TOKEN`).
 
 ## 7. Checks
 
@@ -351,9 +352,9 @@ docker compose logs --tail 100 api
 
 **Health** (criterion 2):
 ```bash
-curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/health
-curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/health/data
-curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/v1/meta
+curl -sS -w ' %{http_code}\n' https://api.players.adveis.dev/health
+curl -sS -w ' %{http_code}\n' https://api.players.adveis.dev/health/data
+curl -sS -w ' %{http_code}\n' https://api.players.adveis.dev/v1/meta
 ```
 `/health`: `{"ok":true,"lastSuccess":{…}} 200` (the database answers). `/health/data`: `{"ok":true} 200`, or 503 with the reasons (section 8). `/v1/meta`: each league's `latestGameDate` is the last game night and `dataUpdatedAt` is recent.
 
@@ -367,7 +368,7 @@ SQL
 
 **Access log without query strings** (criterion 6):
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' "https://<name>.dedyn.io/v1/days/$(date -u -d yesterday +%F)?countries=LVA"
+curl -sS -o /dev/null -w '%{http_code}\n' "https://api.players.adveis.dev/v1/days/$(date -u -d yesterday +%F)?countries=LVA"
 docker compose logs api | grep '/v1/days' | tail -1
 ```
 Success: a line like `{"level":"info","msg":"request","method":"GET","path":"/v1/days/2026-10-26","status":200,"ms":12}`: the path without `?countries=LVA`. Paste it.
@@ -380,14 +381,14 @@ Success: no line about a client request (e.g. no TLS handshake error with a visi
 
 **Search on Postgres** (the ICU collation):
 ```bash
-curl -sS 'https://<name>.dedyn.io/v1/players/search?q=kris' | head -c 300; echo
+curl -sS 'https://api.players.adveis.dev/v1/players/search?q=kris' | head -c 300; echo
 ```
 Success: `{"players":[{"id":…,"firstName":"Kris",…`.
 
 **Rate limit** (criterion 10). **On your computer** (it waits for the next full minute, because the limit counts per clock minute):
 ```bash
-sleep $((60 - 10#$(date +%S))); for i in $(seq 125); do curl -s -o /dev/null -w '%{http_code}\n' https://<name>.dedyn.io/v1/meta; done | uniq -c
-curl -sS -i https://<name>.dedyn.io/v1/meta | grep -i '^HTTP\|^retry-after\|^{'
+sleep $((60 - 10#$(date +%S))); for i in $(seq 125); do curl -s -o /dev/null -w '%{http_code}\n' https://api.players.adveis.dev/v1/meta; done | uniq -c
+curl -sS -i https://api.players.adveis.dev/v1/meta | grep -i '^HTTP\|^retry-after\|^{'
 ```
 Success: `120 200` then `5 429`, and the second command shows `HTTP/2 429`, `retry-after: …` and `{"error":{"code":"RATE_LIMITED",…}}` (if the minute has rolled over by then it shows 200; run both again). If you see more than 120 × `200`, the loop crossed a minute boundary: run it again. Paste the output.
 
@@ -412,8 +413,8 @@ Success: `120 200` then `5 429`, and the second command shows `HTTP/2 429`, `ret
    Success: one row and `UPDATE 1`. (`UPDATE 0` means no game started 5–20 h ago; try later in the day after a game night.)
 3. Check:
    ```bash
-   curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/health/data
-   curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/health
+   curl -sS -w ' %{http_code}\n' https://api.players.adveis.dev/health/data
+   curl -sS -w ' %{http_code}\n' https://api.players.adveis.dev/health
    ```
    Success: `{"error":{"code":"STALE","message":"<that game>: started over 4 h ago, no box score yet"}} 503`, while `/health` stays `200`. Within ~5–10 minutes UptimeRobot emails that the data monitor is down. Paste both lines and confirm the email.
 4. Restore:
@@ -421,7 +422,7 @@ Success: `120 200` then `5 429`, and the second command shows `HTTP/2 429`, `ret
    sed -i 's/^SCHEDULER_ENABLED=.*/SCHEDULER_ENABLED=1/' .env
    docker compose up -d --wait api
    sleep 60
-   curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/health/data
+   curl -sS -w ' %{http_code}\n' https://api.players.adveis.dev/health/data
    ```
    Success: `{"ok":true} 200`: the startup catch-up fetched the box score again. UptimeRobot then emails that the monitor is up. Still 503? Wait a few minutes and run the curl again: the startup tick runs NHL's jobs before NBA's, and daily jobs may be due first.
 
@@ -461,16 +462,16 @@ UptimeRobot, free plan (5-minute checks, email alerts). Create two **HTTP(s)** m
 
 | Monitor | URL | Down means |
 | --- | --- | --- |
-| Our Players data | `https://<name>.dedyn.io/health/data` | The API answers but data is stale: lines are late, `results` keeps failing, or no schedule ran for 50 h. |
-| Our Players host | `https://<name>.dedyn.io/health` | The host, Docker, Caddy, the API or the database is down (or DNS/TLS is broken). |
+| Our Players data | `https://api.players.adveis.dev/health/data` | The API answers but data is stale: lines are late, `results` keeps failing, or no schedule ran for 50 h. |
+| Our Players host | `https://api.players.adveis.dev/health` | The host, Docker, Caddy, the API or the database is down (or DNS/TLS is broken). |
 
 The first thing to look at:
 - **Both down:** `ssh root@<server-ip>`, then `cd /opt/our-players && docker compose ps && docker compose logs --tail 100 api caddy`. If SSH doesn't answer, look at the Linode in the Linode console (running? CPU/memory graphs) and use its web console (Lish).
-- **Only data down:** `curl -sS https://<name>.dedyn.io/health/data` names the reasons:
+- **Only data down:** `curl -sS https://api.players.adveis.dev/health/data` names the reasons:
   - `<game-id>: started over 4 h ago, no box score yet`: box scores aren't arriving. Is the scheduler running (`docker compose logs api | grep scheduler`)? Are `results` runs failing (the job-runs query in section 7, and `docker compose logs --tail 200 api | grep '"level":"error"'`)? A game stuck upstream alerts for at most 48 h.
   - `<league>: last 3 results runs failed or partial`: the upstream API is down or changed; the runs' `error` column says which. If it changed shape, the adapter needs a fix (a session with Claude).
   - `schedule: no successful run in 50 h`: the daily `schedule` job failed twice; same places to look.
 
 ## 9. Production API URL
 
-`https://<name>.dedyn.io` (filled in once the name exists). It's S14b's `WEB_API_URL` repo variable and the API URL of S11b's Android build profile.
+`https://api.players.adveis.dev`. It's S14b's `WEB_API_URL` repo variable and the API URL of S11b's Android build profile.
