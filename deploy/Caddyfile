@@ -1,0 +1,17 @@
+# No `log` directive in the site block, so Caddy writes no access log (the API logs paths without
+# query strings). Caddy's own error logs still carry the request URI (e.g. while the API restarts):
+# the filter cuts it at `?` so preferences in the query (countries, favorites) never reach a log,
+# and drops the client address, so no log holds IP addresses.
+{
+	log default {
+		format filter {
+			request>uri regexp [?].* ""
+			request>remote_ip delete
+			request>client_ip delete
+		}
+	}
+}
+
+{$API_HOST} {
+	reverse_proxy api:3001
+}

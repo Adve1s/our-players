@@ -17,6 +17,7 @@ import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import { Pool } from 'pg';
+import { createLogger, type Logger } from '../jobs/runner';
 import { leagues } from './schema';
 
 // The base both drivers extend, so repositories run unchanged on PGlite and Postgres.
@@ -171,9 +172,12 @@ export function pgliteHandle(client: PGlite): DbHandle {
   };
 }
 
-export function openPostgres(url: string): DbHandle {
-  // shortcut: not exercised before S10b (no Postgres in CI); test it when the deploy exists
+export function openPostgres(url: string, log: Logger = createLogger()): DbHandle {
+  // shortcut: exercised by the local compose smoke run (S10b); still untested in CI
   const pool = new Pool({ connectionString: url });
+  // An idle client's error (e.g. Postgres restarting) is emitted on the pool; unhandled, it would crash the API.
+  // The pool drops that client and opens a new one on the next query.
+  pool.on('error', (e) => log.error('postgres pool error', { error: e.message }));
   const db = drizzlePg(pool);
   return {
     db,

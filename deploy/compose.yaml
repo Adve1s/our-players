@@ -1,0 +1,77 @@
+# Production stack (S10b): Caddy (TLS) -> api (Hono + scheduler) -> db (Postgres). See docs/DEPLOY.md.
+# Values come from .env next to this file; deploy/.env.example lists them.
+
+# Fixed, so container and volume names don't depend on the directory the file sits in.
+name: our-players
+
+# Docker keeps container logs forever by default; this caps each service at 5 x 10 MB.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  db:
+    # The Debian image is built with ICU, which search's `collate "und-x-icu"` needs.
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: our_players
+      POSTGRES_DB: our_players
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U our_players -d our_players"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *logging
+
+  api:
+    # localhost/ because podman prefixes local images with it; Docker accepts the same name.
+    image: localhost/our-players-api:${API_TAG:?set API_TAG in .env}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://our_players:${POSTGRES_PASSWORD}@db:5432/our_players
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS in .env}
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-1}
+      CONTACT_URL: ${CONTACT_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    # The slim image has no curl.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    # A running job tick finishes before a deploy replaces the container.
+    stop_grace_period: 2m
+    logging: *logging
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    # The only published ports: db and api are reachable only on the compose network.
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_HOST: ${API_HOST:?set API_HOST in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
