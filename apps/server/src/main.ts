@@ -47,7 +47,8 @@ process.on('SIGTERM', shutdown);
 try {
   await handle.migrate();
 } catch (e) {
-  await handle.close(); // releases the PGlite lock
+  // Releases the PGlite lock; after a signal, shutdown already closed it, and a second close would hide `e`.
+  if (!stopping) await handle.close();
   throw e;
 }
 
