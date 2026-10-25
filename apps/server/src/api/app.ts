@@ -21,9 +21,16 @@ import { loadDataHealth } from './data-health';
 import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
 import { loadPlayer, playersByIds, searchPlayers } from './players';
+import { rateLimit } from './rate-limit';
 
-// corsOrigins absent: no browser origin may read /v1.
-export type ApiDeps = { db: Db; now: () => Date; log: Logger; corsOrigins?: readonly string[] };
+// corsOrigins absent: no browser origin may read /v1. rateLimitPerMinute absent: no limit.
+export type ApiDeps = {
+  db: Db;
+  now: () => Date;
+  log: Logger;
+  corsOrigins?: readonly string[];
+  rateLimitPerMinute?: number;
+};
 
 export function badRequest(message: string): HTTPException {
   return new HTTPException(400, { message });
@@ -57,7 +64,7 @@ const CACHE_CONTROL = 'public, max-age=0, s-maxage=60';
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);
 
-export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
+export function createApp({ db, now, log, corsOrigins = [], rateLimitPerMinute }: ApiDeps): Hono {
   const app = new Hono();
 
   // c.req.path has no query string, so preferences (countries, favorites) never reach the logs.
@@ -73,6 +80,10 @@ export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
   });
 
   app.use('/v1/*', cors({ origin: [...corsOrigins], allowMethods: ['GET'] }));
+  // After CORS, so a browser can read the 429.
+  if (rateLimitPerMinute !== undefined) {
+    app.use('/v1/*', rateLimit({ limit: rateLimitPerMinute, windowMs: 60_000, now }));
+  }
 
   app.onError((err, c) => {
     // Only our own 400s echo their message; any other status takes the generic, logged 500.
