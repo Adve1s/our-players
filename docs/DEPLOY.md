@@ -193,7 +193,7 @@ git switch main
 git pull
 deploy/deploy.sh root@<server-ip>
 ```
-It builds and ships the image as in 2.8, then on the host runs `docker compose up -d --wait` (replaces the API container; the database and its data stay), `docker compose ps` and a `curl` of `https://$API_HOST/health`. Success: `docker compose ps` lists `db`, `api` and `caddy` as `Up` (`api` and `db` `(healthy)`), then `{"ok":true,…}` and `deployed <sha>`.
+It builds and ships the image as in 2.8, then on the host runs `docker compose up -d --wait` (replaces the API container; the database and its data stay), `caddy reload` (applies a changed `Caddyfile`), `docker compose ps` and a `curl` of `https://$API_HOST/health`. Success: `docker compose ps` lists `db`, `api` and `caddy` as `Up` (`api` and `db` `(healthy)`), then `{"ok":true,…}` and `deployed <sha>`.
 
 The API is unavailable for roughly 10–40 s while the new container starts and migrates; a running job tick gets up to 2 minutes to finish first. The scheduler catches up on anything it missed.
 

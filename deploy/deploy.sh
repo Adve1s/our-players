@@ -48,6 +48,7 @@ if [[ $ship_only -eq 1 ]]; then
   exit 0
 fi
 
-# --wait returns once db and api report healthy (or fails if one doesn't).
-ssh "$target" "cd $remote_dir && docker compose up -d --wait && docker compose ps && curl -fsS --retry 5 --retry-delay 3 --retry-all-errors \"https://\$(grep '^API_HOST=' .env | cut -d= -f2)/health\" && echo"
+# --wait returns once db and api report healthy (or fails if one doesn't). Compose doesn't notice an
+# edited Caddyfile (a bind mount), so Caddy reloads it; that's a no-op when it's unchanged.
+ssh "$target" "cd $remote_dir && docker compose up -d --wait && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile && docker compose ps && curl -fsS --retry 5 --retry-delay 3 --retry-all-errors \"https://\$(grep '^API_HOST=' .env | cut -d= -f2)/health\" && echo"
 echo "deployed $tag"
