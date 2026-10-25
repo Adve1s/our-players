@@ -14,6 +14,7 @@ import { upsertPlayers } from '../src/db/players';
 import { upsertSeasonStats } from '../src/db/season-stats';
 import { upsertTeams } from '../src/db/teams';
 import { createLogger } from '../src/jobs/runner';
+import { mapAthlete } from '../src/sources/espn-nba';
 import {
   EMBIID,
   FORSLING,
@@ -37,6 +38,7 @@ import {
   nhlSeasonStats,
   nyi,
 } from './db-data';
+import { loadFixture } from './fixtures';
 
 let handle: DbHandle;
 
@@ -448,6 +450,34 @@ describe('GET /v1/players/:playerId', () => {
     it("shows last season's stats until the regular season starts", async () => {
       const { seasonStats } = await player(GIRGENSONS, pre.db);
       expect(seasonStats.map((s) => [s.season, s.seasonType])).toEqual([['2025-26', 'REG']]);
+    });
+  });
+
+  describe('a player ESPN lists without a position ("NA", athlete/5176517)', () => {
+    let na: DbHandle;
+
+    beforeAll(async () => {
+      na = await createTestDb();
+      const { player: ajayi } = mapAthlete(loadFixture('espn-nba', 'athlete', '5176517'));
+      await upsertPlayers(na.db, [ajayi], NO_OVERRIDES);
+    }, 30_000);
+
+    afterAll(() => na.close());
+
+    it('answers position and position group null', async () => {
+      const p = await player('nba-5176517', na.db);
+      expect(p.lastName).toBe('Ajayi');
+      expect(p.position).toBeNull();
+      expect(p.positionGroup).toBeNull();
+    });
+
+    it('search answers him with position null', async () => {
+      const { body } = await setup(na.db).get(
+        '/v1/players/search?q=ajayi',
+        200,
+        playersResponseSchema,
+      );
+      expect(body.players.map((p) => [p.id, p.position])).toEqual([['nba-5176517', null]]);
     });
   });
 });

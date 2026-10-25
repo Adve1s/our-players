@@ -270,6 +270,65 @@ describe('mapSummary: 401898399 SAC@GS (preseason)', () => {
   });
 });
 
+describe('mapSummary: 401909095 NY@BOS (a played row with MIN "--")', () => {
+  const result = () => mapSummary(summary('401909095'));
+
+  it('maps Pacome Dadiet 5211983 (MIN "--", every stat 0) to a played line with 0 minutes', () => {
+    const l = line(result().lines, '5211983');
+    expect(l.played).toBe(true);
+    expect(l.starter).toBe(false);
+    const s = basketballStats(l);
+    expect(s.minutes).toBe(0);
+    expect(s.points).toBe(0);
+    expect(s.fgAttempted).toBe(0);
+    expect(s.plusMinus).toBe(0);
+  });
+
+  it('gives one line per athlete row: 28, of which 5 DNP', () => {
+    expect(result().lines).toHaveLength(28);
+    expect(result().lines.filter((l) => !l.played)).toHaveLength(5);
+  });
+});
+
+describe('mapSummary: 401909843 ATL@CHA (position "NA")', () => {
+  const result = () => mapSummary(summary('401909843'));
+
+  it('maps Michael Ajayi 5176517 (position "NA") to a DNP line with reason "COACH\'S DECISION"', () => {
+    const l = line(result().lines, '5176517');
+    expect(l.played).toBe(false);
+    expect(l.dnpReason).toBe("COACH'S DECISION");
+  });
+
+  it('gives Ajayi a stub with position and position group null, jersey "10"', () => {
+    const p = player(result().players, '5176517');
+    expect(p.position).toBeNull();
+    expect(p.positionGroup).toBeNull();
+    expect(p.jersey).toBe('10');
+    expect(p.lastName).toBe('Ajayi');
+  });
+
+  it('gives one line per athlete row: 27', () => {
+    expect(result().lines).toHaveLength(27);
+  });
+});
+
+describe('mapSummary: 401810126 WSH@CHI (a DNP row without an athlete ID)', () => {
+  const result = () => mapSummary(summary('401810126'));
+
+  it('skips the DNP row whose athlete has only a short name ("Olbrich"): 26 lines from 27 rows', () => {
+    expect(result().lines).toHaveLength(26);
+  });
+
+  it('builds no stub for that row: 26 stubs, every one with an ID', () => {
+    expect(result().players).toHaveLength(26);
+    for (const p of result().players) expect(p.externalId).toMatch(/^\d+$/);
+  });
+
+  it('keeps the other CHI DNP row: 4 + 1 DNP lines', () => {
+    expect(result().lines.filter((l) => !l.played)).toHaveLength(5);
+  });
+});
+
 describe('mapSummary: stats by label, not by position (AC2)', () => {
   // One fixed permutation of the 14 columns: new column i holds old column PERMUTATION[i].
   const PERMUTATION = [13, 2, 0, 7, 11, 4, 9, 1, 12, 5, 3, 10, 8, 6];
@@ -348,6 +407,12 @@ describe('mapSummary: errors', () => {
     const raw = summary('401810839');
     obj(rawRow(raw, '3102531'), 'athlete', 'position').abbreviation = 'X';
     expect(() => mapSummary(raw)).toThrow(/espn-nba/);
+  });
+
+  it('throws on "--" in a stat other than MIN (PTS)', () => {
+    const raw = summary('401810839');
+    (rawRow(raw, '3102531').stats as string[])[1] = '--';
+    expect(() => mapSummary(raw)).toThrow(/malformed PTS "--"/);
   });
 
   it.each([

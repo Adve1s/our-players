@@ -113,7 +113,7 @@ export const playerSummarySchema = z.object({
   league: leagueSchema,
   firstName: z.string(),
   lastName: z.string(),
-  position: z.string(),
+  position: z.string().nullable(),
   team: z.object({ abbrev: z.string(), name: z.string() }).nullable(), // current team
   nationality: countryCodeSchema.nullable(),
   active: z.boolean(),
@@ -189,7 +189,7 @@ export const gameLogEntrySchema = z.discriminatedUnion('type', [
 export type GameLogEntry = z.infer<typeof gameLogEntrySchema>;
 
 export const playerResponseSchema = playerSummarySchema.extend({
-  positionGroup: positionGroupSchema,
+  positionGroup: positionGroupSchema.nullable(),
   jersey: z.string().nullable(),
   birthDate: z.iso.date().nullable(),
   birthCity: z.string().nullable(),

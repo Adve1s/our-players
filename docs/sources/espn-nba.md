@@ -122,4 +122,9 @@ No `citizenshipCountry`, flag or alpha-3 field.
 - IDs and scores are strings; stats are strings, `+/-` signed.
 - Names come without diacritics (`"Kristaps Porzingis"`, birth city `"Liepaja"`).
 - Roster positions are coarse (`C`/`F`/`G`).
+- Box-score rows that broke the mapper (S10b, from last season's backfill and the first live nights; 52 of 1,316 games in 2025-26):
+  - A DNP row whose `athlete` has only `shortName` and `links` (no `id`, `displayName`, `position`): 33 games, e.g. `"Olbrich"` in `espn-nba/summary/401810126.json`. Skipped: no ID to tie a line to.
+  - A played row (`didNotPlay` false) with `MIN` `"--"` and every count `0`: 15 games, e.g. Pacome Dadiet in `espn-nba/summary/401909095.json`. Read as 0 minutes.
+  - `position` `{"id":"0","abbreviation":"NA","displayName":"Not Available"}`, on the box score and the athlete endpoint alike (Michael Ajayi, `espn-nba/summary/401909843.json`, `espn-nba/athlete/5176517.json`). Stored as position and position group null.
+  - `summary` answering 404 for a scheduled game: 4 games in 2025-26 (e.g. 401869402), not handled; the game alerts in `/health/data` for up to 48 h.
 - Team rosters are *current* rosters only: finding a date's players by roster (`birthPlace.country === "Latvia"`) can miss players traded since. A live S01 run on 2026-03-16 gave Kristaps Porzingis (GS) MIN 26 PTS 30 REB 5 AST 4 FG 8-13 3PT 1-5 FT 13-14, matching `espn-nba/summary/401810839.json`.

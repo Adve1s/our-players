@@ -29,8 +29,8 @@ export type Player = {
   externalId: string;
   firstName: string;
   lastName: string;
-  position: string; // as the source gives it ('C', 'L', 'PG')
-  positionGroup: PositionGroup;
+  position: string | null; // as the source gives it ('C', 'L', 'PG'); null when it has none (ESPN "NA")
+  positionGroup: PositionGroup | null;
   currentTeamExternalId: string | null;
   jersey: string | null;
   birthDate: string | null; // 'YYYY-MM-DD'

@@ -1,6 +1,6 @@
 import type { Player } from '@our-players/shared';
 import type { z } from 'zod';
-import { birthCountry, parsePayload, positionGroup } from './common';
+import { birthCountry, parsePayload, position } from './common';
 import { athleteSchema, rosterSchema } from './schemas';
 
 type Bio = Omit<z.output<typeof athleteSchema>, 'team'>;
@@ -12,7 +12,6 @@ function toPlayer(
   warnings: string[],
 ): Player {
   const where = `espn-nba ${endpoint}: player ${p.id}`;
-  const position = p.position.abbreviation;
   return {
     publicId: `nba-${p.id}`,
     league: 'NBA',
@@ -20,8 +19,7 @@ function toPlayer(
     externalId: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
-    position,
-    positionGroup: positionGroup(position, where),
+    ...position(p.position.abbreviation, where),
     currentTeamExternalId: teamExternalId,
     jersey: p.jersey ?? null,
     // "1995-08-02T07:00Z" → "1995-08-02"

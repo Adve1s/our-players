@@ -231,6 +231,26 @@ describe('mapAthlete: athlete fixtures', () => {
       expect(embiid().jersey).toBe('21');
     });
   });
+
+  describe('Ajayi (athlete/5176517, position "NA" "Not Available", no team)', () => {
+    const ajayi = () => mapAthlete(athlete('5176517'));
+
+    it('maps position "NA" to position and position group null', () => {
+      expect(ajayi().player.position).toBeNull();
+      expect(ajayi().player.positionGroup).toBeNull();
+    });
+
+    it('keeps the rest: Michael Ajayi, born 2003-05-23 in Kent, USA, no team, no warnings', () => {
+      const p = ajayi().player;
+      expect(p.firstName).toBe('Michael');
+      expect(p.lastName).toBe('Ajayi');
+      expect(p.birthDate).toBe('2003-05-23');
+      expect(p.birthCity).toBe('Kent');
+      expect(p.birthCountry).toBe('USA');
+      expect(p.currentTeamExternalId).toBeNull();
+      expect(ajayi().warnings).toEqual([]);
+    });
+  });
 });
 
 describe('mapAthlete: inputs no fixture contains (mutated copies)', () => {
