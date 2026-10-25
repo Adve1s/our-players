@@ -1,4 +1,5 @@
 import {
+  type DataHealthResponse,
   type ErrorResponse,
   gameDateSchema,
   idsQuerySchema,
@@ -16,6 +17,7 @@ import type { Db } from '../db/client';
 import { searchName } from '../db/players';
 import type { Logger } from '../jobs/runner';
 import { loadCountries } from './countries';
+import { loadDataHealth } from './data-health';
 import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
 import { loadPlayer, playersByIds, searchPlayers } from './players';
@@ -90,6 +92,19 @@ export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
       log.error('health check failed', { error: e instanceof Error ? e.message : String(e) });
       return errorBody(c, 503, 'UNAVAILABLE', 'database unavailable');
     }
+  });
+
+  // For an external uptime monitor: 503 while ingestion has stalled, naming what is stale.
+  app.get('/health/data', async (c) => {
+    let reasons: string[];
+    try {
+      reasons = await loadDataHealth(db, now());
+    } catch (e) {
+      log.error('data health check failed', { error: e instanceof Error ? e.message : String(e) });
+      return errorBody(c, 503, 'UNAVAILABLE', 'database unavailable');
+    }
+    if (reasons.length > 0) return errorBody(c, 503, 'STALE', reasons.join('; '));
+    return c.json({ ok: true } satisfies DataHealthResponse);
   });
 
   app.get('/v1/meta', async (c) => c.json(await loadMeta(db, now())));

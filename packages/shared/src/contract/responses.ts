@@ -28,6 +28,10 @@ export const healthResponseSchema = z.object({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+// A stale answer is a 503 in the error format, so only the healthy body needs a schema.
+export const dataHealthResponseSchema = z.object({ ok: z.literal(true) });
+export type DataHealthResponse = z.infer<typeof dataHealthResponseSchema>;
+
 export const metaResponseSchema = z.object({
   leagues: z.array(
     z.object({

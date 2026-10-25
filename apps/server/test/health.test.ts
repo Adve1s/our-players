@@ -1,12 +1,28 @@
-import { errorResponseSchema, healthResponseSchema } from '@our-players/shared';
+import {
+  dataHealthResponseSchema,
+  errorResponseSchema,
+  healthResponseSchema,
+} from '@our-players/shared';
 import { beforeAll, expect, it } from 'vitest';
 import { createApp } from '../src/api/app';
-import { finishJobRun, startJobRun } from '../src/db/job-runs';
+import type { Db } from '../src/db/client';
+import { upsertGames } from '../src/db/games';
+import { finishJobRun, type JobStatus, startJobRun } from '../src/db/job-runs';
+import { upsertTeams } from '../src/db/teams';
 import { createLogger } from '../src/jobs/runner';
 import { createTestDb } from './db';
+import { cbj, nhlGame, nyi } from './db-data';
 
 // The first createTestDb() migrates this file's template (~3 s, longer under parallel load).
 beforeAll(async () => (await createTestDb()).close(), 30_000);
+
+// Before the wall clock, so job runs (finished_at = DB now()) are never older than the 50 h schedule limit.
+const NOW = new Date('2026-03-17T12:00:00Z');
+
+async function run(db: Db, job: string, status: JobStatus, league = 'NHL') {
+  const id = await startJobRun(db, job, { league });
+  if (status !== 'running') await finishJobRun(db, id, { status, counts: {}, error: null });
+}
 
 async function setup() {
   const handle = await createTestDb();
@@ -17,7 +33,7 @@ async function setup() {
   const lines: string[] = [];
   const app = createApp({
     db: handle.db,
-    now: () => new Date('2026-03-17T12:00:00Z'),
+    now: () => NOW,
     log: createLogger((_, line) => lines.push(line)),
   });
   return { handle, app, lines };
@@ -61,4 +77,53 @@ it('request logs carry the path but never the query string', async () => {
     expect(line).not.toContain('LVA');
     expect(line).not.toContain('8475810');
   }
+});
+
+// setup() also stores one failed NHL results run, short of the three that count as stale.
+async function dataSetup() {
+  const s = await setup();
+  await run(s.handle.db, 'schedule', 'succeeded');
+  return s;
+}
+
+it('GET /health/data answers ok when the schedule ran and no game is late', async () => {
+  const { app } = await dataSetup();
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(200);
+  expect(dataHealthResponseSchema.parse(await res.json()).ok).toBe(true);
+});
+
+it('GET /health/data answers 503 STALE naming a game with no box score 5 h after its start', async () => {
+  const { app, handle } = await dataSetup();
+  await upsertTeams(handle.db, [cbj, nyi]);
+  const startTimeUtc = new Date(NOW.getTime() - 5 * 3_600_000).toISOString();
+  await upsertGames(handle.db, [{ ...nhlGame, status: 'SCHEDULED', startTimeUtc }]);
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(503);
+  const body = errorResponseSchema.parse(await res.json());
+  expect(body.error.code).toBe('STALE');
+  expect(body.error.message).toContain(nhlGame.publicId);
+  expect((await app.request('/health')).status).toBe(200);
+});
+
+it('GET /health/data answers 503 when the newest 3 finished NHL results runs all fell short', async () => {
+  const { app, handle } = await dataSetup();
+  // An older success and a newer running run must both be left out of the last 3.
+  for (const status of ['succeeded', 'partial', 'partial', 'partial', 'running'] as const) {
+    await run(handle.db, 'results', status);
+  }
+  await run(handle.db, 'results', 'succeeded', 'NBA');
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(503);
+  const body = errorResponseSchema.parse(await res.json());
+  expect(body.error.message).toContain('NHL: last 3 results runs failed or partial');
+  expect(body.error.message).not.toContain('NBA');
+});
+
+it('GET /health/data answers 503 UNAVAILABLE when the database is closed', async () => {
+  const { app, handle } = await dataSetup();
+  await handle.close();
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(503);
+  expect(errorResponseSchema.parse(await res.json()).error.code).toBe('UNAVAILABLE');
 });
