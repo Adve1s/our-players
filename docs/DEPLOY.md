@@ -23,6 +23,7 @@ internet ──443/80──▶ caddy (TLS, Let's Encrypt) ──▶ api:3001 (Ho
 - **Migrations** run on every API start (and before every job), so a deploy that brings a migration applies it by itself.
 - **Logs:** Docker keeps up to 5 × 10 MB per service. The API's request log (path, status, ms; no query string, no IP) is the access log. Caddy writes no access log; its error log has query strings and client IPs filtered out.
 - **On the host, every script runs inside the API container:** `docker compose run --rm api tsx scripts/<script>.ts …`. In production the server refuses to start without `CORS_ORIGINS` and `DATABASE_URL`, and `docker compose run` passes both.
+- **Long manual jobs** (a `backfill` of more than one day, `season-stats`): run `docker compose stop api` first and `docker compose up -d --wait` after. The job lock is per process, so the scheduler inside the running API could start the same job alongside yours. Short jobs can run with the API up.
 
 `.env` keys (`deploy/.env.example` lists them):
 
@@ -81,7 +82,11 @@ Success: the last command prints `passwordauthentication no` and `kbdinteractive
 ```bash
 ssh root@<server-ip> echo key login works
 ```
-Success: it prints `key login works` without asking for a password. (If it fails, fix it from the still-open session: `rm /etc/ssh/sshd_config.d/00-keys-only.conf && systemctl reload ssh`.)
+Success: it prints `key login works` without asking for a password. (If it fails, fix it from the still-open session: `rm /etc/ssh/sshd_config.d/00-keys-only.conf && systemctl reload ssh`.) Then prove a password is refused, from the same second terminal:
+```bash
+ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password root@<server-ip>
+```
+Success: `root@<server-ip>: Permission denied (publickey).` with no password prompt. Paste it.
 
 ### 2.4 Swap (1 GB)
 
@@ -236,8 +241,7 @@ Rebuilds the whole database from the upstream APIs (D-021: nothing in it is lost
 
 Run it inside `tmux`, so a dropped SSH connection doesn't stop it. **On the host:**
 ```bash
-tmux new -s rebuild
-cd /opt/our-players
+tmux new -s rebuild -c /opt/our-players
 ```
 (Detach with `Ctrl-b` then `d`; reattach with `tmux attach -t rebuild`.)
 
@@ -419,7 +423,7 @@ Success: `120 200` then `5 429`, and the second command shows `HTTP/2 429`, `ret
    sleep 60
    curl -sS -w ' %{http_code}\n' https://<name>.dedyn.io/health/data
    ```
-   Success: `{"ok":true} 200`: the startup catch-up fetched the box score again. UptimeRobot then emails that the monitor is up.
+   Success: `{"ok":true} 200`: the startup catch-up fetched the box score again. UptimeRobot then emails that the monitor is up. Still 503? Wait a few minutes and run the curl again: the startup tick runs NHL's jobs before NBA's, and daily jobs may be due first.
 
 **Lines within 15 minutes** (criterion 9). The morning after a game night the scheduler handled live (not a backfilled night: `backfill` sets `final_at` to its own run time, so the numbers would mean nothing). `current_date - 1` is last night's US game date when you run it in the European morning:
 ```bash
@@ -443,6 +447,13 @@ du -sh /var/lib/docker/containers
 free -h
 ```
 The disk shouldn't pass ~80% (prune old images, section 4). Container logs stay under 50 MB per service (rotated).
+
+**Latency on the host's Postgres** (reads only, safe with the API up). Pick a game day of this season with many games (both leagues playing):
+```bash
+docker compose run --rm api tsx scripts/latency.ts --date <YYYY-MM-DD>
+docker compose run --rm api tsx scripts/latency.ts --date <YYYY-MM-DD> --countries LVA,USA,CAN
+```
+Paste both outputs. For comparison, locally on PGlite (2,881 games, 91,339 lines, 2025-12-23): LVA p95 128.8 ms, LVA,USA,CAN p95 424.7 ms.
 
 ## 8. Monitoring
 
