@@ -376,7 +376,7 @@ Success: a line like `{"level":"info","msg":"request","method":"GET","path":"/v1
 ```bash
 docker compose logs caddy | grep -E '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -v '127\.0\.0\.1'
 ```
-Success: no line about a client request (e.g. no TLS handshake error with a visitor's address). Caddy's own admin endpoint (`127.0.0.1:2019`) is filtered out above. A certificate line naming a Let's Encrypt server is fine; a `request` with `remote_ip` or `client_ip` isn't, so tell Claude.
+Success: no line about a client request (e.g. no TLS handshake error with a visitor's address). Caddy's own admin endpoint (`127.0.0.1:2019`) is filtered out above. Certificate lines are fine: `served key authentication certificate` with `"challenge":"tls-alpn-01"` and a `remote` address are Let's Encrypt's validation servers checking the name (several at once, when a certificate is issued or renewed); a `request` with `remote_ip` or `client_ip` isn't, so tell Claude.
 
 **Search on Postgres** (the ICU collation):
 ```bash
@@ -453,7 +453,7 @@ The disk shouldn't pass ~80% (prune old images, section 4). Container logs stay 
 docker compose run --rm api tsx scripts/latency.ts --date <YYYY-MM-DD>
 docker compose run --rm api tsx scripts/latency.ts --date <YYYY-MM-DD> --countries LVA,USA,CAN
 ```
-Paste both outputs. For comparison, locally on PGlite (2,881 games, 91,339 lines, 2025-12-23): LVA p95 128.8 ms, LVA,USA,CAN p95 424.7 ms.
+Paste both outputs. For comparison, locally on PGlite (2,881 games, 91,339 lines, 2025-12-23): LVA p95 128.8 ms, LVA,USA,CAN p95 424.7 ms. On the host (2026-10-25, 314 games, 8,155 lines, 2026-10-24): LVA p50 24.1 / p95 42.7 / max 151.5 ms; LVA,USA,CAN p50 101.6 / p95 222.3 / max 334.1 ms.
 
 ## 8. Monitoring
 
