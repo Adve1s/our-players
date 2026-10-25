@@ -3,11 +3,13 @@ import {
   errorResponseSchema,
   healthResponseSchema,
 } from '@our-players/shared';
+import { eq } from 'drizzle-orm';
 import { beforeAll, expect, it } from 'vitest';
 import { createApp } from '../src/api/app';
 import type { Db } from '../src/db/client';
 import { upsertGames } from '../src/db/games';
 import { finishJobRun, type JobStatus, startJobRun } from '../src/db/job-runs';
+import { jobRuns } from '../src/db/schema';
 import { upsertTeams } from '../src/db/teams';
 import { createLogger } from '../src/jobs/runner';
 import { createTestDb } from './db';
@@ -118,6 +120,35 @@ it('GET /health/data answers 503 when the newest 3 finished NHL results runs all
   const body = errorResponseSchema.parse(await res.json());
   expect(body.error.message).toContain('NHL: last 3 results runs failed or partial');
   expect(body.error.message).not.toContain('NBA');
+});
+
+it('GET /health/data ignores results runs started more than 48 h ago', async () => {
+  const { app, handle } = await dataSetup();
+  for (let i = 0; i < 3; i++) await run(handle.db, 'results', 'partial');
+  // started_at defaults to the DB's now(), so the test moves the runs back before the fixed clock.
+  await handle.db
+    .update(jobRuns)
+    .set({ startedAt: new Date(NOW.getTime() - 49 * 3_600_000) })
+    .where(eq(jobRuns.job, 'results'));
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(200);
+});
+
+// finished_at is the DB's now(), after the fixed clock, so any counted run is fresh.
+it('GET /health/data counts a partial schedule run as a success', async () => {
+  const { app, handle } = await setup();
+  await run(handle.db, 'schedule', 'partial');
+  expect((await app.request('/health/data')).status).toBe(200);
+});
+
+it('GET /health/data does not count a failed schedule run as a success', async () => {
+  const { app, handle } = await setup();
+  await run(handle.db, 'schedule', 'failed');
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(503);
+  expect(errorResponseSchema.parse(await res.json()).error.message).toContain(
+    'schedule: no successful run in 50 h',
+  );
 });
 
 it('GET /health/data answers 503 UNAVAILABLE when the database is closed', async () => {

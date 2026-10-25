@@ -1,5 +1,5 @@
 import { type GameStatus, type League, leagueSchema } from '@our-players/shared';
-import { and, between, desc, eq, inArray, max, ne, sql } from 'drizzle-orm';
+import { and, between, desc, eq, gte, inArray, max, ne, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import type { JobStatus } from '../db/job-runs';
 import { games, jobRuns } from '../db/schema';
@@ -18,7 +18,7 @@ export type DataHealthInput = {
     startTimeUtc: Date;
     boxscoreFetchedAt: Date | null;
   }[];
-  // per league, the last finished (not 'running') results runs, newest first, at most 3
+  // per league, the last finished (not 'running') results runs started within 48 h, newest first, at most 3
   resultsRuns: Partial<Record<League, Exclude<JobStatus, 'running'>[]>>;
   lastScheduleSuccess: Date | null; // max finished_at of schedule runs with status succeeded or partial
 };
@@ -68,6 +68,8 @@ export async function loadDataHealth(db: Db, now: Date): Promise<string[]> {
           eq(jobRuns.job, 'results'),
           eq(sql`${jobRuns.args}->>'league'`, league),
           ne(jobRuns.status, 'running'),
+          // A box score that always fails alerts for two days, then stops (and the off-season stays quiet).
+          gte(jobRuns.startedAt, new Date(t - LINES_WINDOW_MS)),
         ),
       )
       // id breaks ties: runs started within one clock tick share a started_at.

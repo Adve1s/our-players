@@ -15,7 +15,8 @@ export const RESULTS_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-// Without --date: the days of started games that aren't final, and of final games without a box score.
+// Without --date: the days of started games that aren't final, and of final games without a box score
+// that started within RESULTS_WINDOW_MS (any age on a catch-up run), so a box score that always fails stops being retried.
 // Then each final box score is re-fetched once, CORRECTION_DELAY_MS after the final horn, for stat corrections:
 // within RESULTS_WINDOW_MS of the final, or of any age on a catch-up run (the scheduler's startup tick, a manual `pnpm job results`).
 // shortcut: a game that stays SCHEDULED/LIVE after its start keeps its day a candidate (PR #8), so each run re-fetches that score; the scheduler bounds the trigger to a 24 h window, a job-side cutoff if a stuck game ever costs too many calls
@@ -34,7 +35,13 @@ export const resultsJob: Job = async (ctx, run, args) => {
                   inArray(games.status, ['SCHEDULED', 'LIVE']),
                   lte(games.startTimeUtc, ctx.now()),
                 ),
-                and(eq(games.status, 'FINAL'), isNull(games.boxscoreFetchedAt)),
+                and(
+                  eq(games.status, 'FINAL'),
+                  isNull(games.boxscoreFetchedAt),
+                  args.catchUp
+                    ? undefined
+                    : gt(games.startTimeUtc, new Date(ctx.now().getTime() - RESULTS_WINDOW_MS)),
+                ),
               ),
             ),
           )

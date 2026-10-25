@@ -258,9 +258,23 @@ describe('resultsJob', () => {
     expect((await gameRow(`nhl-${GAME}`)).boxscoreFetchedAt).toBeNull();
 
     useRoutes(fullRoutes());
-    await results();
+    // The game started months before the clock, past RESULTS_WINDOW_MS, so only a catch-up run retries it.
+    await results({ catchUp: true });
     const box = mapBoxscore(loadFixture('nhl', 'boxscore', GAME));
     expect(await linesOf(`nhl-${GAME}`)).toHaveLength(box.lines.length);
+  });
+
+  it('a final game without a box score older than 24 h is left to a catch-up run', async () => {
+    const score = mapScore(scoreOnly('2026-01-17', [GAME]));
+    await seedGames(score.games, score.teams);
+    useRoutes(fullRoutes());
+
+    await results();
+    expect(client.requestCount).toBe(0);
+    expect((await gameRow(`nhl-${GAME}`)).boxscoreFetchedAt).toBeNull();
+
+    await results({ catchUp: true });
+    expect((await gameRow(`nhl-${GAME}`)).boxscoreFetchedAt).toBeInstanceOf(Date);
   });
 });
 
