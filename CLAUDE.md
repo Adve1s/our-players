@@ -30,6 +30,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `pnpm build:web` — static web export to `apps/mobile/dist/`; API URL from `EXPO_PUBLIC_API_URL` (env or `apps/mobile/.env`; `http://localhost:3001` when neither sets it)
 - `pnpm serve:web` — serve that export on :8090 over the LAN with the SPA fallback
 - `pnpm screenshots` — capture the web build's key screens to `apps/mobile/.screenshots/` (S08+)
+- `deploy/deploy.sh <ssh-target> [--ship-only]` — build the API image locally, ship it over ssh to the host and restart the stack; clean tree only (S10b, `docs/DEPLOY.md`)
 
 ## Architecture rules
 1. Users never trigger upstream calls. Jobs fetch by league/game/team on a schedule; the API reads only our DB.
