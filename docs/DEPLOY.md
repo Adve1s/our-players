@@ -304,7 +304,7 @@ Paste the output into the session; it goes in the table below. `duration` is wal
 
 | Date | Runs | Requests | Duration | Notes |
 | --- | --- | --- | --- | --- |
-| _(filled in after the first rebuild)_ | | | | |
+| 2026-10-25 | 6 (1 partial) | 355 | 6 min 17 s | First fill of the Linode, back-to-back in tmux. NHL: 806 players, 179 games from 2026-09-29, 7,160 lines, 790 season rows. NBA: 518 players, 36 games from 2026-10-20 (34 with box scores), 940 lines, 319 season rows. NBA backfill `partial`: two box scores failed to parse (`MIN "--"`, position `"NA"`; PROGRESS parking lot). |
 
 ## 6. Rotating secrets
 
