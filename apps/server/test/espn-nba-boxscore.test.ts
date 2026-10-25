@@ -409,6 +409,12 @@ describe('mapSummary: errors', () => {
     expect(() => mapSummary(raw)).toThrow(/espn-nba/);
   });
 
+  it('throws on MIN "--" when the row has points (Dadiet with PTS "12")', () => {
+    const raw = summary('401909095');
+    (rawRow(raw, '5211983').stats as string[])[1] = '12';
+    expect(() => mapSummary(raw)).toThrow(/player 5211983: malformed MIN "--"/);
+  });
+
   it('throws on "--" in a stat other than MIN (PTS)', () => {
     const raw = summary('401810839');
     (rawRow(raw, '3102531').stats as string[])[1] = '--';
@@ -426,6 +432,12 @@ describe('mapSummary: errors', () => {
       'an athlete without id',
       (raw: unknown) => {
         delete obj(rawRow(raw, '3102531'), 'athlete').id;
+      },
+    ],
+    [
+      'a DNP row of an identified athlete without a position (Horford 3213)',
+      (raw: unknown) => {
+        delete obj(rawRow(raw, '3213'), 'athlete').position;
       },
     ],
     [
