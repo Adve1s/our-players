@@ -56,6 +56,10 @@ describe('playerMeta', () => {
   it('leaves the code out for a player without a nationality', () => {
     expect(playerMeta({ ...porzingis, nationality: null })).toBe('NBA · BOS · C');
   });
+
+  it('leaves the position out for a player without one (ESPN "NA")', () => {
+    expect(playerMeta({ ...porzingis, position: null })).toBe('NBA · BOS · LVA');
+  });
 });
 
 describe('listRows', () => {

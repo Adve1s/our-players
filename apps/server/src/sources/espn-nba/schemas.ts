@@ -25,18 +25,30 @@ export const scoreboardEventSchema = z.object({
 });
 export const scoreboardSchema = z.object({ events: z.array(scoreboardEventSchema) });
 
-const boxscoreRow = z.object({
-  athlete: z.object({
-    id: z.string(),
-    displayName: z.string(),
-    jersey: z.string().nullish(),
-    position: z.object({ abbreviation: z.string() }),
-  }),
+const rowFields = {
   starter: z.boolean(),
-  didNotPlay: z.boolean(),
   reason: z.string().optional(),
   stats: z.array(z.string()),
-});
+};
+const boxscoreRow = z.union([
+  z.object({
+    athlete: z.object({
+      id: z.string(),
+      displayName: z.string(),
+      jersey: z.string().nullish(),
+      position: z.object({ abbreviation: z.string() }),
+    }),
+    didNotPlay: z.boolean(),
+    ...rowFields,
+  }),
+  // Some DNP rows carry an athlete with only a short name (2025-26, game 401810126): no ID to
+  // tie a line to and no stats to lose, so the mapper skips them. A played row must have an ID.
+  z.object({
+    athlete: z.object({ id: z.undefined().optional(), shortName: z.string().optional() }),
+    didNotPlay: z.literal(true),
+    ...rowFields,
+  }),
+]);
 export const summarySchema = z.object({
   header: z.object({ id: z.string() }),
   boxscore: z.object({

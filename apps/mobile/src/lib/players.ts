@@ -30,8 +30,9 @@ export function searchView(term: string | null, r: SearchState): SearchView {
 }
 
 export function playerMeta(p: PlayerSummary): string {
-  const parts = [p.league, p.team?.abbrev ?? 'No team', p.position];
-  return (p.nationality ? [...parts, p.nationality] : parts).join(' · ');
+  return [p.league, p.team?.abbrev ?? 'No team', p.position, p.nationality]
+    .filter((part) => part !== null)
+    .join(' · ');
 }
 
 export type ListRow = { player: PlayerSummary; removed: boolean };

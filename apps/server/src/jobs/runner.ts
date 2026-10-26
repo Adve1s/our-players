@@ -67,7 +67,7 @@ export type JobResult =
       error: string | null;
     };
 
-// shortcut: in-process lock; a second process on the same Postgres isn't locked out — upgrade (advisory lock or a job_runs partial unique index) if S10b runs a CLI job against prod while the server's scheduler runs
+// shortcut: in-process lock; a second process on the same Postgres isn't locked out (DEPLOY.md stops the API for long manual jobs) — upgrade (advisory lock or a job_runs partial unique index) if manual jobs against prod become routine
 const running = new Set<string>();
 
 export async function runJob(

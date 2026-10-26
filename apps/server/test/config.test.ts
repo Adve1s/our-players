@@ -56,4 +56,21 @@ describe('loadConfig', () => {
     'rejects CORS_ORIGINS=%s, which is not an origin',
     (v) => expect(() => loadConfig({ CORS_ORIGINS: v })).toThrow(/CORS_ORIGINS/),
   );
+  const prod = { NODE_ENV: 'production', DATABASE_URL: 'postgres://u:p@db:5432/x' };
+  it('production without CORS_ORIGINS refuses to start', () =>
+    expect(() => loadConfig({ ...prod })).toThrow(/CORS_ORIGINS/));
+  it.each(['', ' ', ' , '])('production with CORS_ORIGINS=%j refuses to start', (v) =>
+    expect(() => loadConfig({ ...prod, CORS_ORIGINS: v })).toThrow(/CORS_ORIGINS/),
+  );
+  it.each([undefined, ''])('production with DATABASE_URL=%j refuses to start', (v) =>
+    expect(() =>
+      loadConfig({ NODE_ENV: 'production', CORS_ORIGINS: 'https://a.example', DATABASE_URL: v }),
+    ).toThrow(/DATABASE_URL/),
+  );
+  it('production with both reads the origins as given', () =>
+    expect(loadConfig({ ...prod, CORS_ORIGINS: 'https://a.example' }).corsOrigins).toEqual([
+      'https://a.example',
+    ]));
+  it('outside production an unset CORS_ORIGINS still defaults to localhost', () =>
+    expect(loadConfig({ NODE_ENV: 'development' }).corsOrigins).toEqual(corsOrigins));
 });

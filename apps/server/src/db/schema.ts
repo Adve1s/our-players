@@ -79,8 +79,9 @@ export const players = pgTable(
     firstName: text('first_name').notNull(),
     lastName: text('last_name').notNull(),
     searchName: text('search_name').notNull(),
-    position: text('position').notNull(),
-    positionGroup: positionGroupEnum('position_group').notNull(),
+    // Null when the source has none (ESPN "NA").
+    position: text('position'),
+    positionGroup: positionGroupEnum('position_group'),
     currentTeamId: integer('current_team_id').references(() => teams.id),
     jersey: text('jersey'),
     birthDate: date('birth_date', { mode: 'string' }),

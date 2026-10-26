@@ -1,0 +1,8 @@
+**/node_modules
+.git
+apps/mobile
+!apps/mobile/package.json
+**/.data
+apps/server/test
+docs
+**/.env

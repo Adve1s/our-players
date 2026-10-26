@@ -1,4 +1,5 @@
 import {
+  type DataHealthResponse,
   type ErrorResponse,
   gameDateSchema,
   idsQuerySchema,
@@ -16,12 +17,20 @@ import type { Db } from '../db/client';
 import { searchName } from '../db/players';
 import type { Logger } from '../jobs/runner';
 import { loadCountries } from './countries';
+import { loadDataHealth } from './data-health';
 import { loadDay, loadGame } from './day';
 import { loadHealth, loadMeta } from './meta';
 import { loadPlayer, playersByIds, searchPlayers } from './players';
+import { rateLimit } from './rate-limit';
 
-// corsOrigins absent: no browser origin may read /v1.
-export type ApiDeps = { db: Db; now: () => Date; log: Logger; corsOrigins?: readonly string[] };
+// corsOrigins absent: no browser origin may read /v1. rateLimitPerMinute absent: no limit.
+export type ApiDeps = {
+  db: Db;
+  now: () => Date;
+  log: Logger;
+  corsOrigins?: readonly string[];
+  rateLimitPerMinute?: number;
+};
 
 export function badRequest(message: string): HTTPException {
   return new HTTPException(400, { message });
@@ -55,7 +64,7 @@ const CACHE_CONTROL = 'public, max-age=0, s-maxage=60';
 const errorBody = (c: Context, status: ContentfulStatusCode, code: string, message: string) =>
   c.json({ error: { code, message } } satisfies ErrorResponse, status);
 
-export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
+export function createApp({ db, now, log, corsOrigins = [], rateLimitPerMinute }: ApiDeps): Hono {
   const app = new Hono();
 
   // c.req.path has no query string, so preferences (countries, favorites) never reach the logs.
@@ -71,6 +80,10 @@ export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
   });
 
   app.use('/v1/*', cors({ origin: [...corsOrigins], allowMethods: ['GET'] }));
+  // After CORS, so a browser can read the 429.
+  if (rateLimitPerMinute !== undefined) {
+    app.use('/v1/*', rateLimit({ limit: rateLimitPerMinute, windowMs: 60_000, now }));
+  }
 
   app.onError((err, c) => {
     // Only our own 400s echo their message; any other status takes the generic, logged 500.
@@ -90,6 +103,19 @@ export function createApp({ db, now, log, corsOrigins = [] }: ApiDeps): Hono {
       log.error('health check failed', { error: e instanceof Error ? e.message : String(e) });
       return errorBody(c, 503, 'UNAVAILABLE', 'database unavailable');
     }
+  });
+
+  // For an external uptime monitor: 503 while ingestion has stalled, naming what is stale.
+  app.get('/health/data', async (c) => {
+    let reasons: string[];
+    try {
+      reasons = await loadDataHealth(db, now());
+    } catch (e) {
+      log.error('data health check failed', { error: e instanceof Error ? e.message : String(e) });
+      return errorBody(c, 503, 'UNAVAILABLE', 'database unavailable');
+    }
+    if (reasons.length > 0) return errorBody(c, 503, 'STALE', reasons.join('; '));
+    return c.json({ ok: true } satisfies DataHealthResponse);
   });
 
   app.get('/v1/meta', async (c) => c.json(await loadMeta(db, now())));

@@ -74,7 +74,8 @@ export function age(birthDate: string, today: string): number {
 }
 
 export function bioLines(p: PlayerResponse, today: string): string[] {
-  const team = [p.team?.abbrev ?? 'No team', p.league, p.position];
+  const team = [p.team?.abbrev ?? 'No team', p.league];
+  if (p.position !== null) team.push(p.position);
   if (p.jersey !== null) team.push(`#${p.jersey}`);
   const born = [p.birthCity, p.birthCountry].filter((part) => part !== null).join(', ');
   const life = [

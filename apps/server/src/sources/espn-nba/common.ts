@@ -1,6 +1,7 @@
 import {
   type CountryCode,
   countryFromName,
+  type Player,
   type PositionGroup,
   type SeasonType,
   seasonLabel,
@@ -25,7 +26,8 @@ export function seasonFromYear(year: number): string {
   return seasonLabel(year - 1);
 }
 
-const POSITION_GROUPS: Readonly<Record<string, PositionGroup>> = {
+// "NA" is ESPN's "Not Available" (a player it lists without one), so position and group stay null.
+const POSITION_GROUPS: Readonly<Record<string, PositionGroup | null>> = {
   G: 'guard',
   PG: 'guard',
   SG: 'guard',
@@ -33,12 +35,13 @@ const POSITION_GROUPS: Readonly<Record<string, PositionGroup>> = {
   SF: 'forward',
   PF: 'forward',
   C: 'center',
+  NA: null,
 };
 
-export function positionGroup(code: string, where: string): PositionGroup {
+export function position(code: string, where: string): Pick<Player, 'position' | 'positionGroup'> {
   const group = lookup(POSITION_GROUPS, code);
-  if (!group) throw new Error(`${where}: unknown position "${code}"`);
-  return group;
+  if (group === undefined) throw new Error(`${where}: unknown position "${code}"`);
+  return { position: group === null ? null : code, positionGroup: group };
 }
 
 export function toTeam(t: { id: string; abbreviation: string; name: string }): Team {

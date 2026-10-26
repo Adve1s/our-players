@@ -6,7 +6,10 @@ export function loadConfig(env: Record<string, string | undefined>): {
 } {
   const contactUrl = env.CONTACT_URL || 'https://github.com/Adve1s/our-players';
   const schedulerEnabled = env.SCHEDULER_ENABLED === '1';
-  const corsOrigins = parseCorsOrigins(env.CORS_ORIGINS);
+  const production = env.NODE_ENV === 'production';
+  const corsOrigins = parseCorsOrigins(env.CORS_ORIGINS, production);
+  // In a container the PGlite fallback lives on the image's disk, so the next deploy would lose the data.
+  if (production && !env.DATABASE_URL) throw new Error('DATABASE_URL is required in production');
   const raw = env.PORT;
   if (raw === undefined || raw === '') {
     return { port: 3001, contactUrl, schedulerEnabled, corsOrigins };
@@ -20,12 +23,16 @@ export function loadConfig(env: Record<string, string | undefined>): {
 }
 
 // Browsers send Origin as exactly scheme://host[:port], so anything else could never match.
-function parseCorsOrigins(raw: string | undefined): string[] {
+function parseCorsOrigins(raw: string | undefined, production: boolean): string[] {
   const entries = (raw ?? '')
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s !== '');
-  if (entries.length === 0) return ['http://localhost:8081'];
+  if (entries.length === 0) {
+    if (production)
+      throw new Error('CORS_ORIGINS is required in production (comma-separated origins)');
+    return ['http://localhost:8081'];
+  }
   for (const entry of entries) {
     if (!URL.canParse(entry) || new URL(entry).origin !== entry) {
       throw new Error(`CORS_ORIGINS: "${entry}" is not an origin (scheme://host[:port])`);

@@ -28,6 +28,10 @@ export const healthResponseSchema = z.object({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+// A stale answer is a 503 in the error format, so only the healthy body needs a schema.
+export const dataHealthResponseSchema = z.object({ ok: z.literal(true) });
+export type DataHealthResponse = z.infer<typeof dataHealthResponseSchema>;
+
 export const metaResponseSchema = z.object({
   leagues: z.array(
     z.object({
@@ -109,7 +113,7 @@ export const playerSummarySchema = z.object({
   league: leagueSchema,
   firstName: z.string(),
   lastName: z.string(),
-  position: z.string(),
+  position: z.string().nullable(),
   team: z.object({ abbrev: z.string(), name: z.string() }).nullable(), // current team
   nationality: countryCodeSchema.nullable(),
   active: z.boolean(),
@@ -185,7 +189,7 @@ export const gameLogEntrySchema = z.discriminatedUnion('type', [
 export type GameLogEntry = z.infer<typeof gameLogEntrySchema>;
 
 export const playerResponseSchema = playerSummarySchema.extend({
-  positionGroup: positionGroupSchema,
+  positionGroup: positionGroupSchema.nullable(),
   jersey: z.string().nullable(),
   birthDate: z.iso.date().nullable(),
   birthCity: z.string().nullable(),

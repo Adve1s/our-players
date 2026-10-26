@@ -1,10 +1,11 @@
 import type { BasketballPlayerStats, Player, StatLine, Team } from '@our-players/shared';
 import type { z } from 'zod';
-import { parsePayload, positionGroup, toTeam } from './common';
+import { parsePayload, position, toTeam } from './common';
 import { summarySchema } from './schemas';
 
 type Side = NonNullable<z.output<typeof summarySchema>['boxscore']['players']>[number];
 type RawRow = Side['statistics'][0]['athletes'][number];
+type Athlete = Extract<RawRow['athlete'], { id: string }>;
 
 // Every label we read; stats are mapped by label, never by position (adapters.md).
 const LABELS = [
@@ -40,6 +41,13 @@ function stats(row: RawRow, cols: Record<Label, number>, where: string): Basketb
   // Counts are plain digits; only "+/-" carries a sign ("+7", "-8", "0").
   const int = (label: Label) => {
     const value = raw(label);
+    // A played row can show MIN "--" (2026-10-23, game 401909095) or, right after the final, "-"
+    // (2026-10-26) with every count 0: 0 minutes (+/- may move in a few seconds on court). With
+    // any other count it is malformed.
+    if (label === 'MIN' && (value === '-' || value === '--')) {
+      const counts = LABELS.filter((l) => l !== 'MIN' && l !== '+/-');
+      if (counts.every((l) => /^0(-0)?$/.test(raw(l)))) return 0;
+    }
     if (!(label === '+/-' ? /^[+-]?\d+$/ : /^\d+$/).test(value)) {
       throw new Error(`${where}: malformed ${label} "${value}"`);
     }
@@ -76,8 +84,8 @@ function stats(row: RawRow, cols: Record<Label, number>, where: string): Basketb
 }
 
 // The box score only gives a display name and no birth data; S04a enriches stubs from the athlete endpoint.
-function stub(row: RawRow, teamExternalId: string, where: string): Player {
-  const { id, displayName, jersey, position } = row.athlete;
+function stub(athlete: Athlete, teamExternalId: string, where: string): Player {
+  const { id, displayName, jersey } = athlete;
   const space = displayName.indexOf(' ');
   return {
     publicId: `nba-${id}`,
@@ -86,8 +94,7 @@ function stub(row: RawRow, teamExternalId: string, where: string): Player {
     externalId: id,
     firstName: space === -1 ? '' : displayName.slice(0, space),
     lastName: space === -1 ? displayName : displayName.slice(space + 1),
-    position: position.abbreviation,
-    positionGroup: positionGroup(position.abbreviation, where),
+    ...position(athlete.position.abbreviation, where),
     currentTeamExternalId: teamExternalId,
     jersey: jersey ?? null,
     birthDate: null,
@@ -110,11 +117,15 @@ export function mapSummary(raw: unknown): { lines: StatLine[]; teams: Team[]; pl
     const block = side.statistics[0];
     const cols = columns(block.labels, where);
     for (const row of block.athletes) {
-      const rowWhere = `${where}: player ${row.athlete.id}`;
-      players.push(stub(row, side.team.id, rowWhere));
+      const { athlete } = row;
+      // The schema lets only a DNP row through without an athlete ID (schemas.ts).
+      if (!('displayName' in athlete)) continue;
+      const { id } = athlete;
+      const rowWhere = `${where}: player ${id}`;
+      players.push(stub(athlete, side.team.id, rowWhere));
       const line = {
         gamePublicId: `nba-${gameId}`,
-        playerPublicId: `nba-${row.athlete.id}`,
+        playerPublicId: `nba-${id}`,
         teamExternalId: side.team.id,
         starter: row.starter,
         kind: 'basketball_player' as const,

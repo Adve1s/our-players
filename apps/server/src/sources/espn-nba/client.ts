@@ -27,6 +27,8 @@ export const espnUrls = {
 
 // ~12 pages per season type at 578 players; more means the source changed under us.
 export const BYATHLETE_MAX_PAGES = 20;
+// Passes over the pages before a short result counts as truncated.
+const BYATHLETE_PASSES = 3;
 
 type Client = Pick<PoliteClient, 'get'>;
 
@@ -74,8 +76,28 @@ export async function fetchSeasonStats(
 ): Promise<SeasonStats[]> {
   const endYear = toEndYear(season);
   const typeId = SEASON_TYPE_IDS[seasonType];
-  // Keyed by player: rows can shift between pages while we page, repeating an athlete.
+  // Keyed by player: rows can shift between pages while we page, repeating one athlete and
+  // skipping another (live, 2026-10-26: 314 of 334), so a short pass pages again, keeping its rows.
   const rows = new Map<string, SeasonStats>();
+  let count = 0;
+  for (let pass = 1; pass <= BYATHLETE_PASSES && (pass === 1 || rows.size < count); pass++) {
+    count = await pageSeasonStats(client, endYear, typeId, season, seasonType, rows);
+  }
+  if (rows.size < count) {
+    throw new Error(`espn-nba byathlete: truncated, ${rows.size} of ${count} rows`);
+  }
+  return [...rows.values()];
+}
+
+// One pass over every page into `rows`; returns the row count page 1 announces.
+async function pageSeasonStats(
+  client: Client,
+  endYear: string,
+  typeId: SeasonTypeId,
+  season: string,
+  seasonType: SeasonType,
+  rows: Map<string, SeasonStats>,
+): Promise<number> {
   let pages = 1;
   let count = 0;
   for (let page = 1; page <= pages; page++) {
@@ -98,8 +120,5 @@ export async function fetchSeasonStats(
     }
     for (const s of result.seasonStats) rows.set(s.playerPublicId, s);
   }
-  if (rows.size < count) {
-    throw new Error(`espn-nba byathlete: truncated, ${rows.size} of ${count} rows`);
-  }
-  return [...rows.values()];
+  return count;
 }

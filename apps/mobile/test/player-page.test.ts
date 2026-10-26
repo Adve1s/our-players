@@ -238,6 +238,11 @@ describe('bioLines', () => {
       ['No team · NHL · D', 'Age 32 · Born Riga, LVA', 'Nationality LVA'],
     ],
     [
+      'a player without a position (ESPN "NA") leaves it out',
+      { ...player, position: null, positionGroup: null },
+      ['CBJ · NHL · #90', 'Age 32 · Born Riga, LVA', 'Nationality LVA'],
+    ],
+    [
       'an override nationality is marked',
       { ...player, birthCountry: 'USA', nationalitySource: 'override' },
       ['CBJ · NHL · G · #90', 'Age 32 · Born Riga, USA', 'Nationality LVA (override)'],
