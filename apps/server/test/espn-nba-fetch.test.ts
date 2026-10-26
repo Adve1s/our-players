@@ -112,13 +112,13 @@ describe('fetchSeasonStats', () => {
     return raw;
   }
 
-  // A page 2 holding `fresh` athletes not on page 1 (ids renumbered), after `repeated` page-1 athletes.
-  function page2(fresh: number, repeated = 0): unknown {
+  // A page 2 holding `fresh` athletes not on page 1 (ids renumbered from `firstId`), after `repeated` page-1 athletes.
+  function page2(fresh: number, repeated = 0, firstId = 900000): unknown {
     const raw = loadFixture('espn-nba', 'byathlete', '2026');
     Object.assign(obj(raw, 'pagination'), { pages: 2, count: 60, page: 2 });
     const athletes = list(raw, 'athletes');
     const renumbered = athletes.slice(repeated, repeated + fresh).map((a, i) => {
-      obj(a, 'athlete').id = String(900000 + i);
+      obj(a, 'athlete').id = String(firstId + i);
       return a;
     });
     obj(raw).athletes = [...athletes.slice(0, repeated), ...renumbered];
@@ -156,8 +156,9 @@ describe('fetchSeasonStats', () => {
 
   // Live, 2026-10-26: 314 of 334 rows on one pass; a second pass over the pages fills the gap.
   it('pages again when a shift lost a row, keeping the rows of both passes', async () => {
+    // Each pass misses a different athlete (900009, then 900000): only both together make 60.
     const shifted = fakeClient({ [page1Url]: page1(2, 60), [page2Url]: page2(9, 1) });
-    const settled = fakeClient({ [page2Url]: page2(10) });
+    const settled = fakeClient({ [page2Url]: page2(9, 1, 900001) });
     let page2Calls = 0;
     const client = {
       ...shifted,
@@ -171,6 +172,9 @@ describe('fetchSeasonStats', () => {
     };
     const rows = await fetchSeasonStats(client, '2025-26', 'REG');
     expect(rows).toHaveLength(60);
+    const ids = rows.map((r) => r.playerPublicId);
+    expect(ids).toContain('nba-900000');
+    expect(ids).toContain('nba-900009');
     expect(shifted.requests).toEqual([page1Url, page2Url, page1Url, page2Url]);
   });
 
