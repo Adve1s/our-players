@@ -376,7 +376,7 @@ const SHOTS: Shot[] = [
     take: async (page) => {
       await tab(page, 'Settings');
       await page.getByText('Sweden').waitFor();
-      await page.getByText('Not affiliated with the NHL or NBA.').scrollIntoViewIfNeeded();
+      await page.getByRole('link', { name: 'Add to Home Screen' }).scrollIntoViewIfNeeded();
     },
   },
   {
@@ -624,6 +624,15 @@ const SHOTS: Shot[] = [
     take: async (page) => {
       await page.goto(`${WEB}/install`);
       await seen(page, 'Add to Home Screen', 'iPhone or iPad');
+    },
+  },
+  {
+    name: 'settings-install-link',
+    take: async (page) => {
+      await tab(page, 'Settings');
+      await page.getByText('Sweden').waitFor();
+      await page.getByRole('link', { name: 'Add to Home Screen' }).click();
+      await seen(page, 'iPhone or iPad');
     },
   },
   {
