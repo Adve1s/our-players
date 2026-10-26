@@ -122,7 +122,7 @@ No `citizenshipCountry`, flag or alpha-3 field.
 - IDs and scores are strings; stats are strings, `+/-` signed.
 - Names come without diacritics (`"Kristaps Porzingis"`, birth city `"Liepaja"`).
 - Roster positions are coarse (`C`/`F`/`G`).
-- Box-score rows that broke the mapper (S10b, from last season's backfill and the first live nights; 52 of 1,316 games in 2025-26):
+- Box-score rows that broke the mapper (S10b, from last season's backfill and the first live nights; 52 games failed in 2025-26: 1,316 games, 1,260 stored with box scores, the rest not final or failing):
   - A DNP row whose `athlete` has only `shortName` and `links` (no `id`, `displayName`, `position`): 33 games, e.g. `"Olbrich"` in `espn-nba/summary/401810126.json`. Skipped: no ID to tie a line to.
   - A played row (`didNotPlay` false) with `MIN` `"--"` and every count `0`: 15 games, e.g. Pacome Dadiet in `espn-nba/summary/401909095.json`. Read as 0 minutes.
   - Live, for up to ~50 minutes after the final (2026-10-26): `MIN` `"-"` on a player who later shows `"0"` with every count `0` and `+/-` `"-2"` or `"0"` (Jaden Akins 4683730 in 401909863, Leaky Black 4395650 in 401909867). Read as 0 minutes when every count is 0; `+/-` may move.

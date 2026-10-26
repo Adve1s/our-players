@@ -220,7 +220,7 @@ curl -fsS "https://$(grep '^API_HOST=' .env | cut -d= -f2)/health"; echo
 ```
 Success: `{"ok":true,…}`.
 
-**Migrations only move forward.** The old version starts on the newer schema. That works when the newer migrations only added things (new tables, new nullable columns), which is true of all of them so far (look at the SQL in `apps/server/drizzle/` between the two commits). If a migration renamed or dropped something, roll forward with a fix instead, or do the rebuild (section 5) on the old version.
+**Migrations only move forward.** The old version starts on the newer schema. That works when the newer migrations only added things or loosened them (new tables, new nullable columns, a dropped NOT NULL), which is true of all of them so far (look at the SQL in `apps/server/drizzle/` between the two commits). `0001_nullable_position` (S10b) lets a player's position be null; an image older than it still serves those rows, but its NBA adapter rejects the box-score shapes S10b fixed again (`docs/sources/espn-nba.md`, Quirks). If a migration renamed or dropped something, roll forward with a fix instead, or do the rebuild (section 5) on the old version.
 
 **Pruning old images** (each is ~300 MB; the disk is 25 GB). Keep the running tag and the one before it:
 ```bash
@@ -304,7 +304,7 @@ Paste the output into the session; it goes in the table below. `duration` is wal
 
 | Date | Runs | Requests | Duration | Notes |
 | --- | --- | --- | --- | --- |
-| 2026-10-25 | 6 (1 partial) | 355 | 6 min 17 s | First fill of the Linode, back-to-back in tmux. NHL: 806 players, 179 games from 2026-09-29, 7,160 lines, 790 season rows. NBA: 518 players, 36 games from 2026-10-20 (34 with box scores), 940 lines, 319 season rows. NBA backfill `partial`: two box scores failed to parse (`MIN "--"`, position `"NA"`; PROGRESS parking lot). |
+| 2026-10-25 | 6 (1 partial) | 355 | 6 min 17 s | First fill of the Linode, back-to-back in tmux. NHL: 806 players, 179 games from 2026-09-29, 7,160 lines, 790 season rows. NBA: 518 players, 36 games from 2026-10-20 (34 with box scores), 940 lines, 319 season rows. NBA backfill `partial`: two box scores failed to parse (`MIN "--"`, position `"NA"`; fixed later in S10b and refetched). |
 
 ## 6. Rotating secrets
 
