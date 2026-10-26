@@ -154,6 +154,34 @@ describe('fetchSeasonStats', () => {
     await expect(fetchSeasonStats(client, '2025-26', 'REG')).rejects.toThrow(/truncated/);
   });
 
+  // Live, 2026-10-26: 314 of 334 rows on one pass; a second pass over the pages fills the gap.
+  it('pages again when a shift lost a row, keeping the rows of both passes', async () => {
+    const shifted = fakeClient({ [page1Url]: page1(2, 60), [page2Url]: page2(9, 1) });
+    const settled = fakeClient({ [page2Url]: page2(10) });
+    let page2Calls = 0;
+    const client = {
+      ...shifted,
+      get: (url: string) => {
+        if (url === page2Url && page2Calls++ > 0) {
+          shifted.requests.push(url);
+          return settled.get(url);
+        }
+        return shifted.get(url);
+      },
+    };
+    const rows = await fetchSeasonStats(client, '2025-26', 'REG');
+    expect(rows).toHaveLength(60);
+    expect(shifted.requests).toEqual([page1Url, page2Url, page1Url, page2Url]);
+  });
+
+  it('gives up after three passes over the pages', async () => {
+    const client = fakeClient({ [page1Url]: page1(2, 60), [page2Url]: page2(9, 1) });
+    await expect(fetchSeasonStats(client, '2025-26', 'REG')).rejects.toThrow(
+      /espn-nba byathlete: truncated, 59 of 60 rows/,
+    );
+    expect(client.requests).toHaveLength(6);
+  });
+
   it('returns an athlete repeated across pages once', async () => {
     const client = fakeClient({ [page1Url]: page1(2, 59), [page2Url]: page2(9, 1) });
     const rows = await fetchSeasonStats(client, '2025-26', 'REG');

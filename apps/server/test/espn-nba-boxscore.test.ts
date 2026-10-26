@@ -409,6 +409,24 @@ describe('mapSummary: errors', () => {
     expect(() => mapSummary(raw)).toThrow(/espn-nba/);
   });
 
+  // Live, right after the final: ESPN showed MIN "-" for a moment (Akins 4683730 in 401909863 and
+  // Black 4395650 in 401909867, 2026-10-26), later "0" with every count 0 and +/- "-2" or "0".
+  it('reads MIN "-" with every count 0 as 0 minutes', () => {
+    const raw = summary('401909095');
+    (rawRow(raw, '5211983').stats as string[])[0] = '-';
+    expect(basketballStats(line(mapSummary(raw).lines, '5211983')).minutes).toBe(0);
+  });
+
+  it('reads MIN "-" as 0 minutes when only +/- moved ("-2")', () => {
+    const raw = summary('401909095');
+    const stats = rawRow(raw, '5211983').stats as string[];
+    stats[0] = '-';
+    stats[13] = '-2';
+    const s = basketballStats(line(mapSummary(raw).lines, '5211983'));
+    expect(s.minutes).toBe(0);
+    expect(s.plusMinus).toBe(-2);
+  });
+
   it('throws on MIN "--" when the row has points (Dadiet with PTS "12")', () => {
     const raw = summary('401909095');
     (rawRow(raw, '5211983').stats as string[])[1] = '12';
