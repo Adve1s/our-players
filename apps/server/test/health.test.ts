@@ -85,6 +85,7 @@ it('request logs carry the path but never the query string', async () => {
 async function dataSetup() {
   const s = await setup();
   await run(s.handle.db, 'schedule', 'succeeded');
+  await run(s.handle.db, 'schedule', 'succeeded', 'NBA');
   return s;
 }
 
@@ -138,17 +139,30 @@ it('GET /health/data ignores results runs started more than 48 h ago', async () 
 it('GET /health/data counts a partial schedule run as a success', async () => {
   const { app, handle } = await setup();
   await run(handle.db, 'schedule', 'partial');
+  await run(handle.db, 'schedule', 'partial', 'NBA');
   expect((await app.request('/health/data')).status).toBe(200);
 });
 
 it('GET /health/data does not count a failed schedule run as a success', async () => {
   const { app, handle } = await setup();
   await run(handle.db, 'schedule', 'failed');
+  await run(handle.db, 'schedule', 'succeeded', 'NBA');
   const res = await app.request('/health/data');
   expect(res.status).toBe(503);
   expect(errorResponseSchema.parse(await res.json()).error.message).toContain(
-    'schedule: no successful run in 50 h',
+    'NHL: no successful schedule run in 50 h',
   );
+});
+
+it('GET /health/data answers 503 when only the NBA schedule keeps failing', async () => {
+  const { app, handle } = await setup();
+  await run(handle.db, 'schedule', 'succeeded');
+  await run(handle.db, 'schedule', 'failed', 'NBA');
+  const res = await app.request('/health/data');
+  expect(res.status).toBe(503);
+  const message = errorResponseSchema.parse(await res.json()).error.message;
+  expect(message).toContain('NBA: no successful schedule run in 50 h');
+  expect(message).not.toContain('NHL');
 });
 
 it('GET /health/data answers 503 UNAVAILABLE when the database is closed', async () => {

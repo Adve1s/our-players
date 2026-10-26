@@ -7,7 +7,11 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const ago = (ms: number) => new Date(now.getTime() - ms);
 
-const base: DataHealthInput = { games: [], resultsRuns: {}, lastScheduleSuccess: ago(HOUR) };
+const base: DataHealthInput = {
+  games: [],
+  resultsRuns: {},
+  lastScheduleSuccess: { NHL: ago(HOUR), NBA: ago(HOUR) },
+};
 
 const game = (status: GameStatus, startedAgo: number, boxscoreFetchedAt: Date | null = null) => ({
   publicId: 'nhl-2026020001',
@@ -16,7 +20,7 @@ const game = (status: GameStatus, startedAgo: number, boxscoreFetchedAt: Date | 
   boxscoreFetchedAt,
 });
 
-const scheduleReason = 'schedule: no successful run in 50 h';
+const scheduleReason = 'NHL: no successful schedule run in 50 h';
 
 it('a healthy input has no stale reasons', () => {
   expect(staleReasons(now, base)).toEqual([]);
@@ -77,17 +81,27 @@ describe('results runs', () => {
 });
 
 describe('the schedule', () => {
+  const nbaRan = { NBA: ago(HOUR) };
+
   it('is stale when it never succeeded', () => {
-    expect(staleReasons(now, { ...base, lastScheduleSuccess: null })).toEqual([scheduleReason]);
+    expect(staleReasons(now, { ...base, lastScheduleSuccess: nbaRan })).toEqual([scheduleReason]);
   });
 
   it('is fresh when it succeeded exactly 50 h ago', () => {
-    expect(staleReasons(now, { ...base, lastScheduleSuccess: ago(50 * HOUR) })).toEqual([]);
+    const lastScheduleSuccess = { ...nbaRan, NHL: ago(50 * HOUR) };
+    expect(staleReasons(now, { ...base, lastScheduleSuccess })).toEqual([]);
   });
 
   it('is stale when it last succeeded 50 h 1 min ago', () => {
-    const reasons = staleReasons(now, { ...base, lastScheduleSuccess: ago(50 * HOUR + MIN) });
-    expect(reasons).toEqual([scheduleReason]);
+    const lastScheduleSuccess = { ...nbaRan, NHL: ago(50 * HOUR + MIN) };
+    expect(staleReasons(now, { ...base, lastScheduleSuccess })).toEqual([scheduleReason]);
+  });
+
+  it('is checked per league: a fresh NHL schedule does not cover a stale NBA one', () => {
+    const lastScheduleSuccess = { NHL: ago(HOUR), NBA: ago(60 * HOUR) };
+    expect(staleReasons(now, { ...base, lastScheduleSuccess })).toEqual([
+      'NBA: no successful schedule run in 50 h',
+    ]);
   });
 });
 
@@ -95,7 +109,7 @@ it('reports every rule that fires', () => {
   const reasons = staleReasons(now, {
     games: [game('LIVE', 5 * HOUR)],
     resultsRuns: { NHL: ['failed', 'failed', 'failed'] },
-    lastScheduleSuccess: null,
+    lastScheduleSuccess: { NBA: ago(HOUR) },
   });
   expect(reasons).toHaveLength(3);
 });

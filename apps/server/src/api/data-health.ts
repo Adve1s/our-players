@@ -20,7 +20,8 @@ export type DataHealthInput = {
   }[];
   // per league, the last finished (not 'running') results runs started within 48 h, newest first, at most 3
   resultsRuns: Partial<Record<League, Exclude<JobStatus, 'running'>[]>>;
-  lastScheduleSuccess: Date | null; // max finished_at of schedule runs with status succeeded or partial
+  // per league, max finished_at of schedule runs with status succeeded or partial; a missing league never succeeded
+  lastScheduleSuccess: Partial<Record<League, Date>>;
 };
 
 export function staleReasons(now: Date, input: DataHealthInput): string[] {
@@ -40,15 +41,19 @@ export function staleReasons(now: Date, input: DataHealthInput): string[] {
       reasons.push(`${league}: last 3 results runs failed or partial`);
     }
   }
-  const last = input.lastScheduleSuccess;
-  if (last === null || t - last.getTime() > SCHEDULE_STALE_MS) {
-    reasons.push('schedule: no successful run in 50 h');
+  // Each league runs its own schedule job, so one league's success can't hide the other's failures.
+  for (const league of leagueSchema.options) {
+    const last = input.lastScheduleSuccess[league];
+    if (last === undefined || t - last.getTime() > SCHEDULE_STALE_MS) {
+      reasons.push(`${league}: no successful schedule run in 50 h`);
+    }
   }
   return reasons;
 }
 
 export async function loadDataHealth(db: Db, now: Date): Promise<string[]> {
   const t = now.getTime();
+  // A prefilter with the same bounds; staleReasons is the rule.
   const windowGames = await db
     .select({
       publicId: games.publicId,
@@ -79,13 +84,16 @@ export async function loadDataHealth(db: Db, now: Date): Promise<string[]> {
     resultsRuns[league] = rows.flatMap(({ status }) => (status === 'running' ? [] : [status]));
   }
   // A partial schedule run still stored games, so it counts as a success.
-  const [schedule] = await db
-    .select({ at: max(jobRuns.finishedAt) })
+  const league = sql<string>`${jobRuns.args}->>'league'`;
+  const schedule = await db
+    .select({ league, at: max(jobRuns.finishedAt) })
     .from(jobRuns)
-    .where(and(eq(jobRuns.job, 'schedule'), inArray(jobRuns.status, ['succeeded', 'partial'])));
-  return staleReasons(now, {
-    games: windowGames,
-    resultsRuns,
-    lastScheduleSuccess: schedule?.at ?? null,
-  });
+    .where(and(eq(jobRuns.job, 'schedule'), inArray(jobRuns.status, ['succeeded', 'partial'])))
+    .groupBy(league);
+  const lastScheduleSuccess: DataHealthInput['lastScheduleSuccess'] = {};
+  for (const row of schedule) {
+    const parsed = leagueSchema.safeParse(row.league);
+    if (parsed.success && row.at) lastScheduleSuccess[parsed.data] = row.at;
+  }
+  return staleReasons(now, { games: windowGames, resultsRuns, lastScheduleSuccess });
 }
