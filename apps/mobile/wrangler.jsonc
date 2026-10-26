@@ -1,6 +1,10 @@
 {
   "name": "our-players",
   "compatibility_date": "2026-10-23",
+  // The site lives only on the custom domain: the API's CORS_ORIGINS allows only that origin, so a
+  // workers.dev copy would be broken (D-061). Cloudflare creates the DNS record and certificate on deploy.
+  "workers_dev": false,
+  "routes": [{ "pattern": "ourplayers.adveis.dev", "custom_domain": true }],
   // Static files only, no Worker code. A path that isn't a file gets index.html with 200, so
   // deep links (/player/…) survive a reload.
   "assets": {

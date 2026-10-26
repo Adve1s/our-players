@@ -1,8 +1,16 @@
 import type { League, PublicId } from '@our-players/shared';
 import Constants from 'expo-constants';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { type ReactNode, useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { useCountries, usePlayers } from '../../api/queries';
 import { Caption } from '../../components/caption';
 import { Card } from '../../components/card';
@@ -260,6 +268,19 @@ export default function Settings() {
         <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
         <Caption>Data from the public NHL and ESPN web APIs.</Caption>
         <Caption>Not affiliated with the NHL or NBA.</Caption>
+        {/* Web only: on Android the app is already installed. */}
+        {Platform.OS === 'web' ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Add to Home Screen"
+            onPress={() => router.push('/install')}
+            style={{ minHeight: t.space.xl * 2, justifyContent: 'center' }}
+          >
+            <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
+              Add to Home Screen
+            </Text>
+          </Pressable>
+        ) : null}
       </Card>
     </ScrollView>
   );

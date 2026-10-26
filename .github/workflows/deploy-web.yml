@@ -1,8 +1,15 @@
 name: Deploy web
 
-# Only by hand until S14b adds `push: branches: [main]` (D-056).
+# A push that can change the site deploys it; workflow_dispatch redeploys by hand.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-web.yml'
 
 permissions:
   contents: read
@@ -37,3 +44,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: false
