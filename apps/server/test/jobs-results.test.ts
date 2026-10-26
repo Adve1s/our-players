@@ -174,7 +174,7 @@ describe('resultsJob', () => {
     expect(await handle.db.select().from(jobRuns)).toHaveLength(1);
   });
 
-  it("results picks the day of a started game that isn't final", async () => {
+  async function seedUnfinished() {
     const score = mapScore(scoreOnly('2026-01-17', [GAME]));
     await seedGames(
       score.games.map((g) => ({
@@ -187,8 +187,23 @@ describe('resultsJob', () => {
       })),
       score.teams,
     );
+  }
+
+  it("results picks the day of a started game that isn't final", async () => {
+    await seedUnfinished();
+    // A clock a few hours after the game's start (2026-01-18T00:00Z), inside RESULTS_WINDOW_MS.
+    ctx = { ...ctx, now: () => new Date('2026-01-18T04:00:00Z') };
     await results();
 
+    expect(client.requests).toEqual([nhlUrls.score('2026-01-17')]);
+  });
+
+  it('a game still not final more than 24 h after its start is left to a catch-up run', async () => {
+    await seedUnfinished();
+    await results();
+    expect(client.requestCount).toBe(0);
+
+    await results({ catchUp: true });
     expect(client.requests).toEqual([nhlUrls.score('2026-01-17')]);
   });
 
