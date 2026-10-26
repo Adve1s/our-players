@@ -2,6 +2,7 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import type { ErrorResponse } from '@our-players/shared';
 import type { Context, MiddlewareHandler } from 'hono';
 
+// shortcut: one key per address, so an IPv6 client could rotate through its /64 for fresh budgets; the API has only an A record, key IPv6 by its /64 if an AAAA record is added.
 function clientKey(c: Context): string {
   // The last X-Forwarded-For entry is the one Caddy added; port 3001 isn't published, so it can't be forged.
   const xff = c.req.header('X-Forwarded-For')?.split(',').at(-1)?.trim();

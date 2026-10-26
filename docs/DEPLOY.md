@@ -467,9 +467,9 @@ UptimeRobot, free plan (5-minute checks, email alerts). Create two **HTTP(s)** m
 The first thing to look at:
 - **Both down:** `ssh root@<server-ip>`, then `cd /opt/our-players && docker compose ps && docker compose logs --tail 100 api caddy`. If SSH doesn't answer, look at the Linode in the Linode console (running? CPU/memory graphs) and use its web console (Lish).
 - **Only data down:** `curl -sS https://api.ourplayers.adveis.dev/health/data` names the reasons:
-  - `<game-id>: started over 4 h ago, no box score yet`: box scores aren't arriving. Is the scheduler running (`docker compose logs api | grep scheduler`)? Are `results` runs failing (the job-runs query in section 7, and `docker compose logs --tail 200 api | grep '"level":"error"'`)? A game stuck upstream alerts for at most 48 h.
+  - `<game-id>: started over 4 h ago, no box score yet`: box scores aren't arriving. Is the scheduler running (`docker compose logs api | grep scheduler`)? Are `results` runs failing (the job-runs query in section 7, and `docker compose logs --tail 200 api | grep '"level":"error"'`)? A game stuck upstream alerts for at most 48 h; after 24 h only a catch-up run polls it again (`docker compose restart api`, whose startup tick is one).
   - `<league>: last 3 results runs failed or partial`: the upstream API is down or changed; the runs' `error` column says which. If it changed shape, the adapter needs a fix (a session with Claude).
-  - `schedule: no successful run in 50 h`: the daily `schedule` job failed twice; same places to look.
+  - `<league>: no successful schedule run in 50 h`: that league's daily `schedule` job failed twice; same places to look.
 
 ## 9. Production API URL
 
