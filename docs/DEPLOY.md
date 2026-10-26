@@ -1,8 +1,8 @@
-# Deploying the backend
+# Deploying the backend and the web app
 
 How the API, the ingestion scheduler and Postgres run on the Linode host, and how to set them up from zero, deploy, roll back, rebuild the data and rotate secrets. Design: `docs/superpowers/specs/2026-10-25-s10b-deploy.md` (D-054).
 
-The API lives at `https://api.ourplayers.adveis.dev`: the domain `adveis.dev` is registered at Cloudflare, which also hosts its DNS.
+The API lives at `https://api.ourplayers.adveis.dev` and the web app at `https://ourplayers.adveis.dev` (section 10): the domain `adveis.dev` is registered at Cloudflare, which also hosts its DNS.
 
 **Placeholder.** Replace this one everywhere, including the `<` `>`:
 - `<server-ip>`: the Linode's public IPv4 address (Linode console → the Linode → Network).
@@ -31,7 +31,7 @@ internet ──443/80──▶ caddy (TLS, Let's Encrypt) ──▶ api:3001 (Ho
 | --- | --- | --- |
 | `API_HOST` | `api.ourplayers.adveis.dev` | Caddy gets the certificate for this name. |
 | `POSTGRES_PASSWORD` | `openssl rand -hex 24` | **Hex only:** compose puts it into `DATABASE_URL` unescaped, so `@`, `/` or `:` would break the URL. |
-| `CORS_ORIGINS` | `https://ourplayers.adveis.dev` | Browser origins allowed to read `/v1`: the web build's address (S14b). Comma-separated. |
+| `CORS_ORIGINS` | `https://ourplayers.adveis.dev` | Browser origins allowed to read `/v1`: the web app's address (section 10). Comma-separated. |
 | `API_TAG` | git short SHA | `deploy.sh` writes it. |
 | `SCHEDULER_ENABLED` | `1` | `0` switches the scheduler off (used in the staleness check). |
 | `CONTACT_URL` | empty | Optional contact URL in the upstream User-Agent; empty means the GitHub repo. |
@@ -474,3 +474,48 @@ The first thing to look at:
 ## 9. Production API URL
 
 `https://api.ourplayers.adveis.dev`. It's S14b's `WEB_API_URL` repo variable and the API URL of S11b's Android build profile.
+
+## 10. Web app
+
+The Expo web export runs on Cloudflare Workers static assets: the Worker `our-players` (no Worker code, `apps/mobile/wrangler.jsonc`) at the custom domain `https://ourplayers.adveis.dev`. Cloudflare creates the domain's DNS record and certificate on the first deploy; there is no `workers.dev` address (D-061). It's built from `apps/mobile` with the API URL baked in: the `WEB_API_URL` repo variable, `https://api.ourplayers.adveis.dev`. Design: `docs/superpowers/specs/2026-10-26-s14b-web-live.md`.
+
+### 10.1 First-time setup
+
+1. **API token (for CI):** Cloudflare → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**. Account Resources: your account. Zone Resources: Specific zone → `adveis.dev`. Continue → Create → copy the token (it's shown once).
+2. **Repo secrets and variable.** **On your computer:**
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN
+   gh secret set CLOUDFLARE_ACCOUNT_ID
+   gh variable set WEB_API_URL --body https://api.ourplayers.adveis.dev
+   ```
+   Paste the token for the first and the account ID for the second (Cloudflare dashboard → account home → "Copy account ID"). Success: `gh secret list` shows both secrets and `gh variable list` shows `WEB_API_URL`.
+3. **The first deploy may run from your computer** (the workflow deploys only `main`). **On your computer:**
+   ```bash
+   cd apps/mobile
+   pnpm dlx wrangler@4.151.3 login
+   EXPO_PUBLIC_API_URL=https://api.ourplayers.adveis.dev pnpm build:web
+   pnpm dlx wrangler@4.151.3 deploy
+   pnpm dlx wrangler@4.151.3 logout
+   ```
+   Success: `deploy` ends with `ourplayers.adveis.dev (custom domain)` and a version ID; the checks in 10.4 pass.
+
+### 10.2 Deploy
+
+Automatic: a push to `main` that touches `apps/mobile/**`, `packages/shared/**`, `pnpm-lock.yaml` or `.github/workflows/deploy-web.yml` runs the **Deploy web** workflow. By hand: GitHub → Actions → Deploy web → Run workflow (branch `main`). **On your computer**, `gh run list --workflow deploy-web.yml` shows the runs. Success: the run is green, then the checks in 10.4 pass.
+
+### 10.3 Rollback
+
+Cloudflare dashboard → Workers & Pages → `our-players` → Deployments → pick the previous one → Rollback. Or **on your computer**, logged in: `cd apps/mobile && pnpm dlx wrangler@4.151.3 rollback`. A rollback lasts until the next push deploys.
+
+### 10.4 Checks
+
+**On your computer:**
+```bash
+curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://ourplayers.adveis.dev/player/nhl-8478402
+curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://ourplayers.adveis.dev/manifest.json
+curl -sS -i -H 'Origin: https://ourplayers.adveis.dev' https://api.ourplayers.adveis.dev/v1/meta
+curl -sS -i -H 'Origin: https://evil.example' https://api.ourplayers.adveis.dev/v1/meta
+```
+Success: the deep link gives `200 text/html…` (the app's `index.html`); the manifest `200 application/json`; the first CORS call `200` with `access-control-allow-origin: https://ourplayers.adveis.dev`; the second `200` with no `access-control-allow-origin` header (the browser blocks the read). Then open the site in a browser: Today loads.
+
+If the token stops working (a failed run with an authentication error), section 6 "Cloudflare" covers rolling it.
