@@ -43,15 +43,15 @@ All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to 
 | S12 | Search, favorites, hidden | `s12-favorites` | M | medium | local | Star/hide players |
 | S13 | Player page + game page | `s13-player-game` | L | medium | local | Full v1 feature set (locally) |
 | S14a | Web build as a home-screen app (local) | `s14a-web-build` | M | medium | local | The web app, built and checked locally |
-| S11a | First Play upload (placeholder) — any time after Play verifies you | `s11a-play-upload` | S | medium | local | The app installs from Play internal testing (no server yet) |
 | S10b | Deploy backend | `s10b-deploy` | L | medium | local | Public API with a running scheduler and a staleness alert; **server bill starts** |
 | S14b | Web go-live | `s14b-web-live` | S | medium | local | PC and iPhone friends use it |
 | S16 | Security audit + fixes | `s16-security-audit` | L | high | local | Every part of the stack checked, the findings fixed or decided, a re-runnable checklist |
 | S17 | Visual overhaul | `s17-visual-overhaul` | L | high | local | The app's own look, icon and splash on phone and web |
+| S11a | First Play upload (internal testing) | `s11a-play-upload` | S | medium | local | The app installs from Play internal testing, against the production API |
 | S11b | Play closed test | `s11b-closed-test` | M | medium | local | Friends install it; **14-day clock starts** |
 | S15 | Production access + runbook | `s15-launch` | S | medium | local | Public on Google Play |
 
-Slices group the sessions on the roadmap; they no longer map to a branch or PR. Everything is built and used locally first; the server bill, the public web app and the Play closed test all start in slice 7 (DECISIONS.md D-048). S10a runs right after S09: it needs nothing from S12–S13, and a provider whose IPs the upstream APIs block is better found before the rest is built. S11a runs whenever Play Console has verified you, between any two sessions; the owner runs it after S17, so the first upload already has the final icon. After S14b the order is S16 → S17 → S11a → S11b → S15 (D-062). Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
+Slices group the sessions on the roadmap; they no longer map to a branch or PR. Everything is built and used locally first; the server bill, the public web app and the Play closed test all start in slice 7 (DECISIONS.md D-048). S10a runs right after S09: it needs nothing from S12–S13, and a provider whose IPs the upstream APIs block is better found before the rest is built. After S14b the order is S16 → S17 → S11a → S11b → S15 (D-062): S11a runs after S17, so the first upload already has the final icon. Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
 
 **Size** is a rough guess at your attention per session: S under 1 h, M 1–2 h, L 2–3 h. An L session may need a second sitting — use the "Resume" template.
 
@@ -605,43 +605,11 @@ Brainstorm with §S14a as the spec. The design must cover: static hosting option
 Then plan and build it, screenshot the built site, and wait for my phone check. Then tell me it's ready for /handoff.
 ```
 
-### S11a — First Play upload (placeholder)
-
-**When:** after S17, so the first upload carries the final icon (Overview, D-062). It needs nothing from the server.
-
-**Goal:** the app exists on Google Play's internal testing track and installs on your phone, so the package name and signing key are settled early; later builds are updates.
-
-**In scope**
-- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Icon, adaptive icon and splash come from S17's brand source (`assets/icon.svg` and the `icons` script); check `app.json` points at them.
-- `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build. No production `EXPO_PUBLIC_API_URL` yet: the build shows the "Can't reach the server" state, and that's expected.
-- Play Console: create the app, fill in only what the console requires before an internal-testing release (truthful drafts, saved in `docs/store/console-answers.md`; S11b completes them), upload, install through the tester link.
-- Back up the EAS signing credentials outside the repo.
-- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out).
-
-**Out of scope:** production API URL, store listing texts, closed track and testers (S11b); new features.
-
-**Acceptance criteria**
-1. A production AAB builds (you run the EAS build; Claude fixes config issues).
-2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
-3. Installed from internal testing on your phone, it shows the friendly "can't reach the server" state (in Settings, or on Today once S09 exists) without crashing.
-4. Signing credentials backed up (you confirm); `docs/store/release.md` and `docs/store/console-answers.md` written.
-5. `pnpm verify` green.
-
-```text
-Session S11a — First Play upload, placeholder (slice 6). Create branch `s11a-play-upload` from the latest `main`.
-
-Read docs/PROGRESS.md, docs/SESSIONS.md §S11a (the contract) and §S11b (what follows), docs/VISION.md §4.6 and §11. First run the tests.
-
-Brainstorm with §S11a as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; whether S17's icon, adaptive icon and splash meet Play's asset requirements; which Play Console forms are required before an internal-testing release (check the current rules) and truthful draft answers for them — check the code (VISION §11); credential backup; and the step-by-step console checklist for EAS and the internal track.
-
-Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
-```
-
 ---
 
 ## Slice 7 — Launch
 
-The server bill starts with S10b. Run these back to back: the API, the web app and the closed test all go live together, and the 14-day clock (S11b) is the last fixed wait before the public Play release. Between S14b and S11b, S16 hardens what is now public and S17 gives the app its final look, so friends test the finished app (D-062).
+The server bill starts with S10b. S10b and S14b put the API and the web app live; S16 then hardens what is public, S17 gives the app its final look, and S11a and S11b put that finished app on Google Play, so friends test it (D-062). The 14-day clock (S11b) is the last fixed wait before the public Play release.
 
 ### S10b — Deploy the backend
 
@@ -712,8 +680,8 @@ Then plan and build it, walk me through deployment, and wait for my phone test. 
 
 **How the audit runs** (research 2026-10-28, D-062): scanners first, then Claude, then what no code scanner can see.
 1. **Scanners** — repeatable and cheap; each finding still gets a human-readable verdict:
-   - `pnpm audit --prod` — known CVEs in the dependencies we ship.
-   - `trivy fs --scanners vuln,secret,misconfig .` — dependency CVEs from `pnpm-lock.yaml`, `Dockerfile` misconfiguration, secrets in the tree (Trivy has no Compose scanner: `deploy/compose.yaml` and the `Caddyfile` go through the manual checklist).
+   - `pnpm audit` — known CVEs in all dependencies, dev ones included: build tools run in CI next to the repo secrets. The verdict says whether a finding ships or only builds.
+   - `trivy fs --scanners vuln,secret,misconfig --skip-dirs '**/node_modules,apps/mobile/dist,apps/server/.data' --skip-files '**/.env' .` — skips installed packages, build output, the dev DB and local gitignored `.env` files; dependency CVEs from `pnpm-lock.yaml`, `Dockerfile` misconfiguration, secrets in the tree (Trivy has no Compose scanner: `deploy/compose.yaml` and the `Caddyfile` go through the manual checklist).
    - `gitleaks git --redact` — secrets anywhere in the git history, not only the current tree (a key deleted later is still in old commits of a public repo).
    - `zizmor .github/workflows` — workflow permissions, actions not pinned to a commit SHA, template injection, credential persistence.
    - `trivy image` on a local build of the API image (`docker build -t our-players-api:scan .`, same Dockerfile) — OS and Node CVEs in what runs on the host. Never run `deploy/deploy.sh` for a scan: it ships the image and rewrites the host's `API_TAG`.
@@ -725,7 +693,7 @@ Then plan and build it, walk me through deployment, and wait for my phone test. 
    - **Host over ssh** (commands shown first; read-only until a fix is approved): keys-only ssh and root login, the firewall from outside (`nmap` our own IP) and inside (`ufw`, Docker's published ports), unattended upgrades and a pending reboot, `.env` file permissions, Postgres not reachable from outside, log retention and the no-IP/no-query-string promise (VISION §10–§11, DEPLOY.md §1); `deploy/compose.yaml` and `deploy/Caddyfile` read line by line.
    - **Android config** (before S11a's first upload makes it permanent): no permission beyond `INTERNET`, `allowBackup`, no cleartext traffic in a release build, the `ourplayers://` deep links and route params (`player/[id]`, `game/[id]`) handled safely.
    - **Accounts and tokens:** the Cloudflare API token's scope, GitHub repository settings (Actions' default token permission read-only, approval for fork PRs), and 2FA on GitHub, Cloudflare (registrar of `adveis.dev`), Linode, Google Play and Expo (you confirm).
-   - **Supply chain and tooling:** pnpm's `minimumReleaseAge` and install-script policy, third-party Claude Code plugins pinned to an immutable ref (a git tag can be moved), `.claude/settings.json` deny rules.
+   - **Supply chain and tooling:** pnpm's `minimumReleaseAge` and install-script policy, third-party Claude Code plugins pinned to an immutable ref (a git tag can be moved), `.claude/settings.json` deny rules, and the tools CI runs outside the lockfile (`pnpm dlx wrangler@…` in `deploy-web.yml`, which holds `CLOUDFLARE_API_TOKEN`): advisories for that exact version.
 
 **In scope**
 - Running all three layers above; the design doc is the audit report: what ran (commands and summarized output), the manual checklist with evidence, and a findings table (ID, severity, where, found by, proposed decision: fix now / accept with reason / park).
@@ -803,14 +771,45 @@ Brainstorm with §S17 as the spec, using the frontend-design skill and the Expo 
 Then plan and build it: tokens and shared components first, then screens, then the icon and splash. Save the approved mockups as PNGs in docs/superpowers/specs/s17-mockups/; after each screen task, the task reviewer compares that screen's screenshots with them. After the final review, walk me through the phone and desktop check. Then tell me it's ready for /handoff.
 ```
 
+### S11a — First Play upload (internal testing)
+
+**When:** after S17, so the first upload carries the final icon (Overview, D-062). The production API is live by then (S10b).
+
+**Goal:** the app exists on Google Play's internal testing track and installs on your phone, so the package name and signing key are settled early; later builds are updates.
+
+**In scope**
+- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Icon, adaptive icon and splash come from S17's brand source (`assets/icon.svg` and the `icons` script); check `app.json` points at them.
+- `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build with the production `EXPO_PUBLIC_API_URL` (`https://api.ourplayers.adveis.dev`, DEPLOY.md §9).
+- Play Console: create the app, fill in only what the console requires before an internal-testing release (truthful drafts, saved in `docs/store/console-answers.md`; S11b completes them), upload, install through the tester link.
+- Back up the EAS signing credentials outside the repo.
+- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out).
+
+**Out of scope:** store listing texts, closed track and testers (S11b); new features.
+
+**Acceptance criteria**
+1. A production AAB builds (you run the EAS build; Claude fixes config issues).
+2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
+3. Installed from internal testing on your phone, it loads Today from the production API without crashing.
+4. Signing credentials backed up (you confirm); `docs/store/release.md` and `docs/store/console-answers.md` written.
+5. `pnpm verify` green.
+
+```text
+Session S11a — First Play upload, internal testing (slice 7). Create branch `s11a-play-upload` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S11a (the contract) and §S11b (what follows), docs/VISION.md §4.6 and §11. First run the tests.
+
+Brainstorm with §S11a as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; whether S17's icon, adaptive icon and splash meet Play's asset requirements; which Play Console forms are required before an internal-testing release (check the current rules) and truthful draft answers for them — check the code (VISION §11); credential backup; and the step-by-step console checklist for EAS and the internal track.
+
+Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
+```
+
 ### S11b — Play closed test
 
 **Goal:** friends can install the finished app from Google Play's closed testing track, and the 14-day clock starts.
 
 **In scope**
-- Prerequisites: S11a done (the app exists on internal testing), S10b live, S16 and S17 merged, and 15+ testers' Google-account emails collected.
+- Prerequisites: S11a done (the app exists on internal testing, built against the production API), S10b live, S16 and S17 merged, and 15+ testers' Google-account emails collected.
 - `docs/SECURITY-CHECKS.md` re-run (scanners and live checks) after S17's new dependencies; results in PROGRESS.md (VISION §12).
-- The production `EXPO_PUBLIC_API_URL` in the production build profile.
 - `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers, privacy policy (a hosted page — GitHub Pages works for a public repo), tester invitation message and a "keep testers opted in" plan. Completes S11a's drafts.
 - An internal-testing build against the production API first, then the closed track.
 

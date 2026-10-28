@@ -39,6 +39,7 @@
       "Bash(git push * --force*)",
       "Bash(git push * -f*)",
       "Bash(gh repo delete *)",
+      "Bash(npx *submit-expo-feedback*)",
       "Read(.env)",
       "Read(.env.*)",
       "Read(!.env.example)",
