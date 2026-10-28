@@ -268,6 +268,7 @@ Errors: `{ "error": { "code": "BAD_REQUEST", "message": "..." } }`. Day and game
 - **Performance:** `/v1/days/{date}` under 150 ms p95 server-side with a full season stored.
 - **Resilience:** an upstream failure never breaks the app — the API serves stored data and `/health` and `dataUpdatedAt` reveal staleness. During the season, `/health/data` fails when results go stale and an external uptime monitor emails the owner; `/health` stays green, so the host never restarts the API over an upstream outage.
 - **Observability:** `job_runs` table, structured JSON logs without user preferences.
+- **Security:** dependency, secret, workflow and image scans clean or triaged, and the manual checklist passed, before the closed test and again before the public release (S16, `docs/SECURITY-CHECKS.md`).
 
 ## 13. Glossary
 

@@ -34,3 +34,6 @@ Thumbs.db
 
 # superpowers working files (SDD ledgers, brainstorm mockups)
 .superpowers/
+
+# Reference screenshots for the visual overhaul (S17): other apps, not ours to publish
+design-refs/
