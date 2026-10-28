@@ -39,6 +39,7 @@
       "Bash(git push * --force*)",
       "Bash(git push * -f*)",
       "Bash(gh repo delete *)",
+      "Bash(npx *submit-expo-feedback*)",
       "Read(.env)",
       "Read(.env.*)",
       "Read(!.env.example)",
@@ -94,7 +95,10 @@
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "claude-security@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "expo@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "ponytail": {

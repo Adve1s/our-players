@@ -473,7 +473,7 @@ The first thing to look at:
 
 ## 9. Production API URL
 
-`https://api.ourplayers.adveis.dev`. It's S14b's `WEB_API_URL` repo variable and the API URL of S11b's Android build profile.
+`https://api.ourplayers.adveis.dev`. It's S14b's `WEB_API_URL` repo variable and the API URL of the Android production build profile (set in S11a).
 
 ## 10. Web app
 

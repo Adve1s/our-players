@@ -43,13 +43,15 @@ All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to 
 | S12 | Search, favorites, hidden | `s12-favorites` | M | medium | local | Star/hide players |
 | S13 | Player page + game page | `s13-player-game` | L | medium | local | Full v1 feature set (locally) |
 | S14a | Web build as a home-screen app (local) | `s14a-web-build` | M | medium | local | The web app, built and checked locally |
-| S11a | First Play upload (placeholder) — any time after Play verifies you | `s11a-play-upload` | S | medium | local | The app installs from Play internal testing (no server yet) |
 | S10b | Deploy backend | `s10b-deploy` | L | medium | local | Public API with a running scheduler and a staleness alert; **server bill starts** |
 | S14b | Web go-live | `s14b-web-live` | S | medium | local | PC and iPhone friends use it |
+| S16 | Security audit + fixes | `s16-security-audit` | L | high | local | Every part of the stack checked, the findings fixed or decided, a re-runnable checklist |
+| S17 | Visual overhaul | `s17-visual-overhaul` | L | high | local | The app's own look, icon and splash on phone and web |
+| S11a | First Play upload (internal testing) | `s11a-play-upload` | S | medium | local | The app installs from Play internal testing, against the production API |
 | S11b | Play closed test | `s11b-closed-test` | M | medium | local | Friends install it; **14-day clock starts** |
 | S15 | Production access + runbook | `s15-launch` | S | medium | local | Public on Google Play |
 
-Slices group the sessions on the roadmap; they no longer map to a branch or PR. Everything is built and used locally first; the server bill, the public web app and the Play closed test all start in slice 7 (DECISIONS.md D-048). S10a runs right after S09: it needs nothing from S12–S13, and a provider whose IPs the upstream APIs block is better found before the rest is built. S11a runs whenever Play Console has verified you, between any two sessions. Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
+Slices group the sessions on the roadmap; they no longer map to a branch or PR. Everything is built and used locally first; the server bill, the public web app and the Play closed test all start in slice 7 (DECISIONS.md D-048). S10a runs right after S09: it needs nothing from S12–S13, and a provider whose IPs the upstream APIs block is better found before the rest is built. After S14b the order is S16 → S17 → S11a → S11b → S15 (D-062): S11a runs after S17, so the first upload already has the final icon. Spend the three free `/code-review ultra` runs on the S02a, S04a, S05 and S09 PRs (pick three).
 
 **Size** is a rough guess at your attention per session: S under 1 h, M 1–2 h, L 2–3 h. An L session may need a second sitting — use the "Resume" template.
 
@@ -603,43 +605,11 @@ Brainstorm with §S14a as the spec. The design must cover: static hosting option
 Then plan and build it, screenshot the built site, and wait for my phone check. Then tell me it's ready for /handoff.
 ```
 
-### S11a — First Play upload (placeholder)
-
-**When:** any time after Play Console has verified your identity — between any two sessions, on its own timeline. It needs no server.
-
-**Goal:** the app exists on Google Play's internal testing track and installs on your phone, so the package name and signing key are settled early; later builds are updates.
-
-**In scope**
-- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Add icon and adaptive icon and splash (simple text-based; reuse S14a's artwork if it ran first).
-- `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build. No production `EXPO_PUBLIC_API_URL` yet: the build shows the "Can't reach the server" state, and that's expected.
-- Play Console: create the app, fill in only what the console requires before an internal-testing release (truthful drafts, saved in `docs/store/console-answers.md`; S11b completes them), upload, install through the tester link.
-- Back up the EAS signing credentials outside the repo.
-- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out).
-
-**Out of scope:** production API URL, store listing texts, closed track and testers (S11b); new features.
-
-**Acceptance criteria**
-1. A production AAB builds (you run the EAS build; Claude fixes config issues).
-2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
-3. Installed from internal testing on your phone, it shows the friendly "can't reach the server" state (in Settings, or on Today once S09 exists) without crashing.
-4. Signing credentials backed up (you confirm); `docs/store/release.md` and `docs/store/console-answers.md` written.
-5. `pnpm verify` green.
-
-```text
-Session S11a — First Play upload, placeholder (slice 6). Create branch `s11a-play-upload` from the latest `main`.
-
-Read docs/PROGRESS.md, docs/SESSIONS.md §S11a (the contract) and §S11b (what follows), docs/VISION.md §4.6 and §11. First run the tests.
-
-Brainstorm with §S11a as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; asset requirements and how we'll make simple text-based icons; which Play Console forms are required before an internal-testing release (check the current rules) and truthful draft answers for them — check the code (VISION §11); credential backup; and the step-by-step console checklist for EAS and the internal track.
-
-Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
-```
-
 ---
 
 ## Slice 7 — Launch
 
-The server bill starts with S10b. Run these back to back: the API, the web app and the closed test all go live together, and the 14-day clock (S11b) is the last fixed wait before the public Play release.
+The server bill starts with S10b. S10b and S14b put the API and the web app live; S16 then hardens what is public, S17 gives the app its final look, and S11a and S11b put that finished app on Google Play, so friends test it (D-062). The 14-day clock (S11b) is the last fixed wait before the public Play release.
 
 ### S10b — Deploy the backend
 
@@ -702,13 +672,144 @@ Brainstorm with §S14b as the spec. The design must cover: the deploy steps for 
 Then plan and build it, walk me through deployment, and wait for my phone test. Then tell me it's ready for /handoff.
 ```
 
+### S16 — Security audit + fixes
+
+**Goal:** everything we run — API and jobs, the Android and web app, Docker and the host, CI, accounts and the Claude Code setup — is checked for vulnerabilities and misconfiguration; what's found is fixed or consciously decided; and a short checklist lets future-you re-run the checks. The S11b Data safety answers then rest on checked facts.
+
+**Before the session (prep, D-062):** Dependabot alerts and CodeQL default setup are on in GitHub (done 2026-10-28). Scanners: `sudo pacman -S gitleaks nmap` and `mise use -g trivy zizmor` (Omarchy's mirror lacked the trivy and zizmor packages that day). Plugin: `claude-security@claude-plugins-official` in the project settings. You: check `/usage` — the codebase scan is the heaviest step of any session so far.
+
+**How the audit runs** (research 2026-10-28, D-062): scanners first, then Claude, then what no code scanner can see.
+1. **Scanners** — repeatable and cheap; each finding still gets a human-readable verdict:
+   - `pnpm audit` — known CVEs in all dependencies, dev ones included: build tools run in CI next to the repo secrets. The verdict says whether a finding ships or only builds.
+   - `trivy fs --scanners vuln,secret,misconfig --skip-dirs '**/node_modules,apps/mobile/dist,apps/server/.data' --skip-files '**/.env' .` — skips installed packages, build output, the dev DB and local gitignored `.env` files; dependency CVEs from `pnpm-lock.yaml`, `Dockerfile` misconfiguration, secrets in the tree (Trivy has no Compose scanner: `deploy/compose.yaml` and the `Caddyfile` go through the manual checklist).
+   - `gitleaks git --redact` — secrets anywhere in the git history, not only the current tree (a key deleted later is still in old commits of a public repo).
+   - `zizmor .github/workflows` — workflow permissions, actions not pinned to a commit SHA, template injection, credential persistence.
+   - `trivy image` on a local build of the API image (`docker build -t our-players-api:scan .`, same Dockerfile) — OS and Node CVEs in what runs on the host. Never run `deploy/deploy.sh` for a scan: it ships the image and rewrites the host's `API_TAG`.
+   - GitHub's Dependabot alerts and CodeQL results (read with `gh api`).
+2. **`/claude-security` → Scan codebase** (Anthropic's in-session Claude Security, plugin `claude-security`): maps the architecture, builds a threat model, hunts per component, and hands every candidate to independent verifiers told to disprove it, so the report stays short. Report in `CLAUDE-SECURITY-<timestamp>/` (gitignored by its own `.gitignore`; not committed). The code is ~10K lines, so effort `high` is affordable; it states its cost and asks once before starting; its hook cancels the scan if that question goes unanswered for 60 s, so stay at the keyboard. Scans are nondeterministic: a clean report says what was examined, not that nothing is there.
+3. **Manual checklist** — config and live behavior the scanners don't reach. Live checks are read-only and only against our own hosts:
+   - **API, live:** response headers (`curl -sI`), HSTS on `api.ourplayers.adveis.dev`, CORS for a foreign origin, 429 over the rate limit, error bodies without stack traces or SQL, odd or oversized query parameters, TLS versions.
+   - **Web app, live:** security headers (Mozilla HTTP Observatory via its API; Cloudflare static assets take a `_headers` file: CSP, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors`), what the bundle contains (only `EXPO_PUBLIC_*` values, source maps or not).
+   - **Host over ssh** (commands shown first; read-only until a fix is approved): keys-only ssh and root login, the firewall from outside (`nmap` our own IP) and inside (`ufw`, Docker's published ports), unattended upgrades and a pending reboot, `.env` file permissions, Postgres not reachable from outside, log retention and the no-IP/no-query-string promise (VISION §10–§11, DEPLOY.md §1); `deploy/compose.yaml` and `deploy/Caddyfile` read line by line.
+   - **Android config** (before S11a's first upload makes it permanent): no permission beyond `INTERNET`, `allowBackup`, no cleartext traffic in a release build, the `ourplayers://` deep links and route params (`player/[id]`, `game/[id]`) handled safely.
+   - **Accounts and tokens:** the Cloudflare API token's scope, GitHub repository settings (Actions' default token permission read-only, approval for fork PRs), and 2FA on GitHub, Cloudflare (registrar of `adveis.dev`), Linode, Google Play and Expo (you confirm).
+   - **Supply chain and tooling:** pnpm's `minimumReleaseAge` and install-script policy, third-party Claude Code plugins pinned to an immutable ref (a git tag can be moved), `.claude/settings.json` deny rules, and the tools CI runs outside the lockfile (`pnpm dlx wrangler@…` in `deploy-web.yml`, which holds `CLOUDFLARE_API_TOKEN`): advisories for that exact version.
+
+**In scope**
+- Running all three layers above; the design doc is the audit report: what ran (commands and summarized output), the manual checklist with evidence, and a findings table (ID, severity, where, found by, proposed decision: fix now / accept with reason / park).
+- Fixing the findings you mark "fix now": code with red/green tests where the behavior is testable (headers, input limits, error bodies), config files in the repo, host changes over ssh with your OK, console changes as your checklist.
+- `docs/SECURITY-CHECKS.md`: the scanner commands, the manual checklist, and when to re-run (before S11b and S15, after adding a dependency, monthly `pnpm audit`).
+- Deploying the API fixes (`deploy/deploy.sh`) and repeating the live checks against production.
+
+**Out of scope:** new features; load or DoS testing against production (one small shared host; the rate limit is checked with a few requests, not a flood); scanning or probing anything we don't own (NHL, ESPN, Cloudflare's or Linode's infrastructure); certificate pinning (no secrets travel, and pinning breaks on Let's Encrypt renewals); accounts, auth and encryption at rest (there are no accounts or personal data); the paid `claude-code-security-review` GitHub Action (needs a billed API key) and the `security-guidance` plugin (an LLM review on every turn; too much usage on Pro); the visual overhaul (S17).
+
+**Acceptance criteria**
+1. Every scanner in step 1 ran on the session's start commit; command and summarized result are in the design doc. No secret value is ever printed, pasted or committed — file, line and kind only.
+2. A `claude-security` codebase scan ran; its severity counts and Coverage section are summarized in the design doc; the report folder is not committed.
+3. Every manual-checklist item has evidence (command and output) or is marked "you confirm" and confirmed by you.
+4. Every finding has a severity and a decision you agreed to; fixed ones name their commit, accepted ones their reason, parked ones a PROGRESS.md parking-lot line.
+5. No Critical or High finding is left unfixed, unless the fix is outside the repo, the host and the consoles you can reach — then it's parked with a date.
+6. After the fixes the scanners re-run without the fixed findings; the API is deployed from the session branch and the live checks repeated against production (pasted). Web-only fixes deploy on merge, so their live re-check, and redeploying the API from `main` after the merge, go to the briefing's Next.
+7. `docs/SECURITY-CHECKS.md` written; the reviewer walks through it against the repo.
+8. `pnpm verify` green.
+
+**You:** confirm the 2FA and account items; approve each batch of ssh commands; decide each finding (about 1.5 h in total).
+
+```text
+Session S16 — Security audit + fixes (slice 7). Create branch `s16-security-audit` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S16 (the contract), docs/DEPLOY.md, docs/VISION.md §10–§12, docs/DECISIONS.md D-054, D-056, D-061 and D-062, and .claude/settings.json. First run the tests.
+
+Brainstorm with §S16 as the spec; the audit itself is the recon. Run the scanners in §S16's order (show each command first; never print a secret value — file, line and kind only), then `/claude-security` scan codebase at high effort (tell me its cost estimate before it starts), then the manual checklist. ssh commands to the host are read-only and need my OK per batch; ask me for the server IP. Write the design doc as the audit report with a proposed decision for each finding, and wait for my decisions.
+
+Then plan and build the fixes. After the final review, deploy the API with my OK, walk me through the host and console steps one at a time, and re-run the checks. Then tell me it's ready for /handoff.
+```
+
+### S17 — Visual overhaul
+
+**Goal:** the app looks like a finished, professional product on Android and the web, with its own identity — palette, typeface, icon and splash — while it stays text-only (no logos, no player photos) and every behavior stays as it is.
+
+**Before the session:** the plugins `frontend-design@claude-plugins-official` and `expo@claude-plugins-official` are in the project settings (2026-10-28). Optional (you): save 3–5 screenshots of apps whose look you like into `design-refs/` at the repo root (gitignored: screenshots of other apps don't go in a public repo). Sports apps are the obvious place to look, but anything whose feel you like counts; add `design-refs/notes.md` with one line per image on what you like about it (`fotmob-scores.png — compact score rows, team colors as thin bars`), which helps most.
+
+**How** (research 2026-10-28, D-063):
+- **Direction before code.** Taste comes from references and your pick, not from the model: without them, AI-made UI drifts toward the same generic defaults. In brainstorming, Claude shows 2–3 clearly different directions as clickable mockups (the visual companion) of Today and the player page, with real-looking data, in light and dark; you pick or mix.
+- **Tokens first, then components, then screens.** The pick becomes a written token set in `theme.ts` — color roles for light and dark, one typeface and a type scale, spacing, radius, elevation, motion durations — reviewed against the `frontend-design` skill's list of generic tells before any code. Screens change through the shared components in `src/components/`, so the look stays consistent and no screen gets one-off styles.
+- **Skills:** `frontend-design` (picks a committed direction, two-pass token review, anti-generic rules; written for the web, the principles carry over) and Expo's plugin (`expo-design-system` for tokens and shared components; from `expo-animation` only its should-it-animate reasoning — it implements with Reanimated, Gesture Handler and haptics, which this session doesn't add; `expo-native-ui` follows Apple's guidelines, so it's only background here — our targets are Android and web).
+- **Screenshot loop with fresh eyes.** The approved mockups are saved as PNGs (Today and Player, light and dark) in `docs/superpowers/specs/s17-mockups/`, the reference for every review. After each screen task, `pnpm screenshots` (it always captures the whole set), and the task reviewer — not the implementer — compares that screen's shots with the mockups. The loop looks at about 10 key shots; the full set (~95 images, roughly 150K tokens of images) only in the final review.
+- **The phone is the truth for Android.** Screenshots render through react-native-web; Android differs in font rendering, shadows (elevation) and text metrics, so you check on the phone (Expo Go) and at the largest system font size.
+
+**In scope**
+- The direction (mockups, your pick) and the token set, recorded in the design doc; the approved mockups saved as PNGs in `docs/superpowers/specs/s17-mockups/`.
+- `theme.ts` rebuilt from the tokens, with the token objects in a module that doesn't import `react-native`, so a Vitest test can load them. A custom typeface loaded with `expo-font` (in the tree through `expo`; declared directly once imported) and a font package — both named in the plan for approval. A test checks that every text color role except `textDisabled` (disabled controls, exempt in WCAG) reaches 4.5:1 against the backgrounds it's used on, and `onAccent` on `accent`, in both schemes.
+- One icon set for the tab bar (icons beside the text labels — Revisit for v2) and in-app glyphs (★, chevrons, back, expand); a new dependency (e.g. `@expo/vector-icons`) named for approval.
+- Every screen and state in the new look: Today (day stepper, cards, DNP and "Not in lineup" rows, upcoming, Other games, banners), Search, Settings (lists, undo), Player, Game (the box score — Revisit for v2 "Game page visuals", including its two text tweaks: "–" instead of "0.0" for FG%/3P%/FT% at 0 GP, and no team abbreviation repeated under its own section heading), Install, and the loading, empty, error and offline states; headers and the tab bar.
+- Restrained motion with a purpose (pressed states, expanding Other games, skeleton loading) with React Native's built-in `Animated`, respecting the system's reduce-motion setting (`AccessibilityInfo.isReduceMotionEnabled`).
+- The brand: app icon, Android adaptive icon (foreground, background, monochrome), splash, favicon, web manifest icons and theme color — one source, `assets/icon.svg`, with the `icons` script extended to render the adaptive layers and the splash too (today it renders the web icons, favicon and `icon.png`) — in the app's palette (Revisit for v2 "One color scheme for the icon and the app"). `app.json` stops pointing at Expo's default adaptive icon, splash and colors, and drops `ios.icon` (no App Store); S11a uses these.
+- On a wide browser window the content sits in a centered column of readable width instead of stretching.
+- `pnpm screenshots` re-captured; a before/after pair for each screen in the design doc's closing section.
+
+**Out of scope:** new features, screens or behavior; changed texts beyond labels the new layout needs; logos, team logos and player photos (VISION §4.6); team colors (they'd need data per team from the server — park for v2); server or API changes; moving styling to a UI library (NativeWind, Tamagui, Gluestack, Paper) — style stays in `useTheme()` tokens; a dedicated desktop layout (VISION §5); translations; Play Store graphics (S11b).
+
+**Acceptance criteria**
+1. The design doc records the mockups shown, your pick, the token set, and each new dependency with why; you approved it.
+2. Components take every color, size, radius and duration from the theme (a grep for hex colors and numeric font sizes in `apps/mobile/src` outside the theme finds nothing new); the contrast test passes for both schemes.
+3. The full `pnpm screenshots` set is re-captured, and every screen and state follows the chosen direction in light and dark (the final reviewer compares with the mockups).
+4. Icon, adaptive icon, splash, favicon and manifest icons come from the new source; `app.json` no longer references Expo's defaults.
+5. No behavior change: the existing tests and screenshot flows pass without edits to what they assert, except the game-page text tweaks in scope (the plan names each changed assertion, e.g. `player-page.test.ts`'s `'0.0'`).
+6. On your Android phone (Expo Go), in light and dark and at the largest font size, and in a desktop browser, the app looks right and nothing is clipped (you).
+7. `pnpm verify` green.
+
+**You:** pick a direction from the mockups (~20 min); the phone and desktop check at the end; about 1.5 h in total. It's a large session: if the plan passes ~1,500 changed lines or the context ~200K tokens, stop after the tokens, components and brand tasks and finish the screens with the Resume template.
+
+```text
+Session S17 — Visual overhaul (slice 7). Create branch `s17-visual-overhaul` from the latest `main`.
+
+Read docs/PROGRESS.md (including "Revisit for v2"), docs/SESSIONS.md §S17 (the contract), docs/VISION.md §4, docs/DECISIONS.md D-063, .claude/rules/mobile.md, apps/mobile/src/theme.ts and src/components/. Run `pnpm screenshots` and look at the light and dark shot of each screen. If design-refs/ has images, study them and their notes. First run the tests.
+
+Brainstorm with §S17 as the spec, using the frontend-design skill and the Expo plugin's expo-design-system skill. Open the visual companion and show me 2–3 clearly different directions as mockups of Today (a hockey and a basketball card, a DNP row, an upcoming game, Other games) and the player page, light and dark; let me pick or mix. Then write the token set, review it against frontend-design's generic tells, and show it to me before writing the design doc. Name each new dependency and why.
+
+Then plan and build it: tokens and shared components first, then screens, then the icon and splash. Save the approved mockups as PNGs in docs/superpowers/specs/s17-mockups/; after each screen task, the task reviewer compares that screen's screenshots with them. After the final review, walk me through the phone and desktop check. Then tell me it's ready for /handoff.
+```
+
+### S11a — First Play upload (internal testing)
+
+**When:** after S17, so the first upload carries the final icon (Overview, D-062). The production API is live by then (S10b).
+
+**Goal:** the app exists on Google Play's internal testing track and installs on your phone, so the package name and signing key are settled early; later builds are updates.
+
+**In scope**
+- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Icon, adaptive icon and splash come from S17's brand source (`assets/icon.svg` and the `icons` script); check `app.json` points at them.
+- `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build with the production `EXPO_PUBLIC_API_URL` (`https://api.ourplayers.adveis.dev`, DEPLOY.md §9).
+- Play Console: create the app, fill in only what the console requires before an internal-testing release (truthful drafts, saved in `docs/store/console-answers.md`; S11b completes them), upload, install through the tester link.
+- Back up the EAS signing credentials outside the repo.
+- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out).
+
+**Out of scope:** store listing texts, closed track and testers (S11b); new features.
+
+**Acceptance criteria**
+1. A production AAB builds (you run the EAS build; Claude fixes config issues).
+2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
+3. Installed from internal testing on your phone, it loads Today from the production API without crashing.
+4. Signing credentials backed up (you confirm); `docs/store/release.md` and `docs/store/console-answers.md` written.
+5. `pnpm verify` green.
+
+```text
+Session S11a — First Play upload, internal testing (slice 7). Create branch `s11a-play-upload` from the latest `main`.
+
+Read docs/PROGRESS.md, docs/SESSIONS.md §S11a (the contract) and §S11b (what follows), docs/VISION.md §4.6 and §11. First run the tests.
+
+Brainstorm with §S11a as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; whether S17's icon, adaptive icon and splash meet Play's asset requirements; which Play Console forms are required before an internal-testing release (check the current rules) and truthful draft answers for them — check the code (VISION §11); credential backup; and the step-by-step console checklist for EAS and the internal track.
+
+Then plan and do the repo work; after the final review, walk me through the console steps one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
+```
+
 ### S11b — Play closed test
 
 **Goal:** friends can install the finished app from Google Play's closed testing track, and the 14-day clock starts.
 
 **In scope**
-- Prerequisites: S11a done (the app exists on internal testing), S10b live, and 15+ testers' Google-account emails collected.
-- The production `EXPO_PUBLIC_API_URL` in the production build profile.
+- Prerequisites: S11a done (the app exists on internal testing, built against the production API), S10b live, S16 and S17 merged, and 15+ testers' Google-account emails collected.
+- `docs/SECURITY-CHECKS.md` re-run (scanners and live checks) after S17's new dependencies; results in PROGRESS.md (VISION §12).
 - `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers, privacy policy (a hosted page — GitHub Pages works for a public repo), tester invitation message and a "keep testers opted in" plan. Completes S11a's drafts.
 - An internal-testing build against the production API first, then the closed track.
 
@@ -740,6 +841,7 @@ Then plan and do the repo work; after the final review, walk me through the cons
 **In scope**
 - Once 12+ testers have been opted in for 14 continuous days: draft the production-access answers (`docs/store/production-access.md`) from the tester feedback log.
 - Fix tester-reported issues first, each in its own bug-fix session (template below).
+- `docs/SECURITY-CHECKS.md` re-run before the production release; results in PROGRESS.md (VISION §12).
 - `docs/RUNBOOK.md`: upstream breakage (detect via the staleness alert and `job_runs` → record a fresh fixture → red test → fix the adapter), season rollover, adding a nationality override, adding a league (checklist), switching NHL to the ESPN backup.
 
 **Acceptance criteria**
