@@ -11,6 +11,7 @@ import {
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
+import { secureHeaders } from 'hono/secure-headers';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import type { Db } from '../db/client';
@@ -66,6 +67,9 @@ const errorBody = (c: Context, status: ContentfulStatusCode, code: string, messa
 
 export function createApp({ db, now, log, corsOrigins = [], rateLimitPerMinute }: ApiDeps): Hono {
   const app = new Hono();
+
+  // Caddy adds no security headers, so the API sends them itself on every response (S16 H1).
+  app.use(secureHeaders());
 
   // c.req.path has no query string, so preferences (countries, favorites) never reach the logs.
   app.use(async (c, next) => {
