@@ -3,7 +3,7 @@ name: handoff
 description: End-of-session ritual for this repo — verify, make sure the final review ran, update PROGRESS and DECISIONS, commit, push, open the session's pull request, brief the human, run /code-review on the PR and report CI. Run when a session's work is done.
 disable-model-invocation: true
 argument-hint: "[notes]"
-allowed-tools: Bash(pnpm verify) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git add *) Bash(git commit *) Bash(gh pr view *) Bash(gh pr create *) Bash(gh pr edit *) Bash(gh pr comment *) Bash(gh pr checks *)
+allowed-tools: Bash(pnpm verify) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git add *) Bash(git commit *) Bash(gh pr view *) Bash(gh pr checks *)
 ---
 
 # Handoff

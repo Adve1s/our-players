@@ -18,20 +18,15 @@
       "Bash(git commit *)",
       "Bash(git switch *)",
       "Bash(git checkout -b *)",
-      "Bash(git fetch *)",
-      "Bash(git pull --ff-only *)",
+      "Bash(git fetch)",
+      "Bash(git fetch origin)",
+      "Bash(git pull --ff-only)",
       "Bash(gh pr view *)",
       "Bash(gh pr diff *)",
       "Bash(gh pr checks *)",
       "Bash(gh pr list *)",
-      "Bash(gh pr create *)",
-      "Bash(gh pr edit *)",
-      "Bash(gh pr comment *)",
       "Bash(gh run list *)",
-      "Bash(gh run view *)",
-      "Bash(gh api repos/*/pulls/*/comments)",
-      "Bash(gh api repos/*/pulls/*/comments *)",
-      "Bash(gh api repos/*/pulls/*/comments/*/replies *)"
+      "Bash(gh run view *)"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -42,6 +37,8 @@
       "Bash(npx *submit-expo-feedback*)",
       "Read(.env)",
       "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
       "Read(!.env.example)",
       "Edit(**/test/fixtures/**)"
     ],
@@ -54,7 +51,13 @@
       "Bash(gh pr close *)",
       "Bash(pnpm add *)",
       "Bash(pnpm remove *)",
-      "Bash(pnpm db:reset *)"
+      "Bash(pnpm db:reset *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh api repos/*/pulls/*/comments)",
+      "Bash(gh api repos/*/pulls/*/comments *)",
+      "Bash(gh api repos/*/pulls/*/comments/*/replies *)"
     ],
     "defaultMode": "default"
   },
@@ -105,7 +108,7 @@
       "source": {
         "source": "github",
         "repo": "DietrichGebert/ponytail",
-        "ref": "v5.3.1"
+        "ref": "6f1c2bfff0c837d268929a7c4e490918eb4fab29"
       }
     }
   }
