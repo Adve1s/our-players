@@ -9,3 +9,21 @@ allowBuilds:
   esbuild: true
   # wrangler's local runtime; its postinstall only checks the platform binary that optionalDependencies already installs.
   workerd: false
+
+# pnpm 12's default (minutes), explicit so a pnpm change can't drop it.
+minimumReleaseAge: 1440
+
+overrides:
+  # GHSA-86w9-cpqp-85rv, in @expo/cli.
+  node-forge: ">=1.4.1"
+  # GHSA-xjj6-f33q-929c, GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm, via wrangler > miniflare (S16).
+  "undici@7": "^7.30.1"
+
+audit:
+  level: high
+  ignore:
+    # Accepted in S16 (D1): build/dev tools only, no path from a user; fixes need a major bump inside Expo/drizzle-kit. Re-check on each Expo SDK upgrade.
+    - GHSA-mrhx-c7xc-m3w5 # zod 3 in @expo/cli
+    - GHSA-w5hq-g745-h8pq # uuid 7 in @expo/config-plugins > xcode
+    - GHSA-67mh-4wv8-2f99 # esbuild 0.18 in drizzle-kit (dev server only)
+    - GHSA-gcqx-w48m-w2h4 # deepmerge in @expo/config, no patched version
