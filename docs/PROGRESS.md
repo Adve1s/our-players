@@ -130,6 +130,8 @@ Ideas that came up but are out of scope for now.
 - `deploy-web.yml`'s `paths` leave out the root `package.json` (holds `build:web`), `pnpm-workspace.yaml` and `.tool-versions`: a change to only those doesn't redeploy the site. Run the workflow by hand then, or add them if it bites (S14b review).
 - A stale local `apps/mobile/.expo/types/router.d.ts` (generated, git-ignored) fails the mobile typecheck on a new route (`'/install' is not assignable`, S14b) until `pnpm dev:mobile` runs once; CI has no such file and passes. Belongs with the typed-routes item above.
 - Settings' "Add to Home Screen" is a `Pressable` with `accessibilityRole="link"` and `router.push`, like the other in-app links: on web no real `href`, so no middle-click or "open in new tab". Expo Router's `<Link href>` would give one (S14b review).
+- (2026-10-31, S16 X1) Turn on 2FA for the Expo account when it is created in S11a.
+- (2026-10-31, S16 AN1) If the app ever adds haptics, remove android.permission.VIBRATE from blockedPermissions in apps/mobile/app.json.
 
 ## Session log
 <!--

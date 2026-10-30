@@ -13,7 +13,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `apps/mobile` — Expo (React Native) app with Expo Router; Android + web from one codebase
 - `packages/shared` — domain types, zod schemas (stat lines, API contract), pure logic (selection rule, country codes, game-day math)
 - `.github/workflows/` — CI: `pnpm verify` on every pull request (S00)
-- `docs/` — VISION, SESSIONS, PROGRESS, DECISIONS, WORKFLOW, `sources/`, `superpowers/` (per-session specs and plans)
+- `docs/` — VISION, SESSIONS, PROGRESS, DECISIONS, WORKFLOW, SECURITY-CHECKS (re-runnable security audit), `sources/`, `superpowers/` (per-session specs and plans)
 
 ## Commands (repo root)
 - `pnpm install`

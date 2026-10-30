@@ -72,13 +72,13 @@ If a dialog asks about a changed configuration file, keep the installed version 
 
 ### 2.3 SSH with keys only
 
-Why: the root password stays usable from the Linode web console (Lish) for emergencies, but nobody can guess it over SSH. **On the host:**
+Why: the root password stays usable from the Linode web console (Lish) for emergencies, but nobody can guess it over SSH. Root may log in with a key only, and X11 forwarding (a remote desktop window over SSH, never needed here) is off (S16 S1). **On the host:**
 ```bash
-printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' > /etc/ssh/sshd_config.d/00-keys-only.conf
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\nX11Forwarding no\n' > /etc/ssh/sshd_config.d/00-keys-only.conf
 sshd -t && systemctl reload ssh
-sshd -T | grep -E '^(passwordauthentication|kbdinteractiveauthentication)'
+sshd -T | grep -E '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|x11forwarding)'
 ```
-Success: the last command prints `passwordauthentication no` and `kbdinteractiveauthentication no`. Keep this session open and check from a **second terminal on your computer**:
+Success: the last command prints `passwordauthentication no`, `kbdinteractiveauthentication no`, `permitrootlogin without-password` (how `sshd -T` prints `prohibit-password`) and `x11forwarding no`. Keep this session open and check from a **second terminal on your computer**:
 ```bash
 ssh root@<server-ip> echo key login works
 ```
@@ -336,11 +336,11 @@ Success: `new key works`. Then **on the host** remove the old key's line (it end
 
 ### Cloudflare
 
-Change the password under Manage account → Authentication, and keep two-factor authentication on. S14b's `CLOUDFLARE_API_TOKEN`: My Profile → API Tokens → roll it, then update the repo secret (`gh secret set CLOUDFLARE_API_TOKEN`).
+Change the password under Manage account → Authentication, and keep two-factor authentication on. S14b's `CLOUDFLARE_API_TOKEN`: My Profile → API Tokens → roll it, then update the `production` environment's secret (`gh secret set CLOUDFLARE_API_TOKEN --env production`).
 
 ## 7. Checks
 
-All **on the host** after `cd /opt/our-players`, unless marked otherwise.
+All **on the host** after `cd /opt/our-players`, unless marked otherwise. Security checks (scanners, headers, TLS, CORS, the host's ports and sshd, accounts) and the monthly host routine are in `docs/SECURITY-CHECKS.md`.
 
 **Status and logs**
 ```bash
