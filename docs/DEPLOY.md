@@ -482,20 +482,20 @@ The Expo web export runs on Cloudflare Workers static assets: the Worker `our-pl
 ### 10.1 First-time setup
 
 1. **API token (for CI):** Cloudflare → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**. Account Resources: your account. Zone Resources: Specific zone → `adveis.dev`. Continue → Create → copy the token (it's shown once).
-2. **Repo secrets and variable.** **On your computer:**
+2. **The `production` environment, its secrets and the repo variable.** The two Cloudflare secrets live on the `production` environment, not the repo, so only the deploy job (which names it) gets them. GitHub → the repo → Settings → Environments → New environment → `production` → Deployment branches and tags → Selected branches and tags → add `main` → Save. Then **on your computer:**
    ```bash
-   gh secret set CLOUDFLARE_API_TOKEN
-   gh secret set CLOUDFLARE_ACCOUNT_ID
+   gh secret set CLOUDFLARE_API_TOKEN --env production
+   gh secret set CLOUDFLARE_ACCOUNT_ID --env production
    gh variable set WEB_API_URL --body https://api.ourplayers.adveis.dev
    ```
-   Paste the token for the first and the account ID for the second (Cloudflare dashboard → account home → "Copy account ID"). Success: `gh secret list` shows both secrets and `gh variable list` shows `WEB_API_URL`.
+   Paste the token for the first and the account ID for the second (Cloudflare dashboard → account home → "Copy account ID"). Success: `gh secret list --env production` shows both secrets, `gh secret list` shows neither, and `gh variable list` shows `WEB_API_URL`.
 3. **The first deploy may run from your computer** (the workflow deploys only `main`). **On your computer:**
    ```bash
    cd apps/mobile
-   pnpm dlx wrangler@4.151.3 login
+   pnpm exec wrangler login
    EXPO_PUBLIC_API_URL=https://api.ourplayers.adveis.dev pnpm build:web
-   pnpm dlx wrangler@4.151.3 deploy
-   pnpm dlx wrangler@4.151.3 logout
+   pnpm exec wrangler deploy
+   pnpm exec wrangler logout
    ```
    Success: `deploy` ends with `ourplayers.adveis.dev (custom domain)` and a version ID; the checks in 10.4 pass.
 
@@ -505,7 +505,7 @@ Automatic: a push to `main` that touches `apps/mobile/**`, `packages/shared/**`,
 
 ### 10.3 Rollback
 
-Cloudflare dashboard → Workers & Pages → `our-players` → Deployments → pick the previous one → Rollback. Or **on your computer**, logged in: `cd apps/mobile && pnpm dlx wrangler@4.151.3 rollback`. A rollback lasts until the next push deploys.
+Cloudflare dashboard → Workers & Pages → `our-players` → Deployments → pick the previous one → Rollback. Or **on your computer**, logged in: `cd apps/mobile && pnpm exec wrangler rollback`. A rollback lasts until the next push deploys.
 
 ### 10.4 Checks
 

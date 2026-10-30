@@ -7,3 +7,5 @@ nodeLinker: hoisted
 # esbuild (via tsx) verifies its platform binary in a postinstall script.
 allowBuilds:
   esbuild: true
+  # wrangler's local runtime; its postinstall only checks the platform binary that optionalDependencies already installs.
+  workerd: false
