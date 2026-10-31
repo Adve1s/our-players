@@ -14,7 +14,7 @@ The **superpowers** plugin drives every session: brainstorm the design, write a 
 | **Red tests for contract code** | the project `test-writer` agent, as the task right after the stubs — only for the selection rule, nationality and the two adapters | — |
 | **Final review** | the project `reviewer` agent (acceptance criteria, architecture rules, test trustworthiness, the ledger's deferred findings) over the whole branch; one fix wave follows | — |
 | **Your steps** | after the final review, Claude walks you through the session's in-session "You:" and "run by you" steps one at a time; later ones go in the briefing's Next | Run each; paste results |
-| **Handoff** | `/handoff`: PROGRESS/DECISIONS, commit, push, PR, briefing, `/code-review high --comment`, CI | Approve the push and the `gh pr create` / `gh pr comment` prompts (they ask since S16) |
+| **Handoff** | `/handoff`: PROGRESS/DECISIONS, commit, push, PR, briefing, `/code-review high --comment`, CI | Approve the push and the `gh pr create` / `gh pr comment` prompts, and any `gh api` call `/code-review --comment` makes (gh writes ask since S16) |
 | **PR review** | the built-in `/code-review` posts findings as inline PR comments | Decide accept / reject / defer per comment; run "Review fixes" if needed; merge |
 
 Not used: git worktrees, agent teams, parallel sessions. Sessions depend on each other and your review attention is the bottleneck.
