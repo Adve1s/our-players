@@ -128,7 +128,7 @@ curl -sS -D - -o /dev/null https://ourplayers.adveis.dev/ | grep -i '^HTTP\|^con
 curl -sS -X POST 'https://observatory-api.mdn.mozilla.net/api/v2/scan?host=ourplayers.adveis.dev'; echo
 curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://ourplayers.adveis.dev/_expo/static/js/web/entry.js.map
 ```
-Success: `HTTP/2 200` and all six headers from `apps/mobile/public/_headers` (W1); Mozilla Observatory `"grade":"A"` or `"A+"` (it was C, 50/100, before S16; `details_url` in the answer opens the full report); the `.map` URL answers `200 text/html` (the SPA fallback page, not a source map). Then open the site in a browser with the developer console open: Today and a player page load with no `Content-Security-Policy` errors. If the API URL ever changes, the CSP's `connect-src` in `_headers` must change with it.
+Success: `HTTP/2 200` and all six headers from `apps/mobile/public/_headers` (W1); Mozilla Observatory `"grade":"A"` or `"A+"` (it was C, 50/100, before S16; `details_url` in the answer opens the full report); the `.map` URL answers `200 text/html` (the SPA fallback page, not a source map). Then open the site in a browser with the developer console open: Today and a player page load with no `Content-Security-Policy` errors. If the API URL ever changes, the CSP's `connect-src` in `_headers` must change with it (`deploy-web.yml` refuses to deploy until it does). An `eval` violation means zod's `jitless` config no longer loads first: check that `apps/mobile/package.json` `main` is still `index.ts`.
 
 **The bundle** (build it as CI does, then look inside). **On your computer:**
 ```bash
