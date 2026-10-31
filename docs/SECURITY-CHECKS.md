@@ -12,7 +12,7 @@ How to re-run the S16 security audit by hand: the scanners, the manual checklist
 | When | What |
 | --- | --- |
 | Every Monday, automatically | The **Audit** workflow (`.github/workflows/audit.yml`) runs `pnpm audit`. A red run emails you: read the advisory, then fix (an update or an `overrides` entry in `pnpm-workspace.yaml`) or accept it (an `audit.ignore` entry with the reason). |
-| After adding or upgrading a dependency | Section 2: `pnpm audit`. After an Expo SDK upgrade also re-check the accepted D1 advisories (section 5): the upgrade may fix them, then delete their `ignore` lines. |
+| After adding or upgrading a dependency | Section 2: `pnpm audit`. After an Expo SDK upgrade also re-check the accepted D1 and D3 advisories (section 5): the upgrade may fix them, then delete their `ignore` lines. |
 | Monthly | Section 2: `pnpm audit` and `trivy image`. Section 6: host updates and image pulls. |
 | Before S11b (closed test) and before S15 (public launch) | Everything: sections 2, 3 and 4. Before S15 also a Claude Security codebase scan (section 3). |
 | After the first Android build (S11a/S11b) | Section 4.4, "The built app". |
@@ -27,13 +27,13 @@ All **on your computer**, from the repo root. `trivy`, `gitleaks` and `zizmor` a
 pnpm audit
 pnpm --filter @our-players/server audit --prod
 ```
-Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `4 ignored: …` (the accepted D1 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical is a new finding.
+Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `6 ignored: 1 low | 4 moderate | 1 high` (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical is a new finding.
 
 **Repo files** (lockfile, Dockerfile, secrets):
 ```bash
 trivy fs --scanners vuln,secret,misconfig --skip-dirs '**/node_modules,apps/mobile/dist,apps/server/.data' --skip-files '**/.env' .
 ```
-Success: `pnpm-lock.yaml` shows only the accepted D1 packages (section 5), `Dockerfile` only `DS-0026` (no `HEALTHCHECK`, accepted X3), and no secrets.
+Success: `pnpm-lock.yaml` shows only the accepted D1/D3 packages (section 5): deepmerge and uuid (D1), and minimatch or glob (D3) once trivy's database lists them, `Dockerfile` only `DS-0026` (no `HEALTHCHECK`, accepted X3), and no secrets.
 
 **Secrets in the git history:**
 ```bash
@@ -102,7 +102,7 @@ curl -sS -o /dev/null -D - -X OPTIONS -H 'Origin: https://evil.example' -H 'Acce
 ```
 Success: only `https://ourplayers.adveis.dev` gets `access-control-allow-origin: https://ourplayers.adveis.dev`; the other three print `none`. The preflight gives `HTTP/2 204` and `access-control-allow-methods: GET` with no `access-control-allow-origin`.
 
-**Odd input** (each line prints the status and the start of the body):
+**Odd input** (each line prints the start of the body, then the status):
 ```bash
 api=https://api.ourplayers.adveis.dev
 d=$(date -u -d yesterday +%F)
@@ -110,7 +110,7 @@ for p in "/v1/days/2026-13-45" "/v1/days/$d?countries=$(printf 'X%.0s' $(seq 300
 curl -sS -w ' %{http_code}\n' -X POST "$api/v1/meta"
 curl -sS -o /dev/null -w '%{http_code}\n' -H "X-Big: $(printf 'a%.0s' $(seq 40000))" "$api/v1/meta"
 ```
-Success, in order: `400` (invalid date); `400`; `400` (`<=200 items`); `200 {"players":[]}` (the quote is just text); `400` (`<=50 characters`); `400`; `404` `no route GET /etc/passwd`; `400` (repeated parameter); `404` for the POST; the 40 KB header refused (`000` with a curl error such as `Error in the HTTP2 framing layer`, or `431`). No body shows a stack trace, SQL or a file path of the server.
+Success, in order (the status is the last word of each line): `400` (invalid date); `400`; `400` (`<=200 items`); `{"players":[]} 200` (the quote is just text); `400` (`<=50 characters`); `400`; `404` `no route GET /etc/passwd`; `400` (repeated parameter); `404` for the POST; the 40 KB header refused (`000` with a curl error such as `Error in the HTTP2 framing layer`, or `431`). No body shows a stack trace, SQL or a file path of the server.
 
 **Rate limit:** the "Rate limit" check in `docs/DEPLOY.md` §7. Success: `120 200` then `5 429`, `retry-after: …` and `RATE_LIMITED`. Only these 125 requests: never flood the host.
 
@@ -154,7 +154,7 @@ Success: only `22/tcp open ssh`, `80/tcp open http`, `443/tcp open https` (the r
 ```bash
 sshd -T | grep -E '^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|x11forwarding)'
 ufw status verbose
-ss -tulpn | grep -v '127.0.0.1\|\[::1\]\|127.0.0.53'
+ss -tulpn | grep -v '127\.0\.0\.\|\[::1\]'
 cd /opt/our-players && docker compose ps --format '{{.Service}}: {{.Ports}}'
 systemctl is-active unattended-upgrades && apt-config dump APT::Periodic
 stat -c '%a %n' /opt/our-players /opt/our-players/.env /root/.ssh /root/.ssh/authorized_keys
@@ -167,7 +167,7 @@ journalctl --disk-usage && du -sh /var/lib/docker/containers
 Success, line by line:
 - `permitrootlogin without-password` (that's how `sshd -T` prints `prohibit-password`), `passwordauthentication no`, `kbdinteractiveauthentication no`, `pubkeyauthentication yes`, `x11forwarding no` (S1; set up in `docs/DEPLOY.md` §2.3).
 - `Status: active`, `Default: deny (incoming)`, and `ALLOW IN` only for `22/tcp`, `80/tcp`, `443` (and their `(v6)` twins).
-- Listening on public addresses: only `sshd` on `:22` and `docker-proxy` on `:80`, `:443` (TCP) and `:443` (UDP, HTTP/3).
+- The `ss` header line (`Netid State …`, expected), then on public addresses only `sshd` on `:22` and `docker-proxy` on `:80`, `:443` (TCP) and `:443` (UDP, HTTP/3). The filter drops every loopback address, including systemd-resolved on `127.0.0.53:53` and `127.0.0.54:53`.
 - `caddy` lists `80` and `443` published; `api` (`3001/tcp`) and `db` (`5432/tcp`) have no `0.0.0.0:` or `[::]:` mapping.
 - `active`, and `APT::Periodic::Update-Package-Lists "1"` and `APT::Periodic::Unattended-Upgrade "1"`.
 - `755 /opt/our-players`, `600 /opt/our-players/.env`, `700 /root/.ssh`, `600 /root/.ssh/authorized_keys`; `1` key (yours; more means someone else can log in).
@@ -192,7 +192,7 @@ For an AAB (`bundletool` from github.com/google/bundletool):
 ```bash
 bundletool dump manifest --bundle=<path-to.aab> | grep uses-permission
 ```
-Success: `android.permission.INTERNET` only. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.)
+Success: `android.permission.INTERNET` and `io.github.adve1s.ourplayers.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (added by androidx.core: a signature-level permission the app defines for itself, not one the user grants), nothing else. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.)
 
 ### 4.5 Accounts and tokens
 
@@ -248,6 +248,7 @@ These show up in a re-run on purpose. Anything else is new.
 | ID | What a re-run shows | Why it's accepted |
 | --- | --- | --- |
 | D1 | `pnpm audit`: 4 ignored, zod 3 (`GHSA-mrhx-c7xc-m3w5`), uuid 7 (`GHSA-w5hq-g745-h8pq`), esbuild 0.18 (`GHSA-67mh-4wv8-2f99`), deepmerge (`GHSA-gcqx-w48m-w2h4`); `trivy fs` lists deepmerge and uuid in `pnpm-lock.yaml`. | All inside `@expo/cli`/`@expo/config`/`drizzle-kit`: build and dev tools on your computer and in CI. None reaches the server (`--prod` audit is clean) or the web bundle; the fixes need a major bump inside Expo or drizzle-kit. Listed with reasons in `pnpm-workspace.yaml` `audit.ignore`. Re-check on each Expo SDK upgrade. |
+| D3 | `pnpm audit`: 2 more ignored, both moderate: minimatch 10 (`GHSA-g3hv-75wg-m249`), glob 13 (`GHSA-3g3m-2fjr-6pw4`). | Inside Expo's build tooling (`@expo/config-plugins`, `@expo/metro-config`, `@expo/config`), on your computer and in CI only; no path via wrangler or the server. The fixes need a major bump inside Expo. Listed with reasons in `audit.ignore`. Re-check on each Expo SDK upgrade. |
 | I1 remainder | `trivy image`: about 40 HIGH Debian 13 CVEs, none with a fix. | Local-only bugs in OS libraries (util-linux, ncurses, perl…) the API never calls; the container runs as `node` with no way in except HTTP through Caddy. `deploy.sh --pull` picks up Debian fixes on the next deploy. Re-scan monthly. |
 | X2 | Host: a few packages upgradable. | Unattended-upgrades applies security updates daily but never reboots for a new kernel: section 6 does that monthly. |
 | X3 | Dockerfile without `HEALTHCHECK`; zizmor `concurrency-limits` and `anonymous-definition`; a 404 echoes the request path; Caddy's error log keeps request headers; `android:allowBackup="true"`; Dependabot security updates off. | `compose.yaml` has the health check; overlapping CI runs are harmless; workflow names are cosmetic; the 404 body is JSON, so the echo can't run as script; the error log had no IPs or query strings (section 4.3); the backup holds only preferences and restores to the same Google account; Dependabot can't read the lockfile anyway (P1, the weekly Audit covers it). |

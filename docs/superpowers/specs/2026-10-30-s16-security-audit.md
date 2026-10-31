@@ -47,6 +47,7 @@ Severity follows Claude Security's scale: Critical = severe impact, nothing in t
 | H1 | Low | API responses | curl | No `Strict-Transport-Security`, no `X-Content-Type-Options` (404 bodies echo the path; JSON, so not exploitable today). | **Fix now:** Hono's built-in `secureHeaders` middleware (no new dependency), red/green test in the API tests; live re-check after deploy. | d0da911 (live re-check: owner step, the API deploy) |
 | D1 | Low | `pnpm-lock.yaml` | pnpm audit, trivy fs | node-forge 1.4.0 (high), zod 3.25.76 (high), uuid 7.0.3, esbuild 0.18.20, deepmerge 4.3.1: all inside `@expo/cli`/`@expo/config`/`drizzle-kit`, build/dev tools. Server `--prod` audit clean; none in the web bundle; our zod is 4.6.7. | **Fix now:** node-forge via a `pnpm.overrides` entry `>=1.4.1` (patch release out since 2026-10-27). **Accept** the rest: fixes need a major bump inside Expo/drizzle-kit; no attacker-reachable path; listed in `auditConfig.ignoreGhsas` with this reason; re-check on each Expo SDK upgrade. | e4e4a02 (override + ignores) |
 | D2 | High (per advisory) | `pnpm-lock.yaml` | pnpm audit (after adding wrangler, Task 6) | undici 7.29.1 via wrangler > miniflare: GHSA-xjj6-f33q-929c, GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm. wrangler runs in the deploy job that holds `CLOUDFLARE_API_TOKEN`, and undici handles its TLS. | **Fix now** (controller ruling, 2026-10-31: fix rather than ignore, because wrangler holds the Cloudflare token): override `"undici@7": "^7.30.1"` in `pnpm-workspace.yaml`, a patch-level bump inside 7.x. | e4e4a02 |
+| D3 | Low | `pnpm-lock.yaml` | `pnpm audit` re-run (Task 9) | minimatch 10.2.6 (GHSA-g3hv-75wg-m249, moderate, published 2026-10-30, patched `>=11.0.1`) and glob 13.0.6 (GHSA-3g3m-2fjr-6pw4, moderate, published 2026-10-30, patched `>=14.0.2`), every path inside Expo build tooling (`@expo/config-plugins`, `@expo/metro-config`, `@expo/config`); none via wrangler or the server. | **Accept** (controller ruling, 2026-10-31): build-time Expo tooling only; the fix needs a major bump inside Expo; listed in `audit.ignore` with this reason; re-check on each Expo SDK upgrade. | 7b6f14a (ignores) |
 | I1 | Low | `Dockerfile` | trivy image | Debian 12 base: 1 critical (zlib minizip, CVE-2023-45853) + 56 high, none with a Debian fix; 17 Node-package CVEs all in the base image's bundled npm, which the API never runs. Runs as `node`, no shell entry from outside. | **Fix now:** runtime stage on `node:24-trixie-slim` (0 critical / 43 high) and delete npm/corepack from it (the API runs `tsx` from `node_modules`); `deploy.sh` builds with `--pull` so each deploy gets the latest base. **Accept** the remaining unfixed OS CVEs (local-only bugs in util-linux, ncurses, perl; nothing in the API calls them); re-scan monthly. | a4051b4 |
 | I2 | Low | host | ssh | `postgres:17` and `caddy:2` pulled 2026-10-21 and never refreshed (unattended-upgrades doesn't touch containers). | **Fix now (host, with your OK):** `docker compose pull db caddy && docker compose up -d --wait` once; **monthly** in SECURITY-CHECKS.md. | owner step |
 | S1 | Low | host `sshd` | ssh | `PermitRootLogin yes` (password login is off, so keys only in practice) and `X11Forwarding yes`. | **Fix now (host, with your OK):** `PermitRootLogin prohibit-password`, `X11Forwarding no` in `/etc/ssh/sshd_config.d/00-keys-only.conf`; checked with a second session as in DEPLOY.md §2.3; documented there. | owner step (DEPLOY.md §2.3 documents it) |
@@ -82,7 +83,7 @@ Not a finding (checked, fine): TLS 1.0/1.1 refused, 1.2/1.3 only, HTTP → 308 t
 | `pnpm audit` | Exit 0. `4 ignored: 1 low \| 2 moderate \| 1 high` (the accepted D1 advisories). 2 new moderate advisories below the `high` audit level, published after step 1: minimatch@10.2.6 (GHSA-g3hv-75wg-m249, patched `>=11.0.1`) and glob@13.0.6 (GHSA-3g3m-2fjr-6pw4, patched `>=14.0.2`), every path inside `apps/mobile>…>@expo/config-plugins\|@expo/metro-config\|@expo/config`; none via wrangler or the server. `pnpm --filter @our-players/server audit --prod`: no known vulnerabilities. | D1 node-forge, D2 undici; P1 (the weekly audit gate now exits 0) |
 | `trivy fs --scanners vuln,secret,misconfig --skip-dirs '**/node_modules,apps/mobile/dist,apps/server/.data' --skip-files '**/.env' .` | `pnpm-lock.yaml`: deepmerge 4.3.1 (LOW), uuid 7.0.3 (MEDIUM), both accepted D1. `Dockerfile`: DS-0026 LOW no HEALTHCHECK (accepted X3). Secrets: none. Nothing new from wrangler's tree. | D1 node-forge |
 | `gitleaks git --redact` | 328 commits scanned, no leaks found. | (none before) |
-| `zizmor --offline .github/workflows` · `zizmor --offline --persona=auditor .github/workflows` | Default: no findings (6 suppressed). Auditor: 6: 3 low concurrency-limits, 3 info anonymous-definition (accepted X3; 3 each now that `audit.yml` exists), 0 medium, 0 high. | C1 unpinned-uses ×4, C2 secrets-outside-env ×2, C3 artipacked ×2 |
+| `zizmor --offline .github/workflows` · `zizmor --offline --persona=auditor .github/workflows` | Default: no findings (6 suppressed). Auditor: 6: 3 low concurrency-limits, 3 info anonymous-definition (accepted X3; 3 each now that `audit.yml` exists), 0 medium, 0 high. Online auditor (controller, 2026-10-31): `GH_TOKEN=$(gh auth token) zizmor --persona=auditor .github/workflows` → 6 findings: 3 low concurrency-limits, 3 info anonymous-definition, 0 medium/high. | C1 unpinned-uses ×4, C2 secrets-outside-env ×2, C3 artipacked ×2 |
 | `podman build --pull -t our-players-api:scan .` + `trivy image --scanners vuln --input <saved tar>` | Debian 13.7: CRITICAL 0, HIGH 43, MEDIUM 58, LOW 60, UNKNOWN 1, none fixable (accepted I1). Node packages: 0 (no npm or corepack in the image). Node v24.22.2. | I1 critical (zlib minizip), the 17 Node-package CVEs in the bundled npm |
 
 ### Step 2 — Claude Security codebase scan
@@ -105,7 +106,7 @@ Odd input: /v1/days/2026-13-45 → 400 "Invalid ISO date"; countries=<3000×X> �
   search q=';-- → 200 {"players":[]}; q=<5000×a> → 400 "<=50 characters"; /v1/players/nhl-%00 → 400;
   /v1/games/../../etc/passwd → 404 "no route GET /etc/passwd"; POST /v1/meta → 404; leagues twice → 400; 40 KB header → refused by Caddy
 Rate limit (DEPLOY.md §7):   120 200 · 5 429 · HTTP/2 429 · retry-after: 43 · {"error":{"code":"RATE_LIMITED",…}}
-DNS: api.ourplayers.adveis.dev → 172.104.146.58 only (no AAAA, so the rate limit's IPv4-only key still holds)
+DNS: api.ourplayers.adveis.dev → <server-ip> only (no AAAA, so the rate limit's IPv4-only key still holds)
 ```
 
 **Web app, live** (`https://ourplayers.adveis.dev`):
@@ -117,11 +118,11 @@ Bundle (3 JS files, 1.8 MB): *.js.map → 200 text/html (SPA fallback, no source
   only baked URL https://api.ourplayers.adveis.dev; no node-forge/uuid/deepmerge code; index.html: no inline <script>, one inline <style>
 ```
 
-**Host** (`ssh root@172.104.146.58`, read-only batch approved 2026-10-31; nmap from the laptop):
+**Host** (`ssh root@<server-ip>`, read-only batch approved 2026-10-31; nmap from the laptop):
 ```text
-$ nmap -Pn -sT -p- --min-rate 300 172.104.146.58
+$ nmap -Pn -sT -p- --min-rate 300 <server-ip>
 22/tcp open ssh · 80/tcp open http · 443/tcp open https   (65532 filtered)
-$ sudo nmap -Pn -sU -p 443,3001,5432 172.104.146.58     (run by the owner)
+$ sudo nmap -Pn -sU -p 443,3001,5432 <server-ip>     (run by the owner)
 443/udp open|filtered · 3001/udp open|filtered · 5432/udp open|filtered   (UDP can't tell open from dropped; `ss` below shows only :443/udp listening, Caddy's HTTP/3)
 sshd -T: permitrootlogin yes · passwordauthentication no · kbdinteractiveauthentication no · pubkeyauthentication yes ·
   x11forwarding yes · allowtcpforwarding yes · maxauthtries 6                                           ← S1

@@ -227,5 +227,5 @@ No code. Run each step-1 scanner again on the branch head and append a **Re-run*
 2. Console via `gh api` with OK: fork-PR approval → all external contributors (G1); dismiss CodeQL alert 1 as "used in tests" (Q1).
 3. Host with OK: sshd `PermitRootLogin prohibit-password`, `X11Forwarding no`, checked from a second session (S1); `docker compose pull db caddy && docker compose up -d --wait` (I2).
 4. Deploy the API from this branch (`deploy/deploy.sh root@<server-ip>`), then repeat the live API checks (headers, TLS, CORS, odd input, rate limit, log privacy) and paste them.
-5. Your `~/.claude/settings.json`: ponytail marketplace `ref` → the same SHA (T1).
+5. Your `~/.claude/settings.json`: ponytail marketplace `ref` → the tag `"v5.3.1"`, not the SHA (T1 ruling: Claude Code clones a marketplace with `git clone --branch <ref>`, which takes a tag or branch, not a commit).
 6. Briefing's Next (after merge): the web live re-check (`curl -sI`, Observatory, headless load), "Require actions pinned to a full-length SHA" in repo settings (C1), redeploy the API from `main`, delete the repo-level Cloudflare secrets.
