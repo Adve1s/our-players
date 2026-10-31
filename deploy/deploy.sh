@@ -36,7 +36,8 @@ ssh "$target" "test -f $remote_dir/.env" || {
 
 if docker info >/dev/null 2>&1; then tool=docker; else tool=podman; fi
 echo "building $image with $tool"
-"$tool" build -t "$image" .
+# --pull: a cached base never gets its OS security fixes; take the latest on every deploy.
+"$tool" build --pull -t "$image" .
 
 echo "shipping $image to $target"
 "$tool" save "$image" | gzip | ssh "$target" 'gunzip | docker load'

@@ -21,11 +21,15 @@ jobs:
     # Only main is reviewed and CI-checked; a hand-started run on another branch skips.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # The Cloudflare secrets live on this environment, which only main may deploy from.
+    environment: production
     env:
       EXPO_PUBLIC_API_URL: ${{ vars.WEB_API_URL }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .tool-versions
       - run: corepack enable
@@ -36,10 +40,13 @@ jobs:
             https://*) ;;
             *) echo "::error::Set the WEB_API_URL repository variable to the API's https:// URL"; exit 1 ;;
           esac
+          # The CSP allows fetches only to the API it names; a different URL would deploy a site whose every call is blocked.
+          grep -qF "connect-src ${EXPO_PUBLIC_API_URL%/};" apps/mobile/public/_headers ||
+            { echo "::error::WEB_API_URL is not the connect-src in apps/mobile/public/_headers; change both together"; exit 1; }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:web
-      # wrangler-action would `pnpm add` wrangler inside the workspace; dlx keeps it out of package.json.
-      - run: pnpm dlx wrangler@4.151.3 deploy
+      # This job holds the Cloudflare token: run wrangler from the lockfile, which pins its whole dependency tree.
+      - run: pnpm exec wrangler deploy
         working-directory: apps/mobile
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

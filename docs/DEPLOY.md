@@ -72,13 +72,13 @@ If a dialog asks about a changed configuration file, keep the installed version 
 
 ### 2.3 SSH with keys only
 
-Why: the root password stays usable from the Linode web console (Lish) for emergencies, but nobody can guess it over SSH. **On the host:**
+Why: the root password stays usable from the Linode web console (Lish) for emergencies, but nobody can guess it over SSH. Root may log in with a key only, and X11 forwarding (a remote desktop window over SSH, never needed here) is off (S16 S1). **On the host:**
 ```bash
-printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' > /etc/ssh/sshd_config.d/00-keys-only.conf
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\nX11Forwarding no\n' > /etc/ssh/sshd_config.d/00-keys-only.conf
 sshd -t && systemctl reload ssh
-sshd -T | grep -E '^(passwordauthentication|kbdinteractiveauthentication)'
+sshd -T | grep -E '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin|x11forwarding)'
 ```
-Success: the last command prints `passwordauthentication no` and `kbdinteractiveauthentication no`. Keep this session open and check from a **second terminal on your computer**:
+Success: the last command prints `passwordauthentication no`, `kbdinteractiveauthentication no`, `permitrootlogin without-password` (how `sshd -T` prints `prohibit-password`) and `x11forwarding no`. Keep this session open and check from a **second terminal on your computer**:
 ```bash
 ssh root@<server-ip> echo key login works
 ```
@@ -336,11 +336,11 @@ Success: `new key works`. Then **on the host** remove the old key's line (it end
 
 ### Cloudflare
 
-Change the password under Manage account → Authentication, and keep two-factor authentication on. S14b's `CLOUDFLARE_API_TOKEN`: My Profile → API Tokens → roll it, then update the repo secret (`gh secret set CLOUDFLARE_API_TOKEN`).
+Change the password under Manage account → Authentication, and keep two-factor authentication on. S14b's `CLOUDFLARE_API_TOKEN`: My Profile → API Tokens → roll it, then update the `production` environment's secret (`gh secret set CLOUDFLARE_API_TOKEN --env production`).
 
 ## 7. Checks
 
-All **on the host** after `cd /opt/our-players`, unless marked otherwise.
+All **on the host** after `cd /opt/our-players`, unless marked otherwise. Security checks (scanners, headers, TLS, CORS, the host's ports and sshd, accounts) and the monthly host routine are in `docs/SECURITY-CHECKS.md`.
 
 **Status and logs**
 ```bash
@@ -482,20 +482,20 @@ The Expo web export runs on Cloudflare Workers static assets: the Worker `our-pl
 ### 10.1 First-time setup
 
 1. **API token (for CI):** Cloudflare → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**. Account Resources: your account. Zone Resources: Specific zone → `adveis.dev`. Continue → Create → copy the token (it's shown once).
-2. **Repo secrets and variable.** **On your computer:**
+2. **The `production` environment, its secrets and the repo variable.** The two Cloudflare secrets live on the `production` environment, not the repo, so only the deploy job (which names it) gets them. GitHub → the repo → Settings → Environments → New environment → `production` → Deployment branches and tags → Selected branches and tags → add `main` → Save. Then **on your computer:**
    ```bash
-   gh secret set CLOUDFLARE_API_TOKEN
-   gh secret set CLOUDFLARE_ACCOUNT_ID
+   gh secret set CLOUDFLARE_API_TOKEN --env production
+   gh secret set CLOUDFLARE_ACCOUNT_ID --env production
    gh variable set WEB_API_URL --body https://api.ourplayers.adveis.dev
    ```
-   Paste the token for the first and the account ID for the second (Cloudflare dashboard → account home → "Copy account ID"). Success: `gh secret list` shows both secrets and `gh variable list` shows `WEB_API_URL`.
+   Paste the token for the first and the account ID for the second (Cloudflare dashboard → account home → "Copy account ID"). Success: `gh secret list --env production` shows both secrets, `gh secret list` shows neither, and `gh variable list` shows `WEB_API_URL`.
 3. **The first deploy may run from your computer** (the workflow deploys only `main`). **On your computer:**
    ```bash
    cd apps/mobile
-   pnpm dlx wrangler@4.151.3 login
+   pnpm exec wrangler login
    EXPO_PUBLIC_API_URL=https://api.ourplayers.adveis.dev pnpm build:web
-   pnpm dlx wrangler@4.151.3 deploy
-   pnpm dlx wrangler@4.151.3 logout
+   pnpm exec wrangler deploy
+   pnpm exec wrangler logout
    ```
    Success: `deploy` ends with `ourplayers.adveis.dev (custom domain)` and a version ID; the checks in 10.4 pass.
 
@@ -505,7 +505,7 @@ Automatic: a push to `main` that touches `apps/mobile/**`, `packages/shared/**`,
 
 ### 10.3 Rollback
 
-Cloudflare dashboard → Workers & Pages → `our-players` → Deployments → pick the previous one → Rollback. Or **on your computer**, logged in: `cd apps/mobile && pnpm dlx wrangler@4.151.3 rollback`. A rollback lasts until the next push deploys.
+Cloudflare dashboard → Workers & Pages → `our-players` → Deployments → pick the previous one → Rollback. Or **on your computer**, logged in: `cd apps/mobile && pnpm exec wrangler rollback`. A rollback lasts until the next push deploys.
 
 ### 10.4 Checks
 

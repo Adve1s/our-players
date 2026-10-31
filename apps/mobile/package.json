@@ -2,7 +2,7 @@
   "name": "@our-players/mobile",
   "version": "1.0.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.ts",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -35,6 +35,7 @@
   "devDependencies": {
     "@types/react": "~19.3.0",
     "playwright": "^1.64.1",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "wrangler": "4.151.3"
   }
 }
