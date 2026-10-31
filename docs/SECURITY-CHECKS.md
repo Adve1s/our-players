@@ -160,7 +160,7 @@ systemctl is-active unattended-upgrades && apt-config dump APT::Periodic
 stat -c '%a %n' /opt/our-players /opt/our-players/.env /root/.ssh /root/.ssh/authorized_keys
 wc -l < /root/.ssh/authorized_keys
 docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedSince}}'
-docker compose logs --since 48h caddy | grep -cE 'remote_ip|client_ip'
+docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -cE 'remote_ip|client_ip'
 docker compose logs --since 48h api | grep -c '"path":"[^"]*?'
 journalctl --disk-usage && du -sh /var/lib/docker/containers
 ```
@@ -172,7 +172,7 @@ Success, line by line:
 - `active`, and `APT::Periodic::Update-Package-Lists "1"` and `APT::Periodic::Unattended-Upgrade "1"`.
 - `755 /opt/our-players`, `600 /opt/our-players/.env`, `700 /root/.ssh`, `600 /root/.ssh/authorized_keys`; `1` key (yours; more means someone else can log in).
 - The API's newest image is your last deploy; `caddy:2` and `postgres:17` were created within the last month (section 6 pulls them).
-- `0` and `0`: no client IPs in Caddy's logs, no query strings (preferences) in the API's.
+- `0` and `0`: no client IPs in Caddy's logs, no query strings (preferences) in the API's. The first command skips Caddy's `admin.api` lines: each deploy's `caddy reload` logs one with `"remote_ip":"127.0.0.1"` (Caddy reloading itself, not a visitor).
 - The journal and container logs stay small (S16: 45.5M and 3.2M); Docker rotates container logs at 5 × 10 MB.
 
 ### 4.4 Android
@@ -236,7 +236,7 @@ Success, line by line:
 - `1440` (T3: pnpm installs nothing published less than a day ago). In `pnpm-workspace.yaml`, `allowBuilds` still lets only `esbuild` run install scripts.
 - `0` advisories for wrangler (use the version in `apps/mobile/package.json` if it changed; C4).
 - `6f1c2bfff0c837d268929a7c4e490918eb4fab29	refs/tags/v5.3.1`. A different SHA means the ponytail tag moved: **stop, and review what changed in the plugin before the next session.** (Claude Code clones a marketplace with `git clone --branch <ref>`, so it can only follow a tag, not a commit; T1.)
-- Only `git fetch`, `git fetch origin`, `git pull --ff-only` and read-only `gh` rules (`view`, `diff`, `checks`, `list`). Every `gh pr create/edit/comment` and `gh api …/comments` rule sits under `ask` (A1–A3). A new wildcard `allow` rule for a command that can run another program, post a file or call an API is a finding.
+- Only `git fetch`, `git fetch origin`, `git pull --ff-only` and read-only `gh` rules (`view`, `diff`, `checks`, `list`). Every `gh` command that can write (`gh pr create/edit/comment/review/ready/reopen`, `gh api`, `gh issue`, `gh gist`, `gh release`, `gh secret`, `gh variable`, `gh workflow`, `gh run rerun/cancel/delete`, `gh repo`, `gh label`, `gh cache`) sits under `ask` (A1–A3; widened by the owner on 2026-10-31). A new wildcard `allow` rule for a command that can run another program, post a file or call an API is a finding.
 - Your own `~/.claude/settings.json` ponytail entry has `"ref": "v5.3.1"` under `"source"`, like the project's.
 
 The project's deny rules (`.claude/settings.json`) still include `Read(.env)`, `Read(.env.*)`, `Read(**/.env)` and `Read(**/.env.*)` (T2).
@@ -265,8 +265,9 @@ If it prints `reboot needed`, run `reboot`, wait a minute and `ssh root@<server-
 ```bash
 cd /opt/our-players
 docker compose pull db caddy
-docker compose up -d --wait
+docker compose up -d --wait --force-recreate db caddy
+docker compose images db caddy
 docker compose ps
 curl -fsS "https://$(grep '^API_HOST=' .env | cut -d= -f2)/health"; echo
 ```
-Success: `db`, `api`, `caddy` `Up` (`api` and `db` `(healthy)`) and `{"ok":true,…}`. `postgres:17` only moves within 17.x, so the data volume stays compatible. Then prune old images if the disk passes ~80% (`docs/DEPLOY.md` §4), and run `trivy image` from section 2 on your computer.
+Success: `docker compose images` shows `caddy` `2` and `postgres` `17` (never `<none>`, which means the container still runs the old image), `db`, `api`, `caddy` `Up` (`api` and `db` `(healthy)`) and `{"ok":true,…}`. `--force-recreate` because a plain `up -d` left Caddy on the old image in S16; the API is down for about 20 seconds while Postgres restarts. `postgres:17` only moves within 17.x, so the data volume stays compatible. Then prune old images if the disk passes ~80% (`docs/DEPLOY.md` §4), and run `trivy image` from section 2 on your computer.
