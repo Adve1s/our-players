@@ -22,3 +22,7 @@ jobs:
           node-version-file: .tool-versions
       - run: corepack enable
       - run: pnpm audit
+      # The step above gates on high (dev and build tools carry accepted moderates); the API's own runtime
+      # dependencies face the internet, so they fail on moderate too.
+      - if: ${{ !cancelled() }}
+        run: pnpm --filter @our-players/server audit --prod --audit-level moderate

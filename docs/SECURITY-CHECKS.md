@@ -11,7 +11,7 @@ How to re-run the S16 security audit by hand: the scanners, the manual checklist
 
 | When | What |
 | --- | --- |
-| Every Monday, automatically | The **Audit** workflow (`.github/workflows/audit.yml`) runs `pnpm audit`. A red run emails you: read the advisory, then fix (an update or an `overrides` entry in `pnpm-workspace.yaml`) or accept it (an `audit.ignore` entry with the reason). |
+| Every Monday, automatically | The **Audit** workflow (`.github/workflows/audit.yml`) runs `pnpm audit` (fails on high) and the API's runtime dependencies alone (fails on moderate). A red run emails you: read the advisory, then fix (an update or an `overrides` entry in `pnpm-workspace.yaml`) or accept it (an `audit.ignore` entry with the reason). |
 | After adding or upgrading a dependency | Section 2: `pnpm audit`. After an Expo SDK upgrade also re-check the accepted D1 and D3 advisories (section 5): the upgrade may fix them, then delete their `ignore` lines. |
 | Monthly | Section 2: `pnpm audit` and `trivy image`. Section 6: host updates and image pulls. |
 | Before S11b (closed test) and before S15 (public launch) | Everything: sections 2, 3 and 4. Before S15 also a Claude Security codebase scan (section 3). |
@@ -25,9 +25,9 @@ All **on your computer**, from the repo root. `trivy`, `gitleaks` and `zizmor` a
 **Dependencies:**
 ```bash
 pnpm audit
-pnpm --filter @our-players/server audit --prod
+pnpm --filter @our-players/server audit --prod --audit-level moderate
 ```
-Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `6 ignored: 1 low | 4 moderate | 1 high` (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical is a new finding.
+Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `6 ignored: 1 low | 4 moderate | 1 high` (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical, or any advisory in the second, is a new finding.
 
 **Repo files** (lockfile, Dockerfile, secrets):
 ```bash

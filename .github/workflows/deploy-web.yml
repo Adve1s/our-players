@@ -40,6 +40,9 @@ jobs:
             https://*) ;;
             *) echo "::error::Set the WEB_API_URL repository variable to the API's https:// URL"; exit 1 ;;
           esac
+          # The CSP allows fetches only to the API it names; a different URL would deploy a site whose every call is blocked.
+          grep -qF "connect-src ${EXPO_PUBLIC_API_URL%/};" apps/mobile/public/_headers ||
+            { echo "::error::WEB_API_URL is not the connect-src in apps/mobile/public/_headers; change both together"; exit 1; }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:web
       # This job holds the Cloudflare token: run wrangler from the lockfile, which pins its whole dependency tree.
