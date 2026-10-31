@@ -190,7 +190,7 @@ aapt dump permissions <path-to.apk>
 ```
 For an AAB (`bundletool` from github.com/google/bundletool):
 ```bash
-bundletool dump manifest --bundle <path-to.aab> | grep uses-permission
+bundletool dump manifest --bundle=<path-to.aab> | grep uses-permission
 ```
 Success: `android.permission.INTERNET` only. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.)
 
