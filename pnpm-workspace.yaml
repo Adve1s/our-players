@@ -10,13 +10,15 @@ allowBuilds:
   # wrangler's local runtime; its postinstall only checks the platform binary that optionalDependencies already installs.
   workerd: false
 
-# pnpm 12's default (minutes), explicit so a pnpm change can't drop it.
+# pnpm 12's default (minutes), explicit so a pnpm change can't drop it. Setting it explicitly also turns on
+# pnpm 12's minimumReleaseAgeStrict: refuse a too-new version instead of falling back to an older one.
 minimumReleaseAge: 1440
 
 overrides:
   # GHSA-86w9-cpqp-85rv, in @expo/cli.
-  node-forge: ">=1.4.1"
+  node-forge: "^1.4.1"
   # GHSA-xjj6-f33q-929c, GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm, via wrangler > miniflare (S16).
+  # shortcut: overrides miniflare's exact undici pin, drop it once wrangler ships a miniflare with undici ≥7.30.1
   "undici@7": "^7.30.1"
 
 audit:
@@ -27,3 +29,6 @@ audit:
     - GHSA-w5hq-g745-h8pq # uuid 7 in @expo/config-plugins > xcode
     - GHSA-67mh-4wv8-2f99 # esbuild 0.18 in drizzle-kit (dev server only)
     - GHSA-gcqx-w48m-w2h4 # deepmerge in @expo/config, no patched version
+    # Accepted in S16 (D3): Expo build tooling only, no path via wrangler or the server; fixes need a major bump inside Expo. Re-check on each Expo SDK upgrade.
+    - GHSA-g3hv-75wg-m249 # minimatch 10 (patched ≥11.0.1) in Expo build tooling
+    - GHSA-3g3m-2fjr-6pw4 # glob 13 (patched ≥14.0.2) in Expo build tooling
