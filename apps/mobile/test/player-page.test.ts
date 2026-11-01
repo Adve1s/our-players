@@ -2,9 +2,9 @@ import type { GameLogEntry, PlayerResponse, SeasonStatsEntry } from '@our-player
 import { describe, expect, it } from 'vitest';
 import {
   age,
-  bioLines,
+  bioRows,
   logCaption,
-  logLines,
+  playerSubtitle,
   seasonCells,
   seasonHeading,
 } from '../src/lib/player-page';
@@ -176,9 +176,9 @@ describe('seasonCells', () => {
         ['PTS', '–'],
         ['REB', '–'],
         ['AST', '–'],
-        ['FG%', '0.0'],
-        ['3P%', '0.0'],
-        ['FT%', '0.0'],
+        ['FG%', '–'],
+        ['3P%', '–'],
+        ['FT%', '–'],
       ],
     ],
   ])('%s', (_, entry, cells) => {
@@ -224,46 +224,79 @@ const player: PlayerResponse = {
   gameLog: [],
 };
 
-describe('bioLines', () => {
+describe('bioRows', () => {
   const today = '2026-10-22';
-  it.each<[string, PlayerResponse, string[]]>([
+  it.each<[string, PlayerResponse, [string, string][]]>([
     [
-      'a full player shows team, age, birthplace and nationality',
+      'a full player shows position, age, birthplace and nationality',
       player,
-      ['CBJ · NHL · G · #90', 'Age 32 · Born Riga, LVA', 'Nationality LVA'],
-    ],
-    [
-      'a free agent without a jersey shows No team and no number',
-      { ...player, team: null, jersey: null, position: 'D' },
-      ['No team · NHL · D', 'Age 32 · Born Riga, LVA', 'Nationality LVA'],
+      [
+        ['Position', 'G'],
+        ['Age', '32'],
+        ['Born', 'Riga, LVA'],
+        ['Nationality', 'LVA'],
+      ],
     ],
     [
       'a player without a position (ESPN "NA") leaves it out',
       { ...player, position: null, positionGroup: null },
-      ['CBJ · NHL · #90', 'Age 32 · Born Riga, LVA', 'Nationality LVA'],
+      [
+        ['Age', '32'],
+        ['Born', 'Riga, LVA'],
+        ['Nationality', 'LVA'],
+      ],
     ],
     [
       'an override nationality is marked',
       { ...player, birthCountry: 'USA', nationalitySource: 'override' },
-      ['CBJ · NHL · G · #90', 'Age 32 · Born Riga, USA', 'Nationality LVA (override)'],
+      [
+        ['Position', 'G'],
+        ['Age', '32'],
+        ['Born', 'Riga, USA'],
+        ['Nationality', 'LVA (override)'],
+      ],
     ],
     [
-      'no nationality leaves the nationality line out',
+      'no nationality leaves the nationality row out',
       { ...player, nationality: null, nationalitySource: null },
-      ['CBJ · NHL · G · #90', 'Age 32 · Born Riga, LVA'],
+      [
+        ['Position', 'G'],
+        ['Age', '32'],
+        ['Born', 'Riga, LVA'],
+      ],
     ],
     [
-      'no birth data leaves the age and birthplace line out',
+      'no birth data leaves the age and birthplace rows out',
       { ...player, birthDate: null, birthCity: null, birthCountry: null },
-      ['CBJ · NHL · G · #90', 'Nationality LVA'],
+      [
+        ['Position', 'G'],
+        ['Nationality', 'LVA'],
+      ],
     ],
     [
       'only a birth country shows Born with it alone',
       { ...player, birthDate: null, birthCity: null },
-      ['CBJ · NHL · G · #90', 'Born LVA', 'Nationality LVA'],
+      [
+        ['Position', 'G'],
+        ['Born', 'LVA'],
+        ['Nationality', 'LVA'],
+      ],
     ],
-  ])('%s', (_, p, lines) => {
-    expect(bioLines(p, today)).toEqual(lines);
+  ])('%s', (_, p, rows) => {
+    expect(bioRows(p, today)).toEqual(rows.map(([label, value]) => ({ label, value })));
+  });
+});
+
+describe('playerSubtitle', () => {
+  it.each<[string, PlayerResponse, string]>([
+    ['a player on a team reads team, league, number', player, 'Columbus Blue Jackets, NHL, #90'],
+    [
+      'a free agent without a jersey shows No team and no number',
+      { ...player, team: null, jersey: null },
+      'No team, NHL',
+    ],
+  ])('%s', (_, p, subtitle) => {
+    expect(playerSubtitle(p)).toBe(subtitle);
   });
 });
 
@@ -280,35 +313,8 @@ const game: GameLogEntry['game'] = {
 };
 
 describe('logCaption', () => {
-  it('a finished overtime game reads day · score · status', () => {
+  it('a finished overtime game reads score, status', () => {
     const entry: GameLogEntry = { type: 'dnp', game, side: 'away', reason: null };
-    expect(logCaption(entry, 'en-GB', 'Europe/Riga')).toBe(
-      'Mon, Mar 23 · GS 137 – 131 DAL · Final/OT',
-    );
-  });
-});
-
-describe('logLines', () => {
-  it.each<[string, GameLogEntry, string[]]>([
-    [
-      'a skater line is the card text',
-      {
-        type: 'line',
-        game,
-        side: 'away',
-        line: {
-          kind: 'hockey_skater',
-          stats: { goals: 1, assists: 1, points: 2, plusMinus: 2, shots: 4, toiSeconds: 1112 },
-        },
-      },
-      ['1 G · 1 A · +2 · 4 SOG · 18:32'],
-    ],
-    [
-      'a DNP shows its reason in sentence case',
-      { type: 'dnp', game, side: 'away', reason: "COACH'S DECISION" },
-      ["DNP — Coach's decision"],
-    ],
-  ])('%s', (_, entry, lines) => {
-    expect(logLines(entry)).toEqual(lines);
+    expect(logCaption(entry, 'en-GB', 'Europe/Riga')).toBe('GS 137 – 131 DAL, Final/OT');
   });
 });

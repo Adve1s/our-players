@@ -7,7 +7,7 @@ import {
 } from '@our-players/shared';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { usePlayer } from '../../api/queries';
 import { Caption } from '../../components/caption';
 import { Card } from '../../components/card';
@@ -15,31 +15,53 @@ import { DayMessageCard } from '../../components/day-message';
 import { ErrorState } from '../../components/error-state';
 import { MarkToggles } from '../../components/mark-button';
 import { Skeleton } from '../../components/skeleton';
-import { pageId, rowLabel } from '../../lib/format';
-import { bioLines, logCaption, logLines, seasonCells, seasonHeading } from '../../lib/player-page';
+import { StatTable } from '../../components/stat-table';
+import { dayLabel, pageId, rowLabel, rowText } from '../../lib/format';
+import {
+  bioRows,
+  logCaption,
+  playerSubtitle,
+  seasonCells,
+  seasonHeading,
+} from '../../lib/player-page';
+import { columns, todayGroups, values } from '../../lib/stat-table';
 import { useTheme } from '../../theme';
 
 function Bio({ player }: { player: PlayerResponse }) {
   const t = useTheme();
   return (
-    <Card>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space.md }}>
-        <View style={{ flex: 1, gap: t.space.xs }}>
-          <Text style={{ color: t.colors.text, ...t.type.title }}>
-            {`${player.firstName} ${player.lastName}`}
-          </Text>
-          {bioLines(player, localDate(new Date())).map((line) => (
-            <Text key={line} style={{ color: t.colors.textMuted, ...t.type.body }}>
-              {line}
-            </Text>
-          ))}
-        </View>
-        {/* Search's pair: the star on the edge, Hide beside it; the targets reach into the padding. */}
-        <View style={{ flexDirection: 'row', marginTop: -t.space.md }}>
-          <MarkToggles player={player} />
-        </View>
+    <View
+      style={{
+        backgroundColor: t.colors.surface,
+        borderRadius: t.radius.sheet,
+        overflow: 'hidden',
+      }}
+    >
+      <View style={{ backgroundColor: t.colors.plate, padding: t.space.lg }}>
+        <Text accessibilityRole="header" style={{ color: t.colors.onPlate, ...t.type.title }}>
+          {`${player.firstName} ${player.lastName}`}
+        </Text>
+        <Text style={{ color: t.colors.onPlateMuted, ...t.type.meta }}>
+          {playerSubtitle(player)}
+        </Text>
       </View>
-    </Card>
+      <View style={{ padding: t.space.lg, gap: t.space.xs }}>
+        {bioRows(player, localDate(new Date())).map((row) => (
+          // The labels line up at a third of the width; a label too long for it at a large
+          // font scale pushes its value along, and a value too long wraps under it.
+          <View
+            key={row.label}
+            accessible
+            style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: t.space.md }}
+          >
+            <Text style={{ minWidth: '30%', color: t.colors.textMuted, ...t.type.body }}>
+              {row.label}
+            </Text>
+            <Text style={{ flexShrink: 1, color: t.colors.text, ...t.type.body }}>{row.value}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -47,12 +69,21 @@ function Season({ entry }: { entry: SeasonStatsEntry }) {
   const t = useTheme();
   return (
     <Card title={seasonHeading(entry)}>
-      {/* Four per row and wrapping, so a large font scale still fits a 360 px phone. */}
+      {/* Four per row; a value too wide for its quarter at a large font scale takes more room and
+          wraps the rest, so a 360 px phone never clips it. */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: t.space.md }}>
         {seasonCells(entry).map((cell) => (
-          <View key={cell.label} accessible style={{ width: '25%', gap: t.space.xs }}>
-            <Caption>{cell.label}</Caption>
-            <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>{cell.value}</Text>
+          <View
+            key={cell.label}
+            accessible
+            style={{ minWidth: '25%', paddingRight: t.space.md, gap: t.space.xs }}
+          >
+            <Text style={{ color: t.colors.textMuted, ...t.type.label }}>{cell.label}</Text>
+            <Text
+              style={{ color: t.colors.text, fontVariant: ['tabular-nums'], ...t.type.heading }}
+            >
+              {cell.value}
+            </Text>
           </View>
         ))}
       </View>
@@ -60,32 +91,46 @@ function Season({ entry }: { entry: SeasonStatsEntry }) {
   );
 }
 
-function LogRow({ entry, player }: { entry: GameLogEntry; player: PlayerResponse }) {
+function RecentGames({ player }: { player: PlayerResponse }) {
   const t = useTheme();
-  const caption = logCaption(entry);
-  // The log entry is a day row without the player, so the day row's label words it the same way.
-  const label = rowLabel({ ...entry, player }, entry.game.status, entry.game[entry.side].abbrev);
+  const row = (entry: GameLogEntry) => {
+    const caption = logCaption(entry);
+    // The log entry is a day row without the player, so the day row's label words it the same way.
+    const dayRow = { ...entry, player };
+    const label = rowLabel(dayRow, entry.game.status, entry.game[entry.side].abbrev);
+    return {
+      key: entry.game.id,
+      lead: (
+        <>
+          <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>
+            {dayLabel(entry.game.gameDate)}
+          </Text>
+          <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{caption}</Text>
+        </>
+      ),
+      values: entry.type === 'line' ? values(entry.line, 'today') : null,
+      text: rowText(dayRow, entry.game.status)[0],
+      label: `${caption}, ${label}, open game`,
+      onPress: () => router.push(`/game/${entry.game.id}`),
+    };
+  };
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${caption}, ${label}, open game`}
-      onPress={() => router.push(`/game/${entry.game.id}`)}
-      // The 48 px target reaches into the card's gaps, so one-line and two-line rows space alike.
-      style={{ gap: t.space.xs, paddingVertical: t.space.sm, marginVertical: -t.space.sm }}
-    >
-      <Caption>{caption}</Caption>
-      {logLines(entry).map((line) => (
-        <Text
-          key={line}
-          style={{
-            color: entry.type === 'line' ? t.colors.text : t.colors.textMuted,
-            ...t.type.body,
-          }}
-        >
-          {line}
-        </Text>
-      ))}
-    </Pressable>
+    <Card title="Recent games">
+      {player.gameLog.length > 0 ? (
+        // One table per run of the same kind, as on Today; no gap between them.
+        <View>
+          {todayGroups(player.gameLog).map((group) => (
+            <StatTable
+              key={group.rows[0]?.game.id}
+              columns={group.kind ? columns(group.kind, 'today') : null}
+              rows={group.rows.map(row)}
+            />
+          ))}
+        </View>
+      ) : (
+        <Caption>No games yet.</Caption>
+      )}
+    </Card>
   );
 }
 
@@ -95,32 +140,29 @@ export default function PlayerPage() {
   const id = pageId(raw);
   const q = usePlayer(id);
   const p = q.data;
+  const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
 
   let body: ReactNode;
   if (p) {
     body = (
-      <ScrollView contentContainerStyle={{ padding: t.space.lg, gap: t.space.md }}>
-        <Bio player={p} />
-        {p.seasonStats.length > 0 ? (
-          p.seasonStats.map((e) => <Season key={`${e.seasonType}-${e.season}`} entry={e} />)
-        ) : (
-          <Card>
-            <Caption>No season stats yet.</Caption>
-          </Card>
-        )}
-        <Card title="Recent games">
-          {p.gameLog.length > 0 ? (
-            p.gameLog.map((e) => <LogRow key={e.game.id} entry={e} player={p} />)
+      <ScrollView>
+        <View style={[column, { padding: t.space.md, gap: t.space.md }]}>
+          <Bio player={p} />
+          {p.seasonStats.length > 0 ? (
+            p.seasonStats.map((e) => <Season key={`${e.seasonType}-${e.season}`} entry={e} />)
           ) : (
-            <Caption>No games yet.</Caption>
+            <Card>
+              <Caption>No season stats yet.</Caption>
+            </Card>
           )}
-        </Card>
+          <RecentGames player={p} />
+        </View>
       </ScrollView>
     );
   } else if (id === null || (q.error instanceof ApiError && q.error.status === 404)) {
     // Trying again can't make the player exist.
     body = (
-      <View style={{ padding: t.space.lg }}>
+      <View style={[column, { padding: t.space.md }]}>
         <DayMessageCard text="No such player." />
       </View>
     );
@@ -133,7 +175,20 @@ export default function PlayerPage() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: p ? `${p.firstName} ${p.lastName}` : 'Player' }} />
+      <Stack.Screen
+        options={{
+          // The title names the page for the web tab and screen readers; the header shows only the toggles.
+          title: p ? `${p.firstName} ${p.lastName}` : 'Player',
+          headerTitle: '',
+          headerRight: p
+            ? () => (
+                <View style={{ flexDirection: 'row' }}>
+                  <MarkToggles player={p} />
+                </View>
+              )
+            : undefined,
+        }}
+      />
       {body}
     </View>
   );

@@ -459,7 +459,7 @@ const SHOTS: Shot[] = [
     name: 'player-skater',
     take: async (page) => {
       await player(page, RUST);
-      await seen(page, 'Regular season 2025-26', 'TOI/GP', 'Mon, Mar 16 · PIT 7 – 2 COL · Final');
+      await seen(page, 'Regular season 2025-26', 'TOI/GP', 'Mon, Mar 16', 'PIT 7 – 2 COL, Final');
     },
   },
   {
@@ -511,7 +511,7 @@ const SHOTS: Shot[] = [
       await tab(page, 'Search');
       await search(page, 'porzingis');
       await page.getByRole('button', { name: 'Open Kristaps Porzingis' }).click();
-      await seen(page, 'Born Liepaja, LVA', 'Mon, Mar 23 · GS 137 – 131 DAL');
+      await seen(page, 'Liepaja, LVA', 'Mon, Mar 23', 'GS 137 – 131 DAL, Final/OT');
     },
   },
   {
