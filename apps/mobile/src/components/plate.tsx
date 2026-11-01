@@ -45,18 +45,21 @@ export function Plate({
           {team.score}
         </Text>
       );
+    // At large font scales the score wraps under the abbreviation instead of running into the status;
+    // row-reverse keeps the home abbreviation first, so it stays on the top line, right-aligned.
     return (
       <View
         style={{
           flex: 1,
-          flexDirection: 'row',
+          minWidth: 0,
+          flexDirection: end ? 'row-reverse' : 'row',
+          flexWrap: 'wrap',
           alignItems: 'center',
-          justifyContent: end ? 'flex-end' : 'flex-start',
-          gap: t.space.md,
+          columnGap: t.space.md,
         }}
       >
-        {end ? score : abbrev}
-        {end ? abbrev : score}
+        {abbrev}
+        {score}
       </View>
     );
   };

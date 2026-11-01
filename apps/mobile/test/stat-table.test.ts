@@ -63,19 +63,24 @@ const wideLabels = (kind: LineStats['kind'], set: ColumnSet) =>
   columns(kind, set)
     .filter((c) => c.wide)
     .map((c) => c.label);
+const strongLabels = (kind: LineStats['kind'], set: ColumnSet) =>
+  columns(kind, set)
+    .filter((c) => c.strong)
+    .map((c) => c.label);
 
 describe('columns', () => {
-  it.each<[LineStats['kind'], ColumnSet, string[], string[]]>([
-    ['hockey_skater', 'today', ['G', 'A', '+/-', 'SOG', 'TOI'], ['TOI']],
-    ['hockey_goalie', 'today', ['SV/SA', 'SV%', 'GA', 'DEC'], ['SV/SA']],
-    ['basketball_player', 'today', ['PTS', 'REB', 'AST', 'MIN'], []],
+  it.each<[LineStats['kind'], ColumnSet, string[], string[], string[]]>([
+    ['hockey_skater', 'today', ['G', 'A', '+/-', 'SOG', 'TOI'], ['TOI'], ['G', 'A']],
+    ['hockey_goalie', 'today', ['SV/SA', 'SV%', 'GA', 'DEC'], ['SV/SA'], ['DEC']],
+    ['basketball_player', 'today', ['PTS', 'REB', 'AST', 'MIN'], [], ['PTS']],
     [
       'hockey_skater',
       'box',
       ['G', 'A', 'PTS', '+/-', 'SOG', 'TOI', 'PIM', 'HIT', 'BLK', 'PPG'],
       ['TOI'],
+      ['PTS'],
     ],
-    ['hockey_goalie', 'box', ['SV/SA', 'SV%', 'GA', 'TOI', 'DEC'], ['SV/SA', 'TOI']],
+    ['hockey_goalie', 'box', ['SV/SA', 'SV%', 'GA', 'TOI', 'DEC'], ['SV/SA', 'TOI'], []],
     [
       'basketball_player',
       'box',
@@ -96,10 +101,12 @@ describe('columns', () => {
         '+/-',
       ],
       ['FG', '3PT', 'FT'],
+      ['PTS'],
     ],
-  ])('%s %s columns are labelled and sized', (kind, set, expected, wide) => {
+  ])('%s %s columns are labelled, sized and weighted', (kind, set, expected, wide, strong) => {
     expect(labels(kind, set)).toEqual(expected);
     expect(wideLabels(kind, set)).toEqual(wide);
+    expect(strongLabels(kind, set)).toEqual(strong);
   });
 });
 

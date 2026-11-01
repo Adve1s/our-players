@@ -11,7 +11,7 @@ import { layout } from '../tokens';
 
 export type LineKind = LineStats['kind'];
 export type ColumnSet = 'today' | 'box';
-export type Column = { label: string; wide: boolean };
+export type Column = { label: string; wide: boolean; strong: boolean };
 export type RowGroup<R> = { kind: LineKind | null; rows: R[] };
 
 type Cell<S> = Column & { value: (s: S) => string };
@@ -21,8 +21,11 @@ const opt = (n: number | null | undefined): string => (n == null ? DASH : String
 const cell = <S>(label: string, value: (s: S) => string, wide = false): Cell<S> => ({
   label,
   wide,
+  strong: false,
   value,
 });
+// The headline numbers of a set (the approved mockups set them bold).
+const strong = <S>(c: Cell<S>): Cell<S> => ({ ...c, strong: true });
 
 const skater = {
   G: cell<HockeySkaterStats>('G', (s) => String(s.goals)),
@@ -62,11 +65,11 @@ const ball = {
 
 const SETS = {
   hockey_skater: {
-    today: [skater.G, skater.A, skater.PM, skater.SOG, skater.TOI],
+    today: [strong(skater.G), strong(skater.A), skater.PM, skater.SOG, skater.TOI],
     box: [
       skater.G,
       skater.A,
-      skater.PTS,
+      strong(skater.PTS),
       skater.PM,
       skater.SOG,
       skater.TOI,
@@ -77,14 +80,14 @@ const SETS = {
     ],
   },
   hockey_goalie: {
-    today: [goalie.SVSA, goalie.SVP, goalie.GA, goalie.DEC],
+    today: [goalie.SVSA, goalie.SVP, goalie.GA, strong(goalie.DEC)],
     box: [goalie.SVSA, goalie.SVP, goalie.GA, goalie.TOI, goalie.DEC],
   },
   basketball_player: {
-    today: [ball.PTS, ball.REB, ball.AST, ball.MIN],
+    today: [strong(ball.PTS), ball.REB, ball.AST, ball.MIN],
     box: [
       ball.MIN,
-      ball.PTS,
+      strong(ball.PTS),
       ball.REB,
       ball.AST,
       ball.FG,
@@ -102,7 +105,7 @@ const SETS = {
 };
 
 export const columns = (kind: LineKind, set: ColumnSet): Column[] =>
-  SETS[kind][set].map(({ label, wide }) => ({ label, wide }));
+  SETS[kind][set].map(({ label, wide, strong }) => ({ label, wide, strong }));
 
 export function values(line: LineStats, set: ColumnSet): string[] {
   // One case per kind: TS can't correlate SETS[line.kind] with line.stats.
