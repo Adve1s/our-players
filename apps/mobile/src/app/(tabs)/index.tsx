@@ -104,23 +104,39 @@ export default function Today() {
     </View>
   );
   const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
+  // Without a day yet there is no date to name, so the title is just "Today".
+  const header = (d: string | null) => (
+    <View style={[column, { paddingHorizontal: t.space.lg, paddingVertical: t.space.lg }]}>
+      {d === null ? null : <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>Today</Text>}
+      <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
+        {d === null ? 'Today' : dayTitle(d)}
+      </Text>
+    </View>
+  );
 
   if (!data) {
     // A paused query never errors: with nothing cached, offline on web reads as "can't reach".
     const offline = meta.fetchStatus === 'paused' || day.fetchStatus === 'paused';
+    const bare = (child: ReactNode) =>
+      screen(
+        <>
+          {header(date)}
+          {child}
+        </>,
+      );
     if (date === null) {
       // Meta is in but no selected league has a game day.
       if (meta.data)
-        return screen(
+        return bare(
           <View style={{ padding: t.space.lg }}>
             <DayMessageCard text="No games yet." />
           </View>,
         );
-      if (meta.isError || offline) return screen(<ErrorState error={meta.error} onRetry={retry} />);
-      return screen(<Skeleton />);
+      if (meta.isError || offline) return bare(<ErrorState error={meta.error} onRetry={retry} />);
+      return bare(<Skeleton />);
     }
-    if (day.isError || offline) return screen(<ErrorState error={day.error} onRetry={retry} />);
-    return screen(<Skeleton />);
+    if (day.isError || offline) return bare(<ErrorState error={day.error} onRetry={retry} />);
+    return bare(<Skeleton />);
   }
 
   const message: DayMessage | null = dayMessage(
@@ -160,12 +176,7 @@ export default function Today() {
           />
         }
       >
-        <View style={[column, { paddingHorizontal: t.space.lg, paddingVertical: t.space.lg }]}>
-          <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>Today</Text>
-          <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
-            {dayTitle(data.gameDate)}
-          </Text>
-        </View>
+        {header(data.gameDate)}
         <DayStrip
           date={data.gameDate}
           // While the next day loads, a tap would race the pending step; once the step has
