@@ -38,14 +38,23 @@ describe('dayMessage', () => {
   it('a day with no games says so', () => {
     expect(dayMessage(day({ gameDate: '2026-03-17', games: [] }), '2026-03-23', true)).toEqual({
       text: 'No games on Tue, Mar 17.',
-      action: null,
+      actions: [],
     });
+  });
+
+  it.each([
+    ['both neighbours', '2026-03-16', '2026-03-18', ['prev', 'next']],
+    ['only a previous game day', '2026-03-16', null, ['prev']],
+    ['no neighbours', null, null, []],
+  ] as const)('a day with no games and %s offers the jumps there are', (_, prev, next, actions) => {
+    const d = day({ gameDate: '2026-03-17', games: [], prevGameDate: prev, nextGameDate: next });
+    expect(dayMessage(d, '2026-03-23', true)?.actions).toEqual(actions);
   });
 
   it('following nothing points to Settings', () => {
     expect(dayMessage(day({}), '2026-03-23', false)).toEqual({
       text: "You're not following any countries or players yet.",
-      action: 'settings',
+      actions: ['settings'],
     });
   });
 
@@ -57,7 +66,7 @@ describe('dayMessage', () => {
     const d = day({ gameDate: '2026-03-25', nextGameDate: '2026-03-26' });
     expect(dayMessage(d, '2026-03-23', true)).toEqual({
       text: 'None of your players play on Wed, Mar 25.',
-      action: 'next',
+      actions: ['next'],
     });
   });
 
@@ -65,7 +74,7 @@ describe('dayMessage', () => {
     const d = day({ gameDate: '2026-03-25', nextGameDate: null });
     expect(dayMessage(d, '2026-03-23', true)).toEqual({
       text: 'None of your players play on Wed, Mar 25.',
-      action: null,
+      actions: [],
     });
   });
 
@@ -73,7 +82,7 @@ describe('dayMessage', () => {
     const d = day({ gameDate: '2026-03-16', prevGameDate: '2026-03-14' });
     expect(dayMessage(d, '2026-03-23', true)).toEqual({
       text: 'None of your players played on Mon, Mar 16.',
-      action: 'prev',
+      actions: ['prev'],
     });
   });
 
@@ -81,7 +90,7 @@ describe('dayMessage', () => {
     const d = day({ gameDate: '2026-03-16', prevGameDate: null });
     expect(dayMessage(d, '2026-03-23', true)).toEqual({
       text: 'None of your players played on Mon, Mar 16.',
-      action: null,
+      actions: [],
     });
   });
 
@@ -93,7 +102,7 @@ describe('dayMessage', () => {
     });
     expect(dayMessage(d, null, true)).toEqual({
       text: 'None of your players played on Wed, Mar 25.',
-      action: 'prev',
+      actions: ['prev'],
     });
   });
 
@@ -101,7 +110,7 @@ describe('dayMessage', () => {
     const d = day({ gameDate: '2026-03-23', prevGameDate: '2026-03-16' });
     expect(dayMessage(d, '2026-03-23', true)).toEqual({
       text: 'None of your players played on Mon, Mar 23.',
-      action: 'prev',
+      actions: ['prev'],
     });
   });
 });

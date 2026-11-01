@@ -48,7 +48,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Today', tabBarIcon: tabIcon('calendar', 'calendar-outline') }}
+        options={{
+          title: 'Today',
+          headerShown: false,
+          tabBarIcon: tabIcon('calendar', 'calendar-outline'),
+        }}
       />
       <Tabs.Screen
         name="search"

@@ -1,17 +1,18 @@
 import type { DayResponse } from '@our-players/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDay, useMeta } from '../../api/queries';
-import { AccentButton } from '../../components/accent-button';
 import { DayMessageCard } from '../../components/day-message';
-import { DayStepper } from '../../components/day-stepper';
+import { DayStrip } from '../../components/day-strip';
 import { ErrorState } from '../../components/error-state';
 import { GameCard } from '../../components/game-card';
+import { LatestPill } from '../../components/latest-pill';
 import { OtherGames } from '../../components/other-games';
 import { Skeleton } from '../../components/skeleton';
 import { type DayMessage, dayMessage, refreshBanner } from '../../lib/day-message';
-import { dateParam, dateParamFor, latestDate } from '../../lib/format';
+import { dateParam, dateParamFor, dayTitle, latestDate } from '../../lib/format';
 import { usePrefs } from '../../state/prefs-store';
 import { useTheme } from '../../theme';
 
@@ -27,24 +28,38 @@ function Banner({ text, onRetry }: { text: string; onRetry?: () => void }) {
     <View
       accessibilityRole="alert"
       style={{
-        borderWidth: 1,
-        borderColor: t.colors.border,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        columnGap: t.space.md,
+        backgroundColor: t.colors.surface,
         borderRadius: t.radius.sheet,
-        paddingVertical: t.space.md,
-        // Minus the 1px border so the text lines up with card content.
-        paddingHorizontal: t.space.lg - 1,
-        gap: t.space.md,
-        alignItems: 'flex-start',
+        paddingHorizontal: t.space.lg,
+        paddingVertical: onRetry ? 0 : t.space.md,
       }}
     >
-      <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{text}</Text>
-      {onRetry ? <AccentButton label="Try again" onPress={onRetry} /> : null}
+      <Text style={{ flex: 1, color: t.colors.textMuted, ...t.type.meta }}>{text}</Text>
+      {onRetry ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          onPress={onRetry}
+          style={({ pressed }) => ({
+            minHeight: t.layout.target,
+            justifyContent: 'center',
+            opacity: pressed ? t.opacity.pressed : 1,
+          })}
+        >
+          <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>Try again</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 export default function Today() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const leagues = usePrefs((s) => s.leagues);
   const countries = usePrefs((s) => s.countries);
   const favorites = usePrefs((s) => s.favorites);
@@ -82,9 +97,13 @@ export default function Today() {
   // The same date is no URL change, so a step back toward a day that failed would do nothing.
   const go = (d: string) =>
     d === date ? retry() : router.setParams({ date: dateParamFor(d, latest) });
+  // The tab hides the navigator's header, so the status bar inset is the screen's own.
   const screen = (child: ReactNode) => (
-    <View style={{ flex: 1, backgroundColor: t.colors.background }}>{child}</View>
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: t.colors.background }}>
+      {child}
+    </View>
   );
+  const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
 
   if (!data) {
     // A paused query never errors: with nothing cached, offline on web reads as "can't reach".
@@ -120,21 +139,17 @@ export default function Today() {
   // date is non-null here: without one there is no day data.
   const banner = refreshBanner(meta, day, date ?? data.gameDate, data.gameDate);
 
+  const offLatest = latest !== null && data.gameDate !== latest;
+
   return screen(
     <>
-      <DayStepper
-        date={data.gameDate}
-        // While the next day loads, the old day's neighbours would step from the wrong day; once
-        // the step has failed (paused or error) they are right for the kept day on screen.
-        prev={loading ? null : data.prevGameDate}
-        next={loading ? null : data.nextGameDate}
-        onLatest={param === null || param === latest}
-        onGo={go}
-        // undefined drops the param, so the day follows the latest again.
-        onLatestPress={() => router.setParams({ date: undefined })}
-      />
       <ScrollView
-        contentContainerStyle={{ padding: t.space.lg, paddingTop: 0, gap: t.space.md }}
+        // The header scrolls away; the strip (child 1) stays reachable at the top.
+        stickyHeaderIndices={[1]}
+        contentContainerStyle={{
+          // Room to scroll the last box out from under the pill.
+          paddingBottom: offLatest ? t.layout.target + t.space.xl : 0,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -145,21 +160,42 @@ export default function Today() {
           />
         }
       >
-        {banner ? <Banner text={banner.text} onRetry={banner.retry ? retry : undefined} /> : null}
-        {message ? (
-          <DayMessageCard
-            text={message.text}
-            action={
-              message.action
-                ? { label: ACTION_LABELS[message.action], onPress: actions[message.action] }
-                : undefined
-            }
-          />
-        ) : (
-          shown.map((g) => <GameCard key={g.id} game={g} />)
-        )}
-        {others.length > 0 ? <OtherGames key={data.gameDate} games={others} /> : null}
+        <View style={[column, { paddingHorizontal: t.space.lg, paddingVertical: t.space.lg }]}>
+          <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>Today</Text>
+          <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
+            {dayTitle(data.gameDate)}
+          </Text>
+        </View>
+        <DayStrip
+          date={data.gameDate}
+          // While the next day loads, a tap would race the pending step; once the step has
+          // failed (paused or error) the strip works again around the kept day on screen.
+          disabled={loading}
+          onGo={go}
+        />
+        <View style={[column, { padding: t.space.md, gap: t.space.md }]}>
+          {banner ? <Banner text={banner.text} onRetry={banner.retry ? retry : undefined} /> : null}
+          {message ? (
+            <DayMessageCard
+              text={message.text}
+              actions={message.actions.map((a) => ({
+                label: ACTION_LABELS[a],
+                onPress: actions[a],
+              }))}
+            />
+          ) : (
+            shown.map((g) => <GameCard key={g.id} game={g} />)
+          )}
+          {others.length > 0 ? <OtherGames key={data.gameDate} games={others} /> : null}
+        </View>
       </ScrollView>
+      {offLatest ? (
+        <LatestPill
+          date={latest}
+          // undefined drops the param, so the day follows the latest again.
+          onPress={() => router.setParams({ date: undefined })}
+        />
+      ) : null}
     </>,
   );
 }

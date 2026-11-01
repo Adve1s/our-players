@@ -5,7 +5,7 @@ import { AccentButton } from './accent-button';
 type Action = { label: string; onPress: () => void };
 
 // The empty/info card for the day states; the wording comes from lib/day-message.
-export function DayMessageCard({ text, action }: { text: string; action?: Action }) {
+export function DayMessageCard({ text, actions = [] }: { text: string; actions?: Action[] }) {
   const t = useTheme();
   return (
     <View
@@ -18,7 +18,20 @@ export function DayMessageCard({ text, action }: { text: string; action?: Action
       }}
     >
       <Text style={{ color: t.colors.text, textAlign: 'center', ...t.type.body }}>{text}</Text>
-      {action ? <AccentButton label={action.label} onPress={action.onPress} /> : null}
+      {actions.length > 0 ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: t.space.sm,
+          }}
+        >
+          {actions.map((a) => (
+            <AccentButton key={a.label} label={a.label} onPress={a.onPress} />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

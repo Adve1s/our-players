@@ -10,6 +10,7 @@ import {
   dateParam,
   dateParamFor,
   dayLabel,
+  dayTitle,
   latestDate,
   pageId,
   rowLabel,
@@ -17,6 +18,7 @@ import {
   scoreText,
   startTime,
   statusLabel,
+  stripDays,
 } from '../src/lib/format';
 
 const player: PlayerRow['player'] = {
@@ -123,6 +125,26 @@ describe('dayLabel', () => {
     ['2027-01-01', 'Fri, Jan 1'],
   ])('%s reads %s', (date, text) => {
     expect(dayLabel(date)).toBe(text);
+  });
+});
+
+describe('dayTitle', () => {
+  it('spells out the weekday and month', () => {
+    expect(dayTitle('2026-03-16')).toBe('Monday, March 16');
+  });
+});
+
+describe('stripDays', () => {
+  it('runs 14 days either side of the date across a year boundary', () => {
+    const days = stripDays('2026-01-02');
+    expect(days).toHaveLength(29);
+    expect(days[0]).toBe('2025-12-19');
+    expect(days[14]).toBe('2026-01-02');
+    expect(days[28]).toBe('2026-01-16');
+  });
+
+  it('repeats no day around a DST change', () => {
+    expect(new Set(stripDays('2026-03-29')).size).toBe(29);
   });
 });
 
