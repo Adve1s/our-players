@@ -27,7 +27,7 @@ export function OtherGames({ games }: { games: DayGameResponse[] }) {
         <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>{title}</Text>
         <Text style={{ color: t.colors.accent, ...t.type.body }}>{open ? '▴' : '▾'}</Text>
       </Pressable>
-      {open ? games.map((g) => <GameCard key={g.id} game={g} compact />) : null}
+      {open ? games.map((g) => <GameCard key={g.id} game={g} />) : null}
     </View>
   );
 }

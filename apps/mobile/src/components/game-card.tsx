@@ -1,49 +1,58 @@
 import type { DayGameResponse } from '@our-players/shared';
 import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { scoreText, statusLabel } from '../lib/format';
+import { Text, View } from 'react-native';
+import { rowLabel, rowText, scoreText, statusLabel } from '../lib/format';
+import { columns, todayGroups, values } from '../lib/stat-table';
 import { useTheme } from '../theme';
-import { PlayerRow } from './player-row';
+import { Plate } from './plate';
+import { StatTable } from './stat-table';
 
-export function GameCard({ game, compact = false }: { game: DayGameResponse; compact?: boolean }) {
+export function GameCard({ game }: { game: DayGameResponse }) {
   const t = useTheme();
-  const score = scoreText(game);
   const status = statusLabel(game);
   return (
     <View
       style={{
         backgroundColor: t.colors.surface,
         borderRadius: t.radius.sheet,
-        paddingHorizontal: t.space.lg,
-        paddingVertical: compact ? t.space.md : t.space.lg,
-        gap: t.space.md,
+        overflow: 'hidden',
       }}
     >
-      {/* The 48 px target reaches into the card's padding and the gap below, so the card barely grows. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${game.league}, ${score}, ${status}, open game`}
+      <Plate
+        away={game.away}
+        home={game.home}
+        status={status}
+        league={game.league}
         onPress={() => router.push(`/game/${game.id}`)}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: t.space.sm,
-          minHeight: t.space.xl * 2,
-          marginVertical: -t.space.md,
-        }}
-      >
-        <Text style={{ color: t.colors.textMuted, ...t.type.label }}>{game.league}</Text>
-        <Text style={{ flex: 1, color: t.colors.text, ...t.type.bodyStrong }}>{score}</Text>
-        <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{status}</Text>
-      </Pressable>
-      {game.rows.map((row) => (
-        <PlayerRow
-          key={row.player.id}
-          row={row}
-          status={game.status}
-          team={game[row.side].abbrev}
-        />
-      ))}
+        accessibilityLabel={`${game.league}, ${scoreText(game)}, ${status}, open game`}
+      />
+      {/* Rows bring their own 48 px height, so the box barely pads them; Other games has none. */}
+      {game.rows.length > 0 ? (
+        <View style={{ paddingHorizontal: t.space.lg, paddingVertical: t.space.xs }}>
+          {todayGroups(game.rows).map((group) => (
+            <StatTable
+              key={group.rows[0]?.player.id}
+              columns={group.kind ? columns(group.kind, 'today') : null}
+              rows={group.rows.map((row) => {
+                const team = game[row.side].abbrev;
+                return {
+                  key: row.player.id,
+                  lead: (
+                    <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>
+                      {`${row.player.firstName} ${row.player.lastName} `}
+                      <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{team}</Text>
+                    </Text>
+                  ),
+                  values: row.type === 'line' ? values(row.line, 'today') : null,
+                  text: rowText(row, game.status)[0],
+                  label: rowLabel(row, game.status, team),
+                  onPress: () => router.push(`/player/${row.player.id}`),
+                };
+              })}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
