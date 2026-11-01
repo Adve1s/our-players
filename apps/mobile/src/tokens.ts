@@ -93,6 +93,8 @@ export const layout = {
   markBar: 3,
   statColumn: 34,
   statColumnWide: 52,
+  // Plate scores stop growing here, so two 3-digit scores and the status fit a 360 dp phone at font scale 2.
+  scoreMaxScale: 1.3,
 } as const;
 // The Latest pill only; boxes stay flat.
 export const shadow = { float: '0 4px 14px rgba(0, 0, 0, 0.25)' } as const;

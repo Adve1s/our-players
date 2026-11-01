@@ -36,6 +36,7 @@ export function Plate({
     const score =
       team.score === null ? null : (
         <Text
+          maxFontSizeMultiplier={t.layout.scoreMaxScale}
           style={{
             color: muted(team.score, other.score) ? t.colors.onPlateMuted : t.colors.onPlate,
             fontVariant: ['tabular-nums'],
