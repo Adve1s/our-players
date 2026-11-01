@@ -133,4 +133,18 @@ New features, screens or behavior; changed texts beyond labels the new layout ne
 
 ## Before / after
 
-Filled in at the end of the session: one before/after pair per screen.
+Each line: light before, light after, dark before, dark after (`pnpm screenshots`, 2026-11-02).
+
+- **Today:** ![before](s17-before/light-today.png) ![after](s17-after/light-today.png) ![before](s17-before/dark-today.png) ![after](s17-after/dark-today.png)
+- **Night, mixed rows:** ![before](s17-before/light-night-mixed.png) ![after](s17-after/light-night-mixed.png) ![before](s17-before/dark-night-mixed.png) ![after](s17-after/dark-night-mixed.png)
+- **Upcoming:** ![before](s17-before/light-upcoming.png) ![after](s17-after/light-upcoming.png) ![before](s17-before/dark-upcoming.png) ![after](s17-after/dark-upcoming.png)
+- **DNP:** ![before](s17-before/light-dnp.png) ![after](s17-after/light-dnp.png) ![before](s17-before/dark-dnp.png) ![after](s17-after/dark-dnp.png)
+- **Empty past day:** ![before](s17-before/light-empty-past.png) ![after](s17-after/light-empty-past.png) ![before](s17-before/dark-empty-past.png) ![after](s17-after/dark-empty-past.png)
+- **API down:** ![before](s17-before/light-api-down.png) ![after](s17-after/light-api-down.png) ![before](s17-before/dark-api-down.png) ![after](s17-after/dark-api-down.png)
+- **Game, hockey:** ![before](s17-before/light-game-hockey.png) ![after](s17-after/light-game-hockey.png) ![before](s17-before/dark-game-hockey.png) ![after](s17-after/dark-game-hockey.png)
+- **Game, basketball:** ![before](s17-before/light-game-basketball.png) ![after](s17-after/light-game-basketball.png) ![before](s17-before/dark-game-basketball.png) ![after](s17-after/dark-game-basketball.png)
+- **Player, skater:** ![before](s17-before/light-player-skater.png) ![after](s17-after/light-player-skater.png) ![before](s17-before/dark-player-skater.png) ![after](s17-after/dark-player-skater.png)
+- **Player, basketball:** ![before](s17-before/light-player-basketball.png) ![after](s17-after/light-player-basketball.png) ![before](s17-before/dark-player-basketball.png) ![after](s17-after/dark-player-basketball.png)
+- **Search results:** ![before](s17-before/light-search-results.png) ![after](s17-after/light-search-results.png) ![before](s17-before/dark-search-results.png) ![after](s17-after/dark-search-results.png)
+- **Settings:** ![before](s17-before/light-settings.png) ![after](s17-after/light-settings.png) ![before](s17-before/dark-settings.png) ![after](s17-after/dark-settings.png)
+- **Install:** ![before](s17-before/light-install.png) ![after](s17-after/light-install.png) ![before](s17-before/dark-install.png) ![after](s17-after/dark-install.png)
