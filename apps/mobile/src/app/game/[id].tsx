@@ -28,7 +28,6 @@ export default function GamePage() {
   const q = useGame(id, { leagues, countries, favorites, hidden });
   const g = q.data;
 
-  const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
   const box = {
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.sheet,
@@ -65,7 +64,7 @@ export default function GamePage() {
     );
     body = (
       <ScrollView>
-        <View style={[column, { padding: t.space.md, gap: t.space.md }]}>
+        <View style={[t.column, { padding: t.space.md, gap: t.space.md }]}>
           <View style={box}>
             <Plate
               away={g.away}
@@ -122,7 +121,7 @@ export default function GamePage() {
   } else if (id === null || (q.error instanceof ApiError && q.error.status === 404)) {
     // Trying again can't make the game exist.
     body = (
-      <View style={[column, { padding: t.space.md }]}>
+      <View style={[t.column, { padding: t.space.md }]}>
         <DayMessageCard text="No such game." />
       </View>
     );

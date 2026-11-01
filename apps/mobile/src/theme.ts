@@ -24,10 +24,13 @@ export type Theme = {
   layout: typeof layout;
   shadow: typeof shadow;
   opacity: typeof opacity;
+  column: typeof column;
   dark: boolean;
 };
 
-const shared = { space, radius, type, motion, icon, layout, shadow, opacity };
+// Wide windows: every screen's content sits in one centered column.
+const column = { width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center' } as const;
+const shared = { space, radius, type, motion, icon, layout, shadow, opacity, column };
 const light: Theme = { colors: lightColors, ...shared, dark: false };
 const dark: Theme = { colors: darkColors, ...shared, dark: true };
 

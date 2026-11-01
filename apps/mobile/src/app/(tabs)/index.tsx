@@ -103,10 +103,9 @@ export default function Today() {
       {child}
     </View>
   );
-  const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
   // Without a day yet there is no date to name, so the title is just "Today".
   const header = (d: string | null) => (
-    <View style={[column, { paddingHorizontal: t.space.lg, paddingVertical: t.space.lg }]}>
+    <View style={[t.column, { paddingHorizontal: t.space.lg, paddingVertical: t.space.lg }]}>
       {d === null ? null : <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>Today</Text>}
       <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
         {d === null ? 'Today' : dayTitle(d)}
@@ -128,7 +127,7 @@ export default function Today() {
       // Meta is in but no selected league has a game day.
       if (meta.data)
         return bare(
-          <View style={{ padding: t.space.lg }}>
+          <View style={[t.column, { padding: t.space.lg }]}>
             <DayMessageCard text="No games yet." />
           </View>,
         );
@@ -184,7 +183,7 @@ export default function Today() {
           disabled={loading}
           onGo={go}
         />
-        <View style={[column, { padding: t.space.md, gap: t.space.md }]}>
+        <View style={[t.column, { padding: t.space.md, gap: t.space.md }]}>
           {banner ? <Banner text={banner.text} onRetry={banner.retry ? retry : undefined} /> : null}
           {message ? (
             <DayMessageCard

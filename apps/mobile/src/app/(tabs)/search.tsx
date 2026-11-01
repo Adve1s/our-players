@@ -1,8 +1,10 @@
 import type { PlayerSummary } from '@our-players/shared';
 import { type ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSearch } from '../../api/queries';
 import { Caption } from '../../components/caption';
+import { Card } from '../../components/card';
 import { ErrorState } from '../../components/error-state';
 import { MarkToggles } from '../../components/mark-button';
 import { PlayerItem } from '../../components/player-item';
@@ -33,6 +35,7 @@ function ResultItem({ player, first }: { player: PlayerSummary; first: boolean }
 
 export default function Search() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const leagues = usePrefs((s) => s.leagues);
   const [query, setQuery] = useState('');
   const term = searchTerm(useDebounced(query, 300));
@@ -62,27 +65,24 @@ export default function Search() {
     );
   }
 
+  // The tab hides the navigator's header, so the status bar inset is the screen's own.
   return (
     <ScrollView
       style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ padding: t.space.lg, gap: t.space.lg }}
+      contentContainerStyle={{ paddingTop: insets.top }}
       keyboardShouldPersistTaps="handled"
     >
-      <SearchField
-        value={query}
-        onChangeText={setQuery}
-        label="Search players"
-        maxLength={SEARCH_MAX}
-      />
-      <View
-        style={{
-          backgroundColor: t.colors.surface,
-          borderRadius: t.radius.sheet,
-          padding: t.space.lg,
-          gap: t.space.md,
-        }}
-      >
-        {body}
+      <View style={[t.column, { padding: t.space.lg, gap: t.space.lg }]}>
+        <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
+          Search
+        </Text>
+        <SearchField
+          value={query}
+          onChangeText={setQuery}
+          label="Search players"
+          maxLength={SEARCH_MAX}
+        />
+        <Card>{body}</Card>
       </View>
     </ScrollView>
   );

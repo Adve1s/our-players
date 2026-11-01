@@ -140,13 +140,12 @@ export default function PlayerPage() {
   const id = pageId(raw);
   const q = usePlayer(id);
   const p = q.data;
-  const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
 
   let body: ReactNode;
   if (p) {
     body = (
       <ScrollView>
-        <View style={[column, { padding: t.space.md, gap: t.space.md }]}>
+        <View style={[t.column, { padding: t.space.md, gap: t.space.md }]}>
           <Bio player={p} />
           {p.seasonStats.length > 0 ? (
             p.seasonStats.map((e) => <Season key={`${e.seasonType}-${e.season}`} entry={e} />)
@@ -162,7 +161,7 @@ export default function PlayerPage() {
   } else if (id === null || (q.error instanceof ApiError && q.error.status === 404)) {
     // Trying again can't make the player exist.
     body = (
-      <View style={[column, { padding: t.space.md }]}>
+      <View style={[t.column, { padding: t.space.md }]}>
         <DayMessageCard text="No such player." />
       </View>
     );

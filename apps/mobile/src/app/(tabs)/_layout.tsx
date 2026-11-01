@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function TabsLayout() {
   const t = useTheme();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const tabIcon =
     (active: IconName, idle: IconName) =>
     ({ focused }: { focused: boolean }) => (
@@ -30,6 +33,8 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
+        // Each tab draws its own title.
+        headerShown: false,
         // Wide windows default to beside-icon; the design keeps the label under the icon everywhere.
         tabBarLabelPosition: 'below-icon',
         // The default icon slot is narrower than the pill.
@@ -43,6 +48,9 @@ export default function TabsLayout() {
           backgroundColor: t.colors.surface,
           borderTopWidth: t.layout.hairline,
           borderTopColor: t.colors.border,
+          // The bar spans the window; on wide ones its items sit in the content's centered column.
+          // Replaces the bar's default padding, which is the side insets.
+          paddingHorizontal: Math.max(insets.left, insets.right, (width - t.layout.maxWidth) / 2),
         },
       }}
     >
@@ -50,7 +58,6 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Today',
-          headerShown: false,
           tabBarIcon: tabIcon('calendar', 'calendar-outline'),
         }}
       />

@@ -38,7 +38,7 @@ export function DayStrip({ date, disabled, onGo }: Props) {
         horizontal
         showsHorizontalScrollIndicator={false}
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-        style={{ width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' }}
+        style={t.column}
       >
         {days.map((d, i) => {
           const selected = d === date;

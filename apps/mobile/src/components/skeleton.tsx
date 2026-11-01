@@ -41,7 +41,7 @@ export function Skeleton() {
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel="Loading"
-      style={{ padding: t.space.lg, gap: t.space.md, opacity: pulse }}
+      style={[t.column, { padding: t.space.lg, gap: t.space.md, opacity: pulse }]}
     >
       {[0, 1].map((i) => (
         <View

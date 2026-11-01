@@ -52,6 +52,8 @@ export function SearchField({
           outlineStyle: 'solid',
           outlineWidth: 0,
           paddingVertical: t.space.sm,
+          // Android's own inset would push the text off the icon gap.
+          paddingHorizontal: 0,
         }}
       />
     </View>
