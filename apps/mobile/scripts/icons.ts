@@ -10,28 +10,31 @@ const source = readFileSync(resolve('assets/icon.svg'), 'utf8');
 if (source.split('<g id="mark"').length !== 2 || source.split('<rect id="field"').length !== 2)
   throw new Error('assets/icon.svg needs exactly one <g id="mark"> and one <rect id="field">');
 const FIELD = /<rect id="field"[^>]*\/>/;
+// shortcut: MARK stops at the first </g>, so the mark can't contain nested <g>; switch to a DOM parse if it ever needs groups
 const MARK = /<g id="mark"[\s\S]*?<\/g>/;
-// Android launchers crop a maskable icon to its middle 2/3 (72 of 108 dp) and zoom in,
-// so the maskable copy shrinks the mark further (0.72: owner checked it on a phone).
-const maskable = source.replace(
-  '<g id="mark"',
-  '<g id="mark" transform="translate(512 512) scale(0.72) translate(-512 -512)"',
-);
+// The mark is sized for Android's adaptive safe zone (66 of 108 dp), which also fits the
+// W3C maskable safe radius (40%). Plain squares have no mask, so they zoom it to fill the
+// tile, the favicon most so it reads in a 16 px tab.
+const scaled = (s: number) =>
+  source.replace(
+    '<g id="mark"',
+    `<g id="mark" transform="translate(512 512) scale(${s}) translate(-512 -512)"`,
+  );
 const markOnly = source.replace(FIELD, '');
 // The launcher tints a monochrome icon itself; only the alpha counts.
 const monochrome = markOnly.replace(/#(FFB547|F5F5F4)/g, '#FFFFFF');
 const fieldOnly = source.replace(MARK, '');
 
 const b64 = (svg: string) => Buffer.from(svg).toString('base64');
-const plain = b64(source);
+const tile = b64(scaled(1.4));
 
 const SIZES: [string, number, string][] = [
-  ['public/icon-192.png', 192, plain],
-  ['public/icon-512.png', 512, plain],
-  ['public/icon-maskable-512.png', 512, b64(maskable)],
-  ['public/apple-touch-icon.png', 180, plain],
-  ['assets/images/favicon.png', 48, plain],
-  ['assets/images/icon.png', 1024, plain],
+  ['public/icon-192.png', 192, tile],
+  ['public/icon-512.png', 512, tile],
+  ['public/icon-maskable-512.png', 512, b64(source)],
+  ['public/apple-touch-icon.png', 180, tile],
+  ['assets/images/favicon.png', 48, b64(scaled(1.7))],
+  ['assets/images/icon.png', 1024, tile],
   ['assets/images/android-icon-foreground.png', 1024, b64(markOnly)],
   ['assets/images/android-icon-background.png', 1024, b64(fieldOnly)],
   ['assets/images/android-icon-monochrome.png', 1024, b64(monochrome)],
