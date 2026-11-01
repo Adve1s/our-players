@@ -49,7 +49,7 @@ export function DayStrip({ date, disabled, onGo }: Props) {
               key={i}
               accessibilityRole="button"
               accessibilityLabel={dayLabel(d)}
-              aria-selected={selected}
+              aria-current={selected ? 'date' : undefined}
               aria-disabled={disabled}
               disabled={disabled}
               onPress={() => onGo(d)}

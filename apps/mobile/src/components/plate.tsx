@@ -69,7 +69,9 @@ export function Plate({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
         {side(away, home, false)}
         <View style={{ alignItems: 'center' }}>
-          <Text style={{ color: t.colors.onPlate, ...t.type.bodyStrong }}>{status}</Text>
+          {status ? (
+            <Text style={{ color: t.colors.onPlate, ...t.type.bodyStrong }}>{status}</Text>
+          ) : null}
           <Text style={{ color: t.colors.onPlateMuted, ...t.type.meta }}>{league}</Text>
         </View>
         {side(home, away, true)}

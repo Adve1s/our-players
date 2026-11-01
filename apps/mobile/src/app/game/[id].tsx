@@ -37,8 +37,8 @@ export default function GamePage() {
   let body: ReactNode;
   if (g) {
     const table = periodTable(g);
-    // null period scores: a schedule-only game, whose rows are upcoming ones, shown as on Today.
-    const upcoming = g.periodScores === null;
+    // A game without box-score rows (only upcoming ones, or none) shows them as on Today.
+    const upcoming = g.rows.every((r) => r.type === 'upcoming');
     const sections = upcoming ? [] : boxSections(g);
     // A box-score row leaves the team out (its box is headed by it); an upcoming row names it, as on Today.
     const tableRow = (row: BoxScoreRow, team: string, set: ColumnSet): StatTableRow => ({
@@ -69,7 +69,8 @@ export default function GamePage() {
             <Plate
               away={g.away}
               home={g.home}
-              status={statusLabel(g)}
+              // A scheduled game's status is its start time, which the when line already has.
+              status={g.status === 'SCHEDULED' ? '' : statusLabel(g)}
               league={g.league}
               size="page"
               when={gameWhen(g)}

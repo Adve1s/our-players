@@ -110,7 +110,7 @@ function RecentGames({ player }: { player: PlayerResponse }) {
       ),
       values: entry.type === 'line' ? values(entry.line, 'today') : null,
       text: rowText(dayRow, entry.game.status)[0],
-      label: `${caption}, ${label}, open game`,
+      label: `${dayLabel(entry.game.gameDate)}, ${caption}, ${label}, open game`,
       onPress: () => router.push(`/game/${entry.game.id}`),
     };
   };
