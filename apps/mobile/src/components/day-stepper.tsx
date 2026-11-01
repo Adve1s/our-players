@@ -41,8 +41,7 @@ function StepButton({
       <Text
         style={{
           color: disabled ? t.colors.textDisabled : t.colors.accent,
-          fontSize: text.length === 1 ? t.font.title : t.font.body,
-          fontWeight: '600',
+          ...(text.length === 1 ? t.type.heading : t.type.bodyStrong),
         }}
       >
         {text}
@@ -67,8 +66,7 @@ export function DayStepper({ date, prev, next, onLatest, onGo, onLatestPress }: 
           flex: 1,
           textAlign: 'center',
           color: t.colors.text,
-          fontSize: t.font.title,
-          fontWeight: '600',
+          ...t.type.heading,
         }}
       >
         {dayLabel(date)}

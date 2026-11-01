@@ -10,7 +10,7 @@ export function Skeleton() {
         height: t.space.md,
         width,
         backgroundColor: t.colors.border,
-        borderRadius: t.radius,
+        borderRadius: t.radius.sheet,
       }}
     />
   );
@@ -27,7 +27,7 @@ export function Skeleton() {
           key={i}
           style={{
             backgroundColor: t.colors.surface,
-            borderRadius: t.radius,
+            borderRadius: t.radius.sheet,
             padding: t.space.lg,
             gap: t.space.md,
           }}

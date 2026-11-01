@@ -11,13 +11,13 @@ export function DayMessageCard({ text, action }: { text: string; action?: Action
     <View
       style={{
         backgroundColor: t.colors.surface,
-        borderRadius: t.radius,
+        borderRadius: t.radius.sheet,
         padding: t.space.lg,
         gap: t.space.md,
         alignItems: 'flex-start',
       }}
     >
-      <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{text}</Text>
+      <Text style={{ color: t.colors.text, ...t.type.body }}>{text}</Text>
       {action ? <AccentButton label={action.label} onPress={action.onPress} /> : null}
     </View>
   );

@@ -58,7 +58,7 @@ export function MarkToggles({
         <Text
           style={{
             color: mark === 'hidden' ? t.colors.accent : t.colors.textMuted,
-            fontSize: t.font.caption,
+            ...t.type.meta,
           }}
         >
           {mark === 'hidden' ? 'Hidden' : 'Hide'}
@@ -73,7 +73,7 @@ export function MarkToggles({
         <Text
           style={{
             color: mark === 'favorite' ? t.colors.accent : t.colors.text,
-            fontSize: t.font.icon,
+            fontSize: t.icon.bar,
           }}
         >
           {mark === 'favorite' ? '★' : '☆'}

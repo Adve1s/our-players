@@ -42,12 +42,10 @@ export function PlayerItem({
           marginVertical: -t.space.sm,
         }}
       >
-        <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
+        <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>
           {player.firstName} {player.lastName}
         </Text>
-        <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>
-          {playerMeta(player)}
-        </Text>
+        <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{playerMeta(player)}</Text>
       </Pressable>
       {/* The buttons' 48 px touch targets reach into the row's padding, so a row is as tall as a CountryItem. */}
       <View style={{ flexDirection: 'row', marginVertical: -t.space.sm }}>{children}</View>

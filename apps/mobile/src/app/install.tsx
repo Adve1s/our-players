@@ -38,7 +38,7 @@ export default function Install() {
       {PLATFORMS.map((p) => (
         <Card key={p.title} large title={p.title}>
           {p.steps.map((s) => (
-            <Text key={s} style={{ color: t.colors.text, fontSize: t.font.body }}>
+            <Text key={s} style={{ color: t.colors.text, ...t.type.body }}>
               {s}
             </Text>
           ))}

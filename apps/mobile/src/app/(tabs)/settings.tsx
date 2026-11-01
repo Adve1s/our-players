@@ -49,20 +49,17 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
       <Text
         style={{
           color: t.colors.text,
-          fontSize: t.font.body,
-          fontWeight: '700',
+          ...t.type.bodyStrong,
           minWidth: t.space.xl * 2,
         }}
       >
         {row.code}
       </Text>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{row.name}</Text>
+        <Text style={{ color: t.colors.text, ...t.type.body }}>{row.name}</Text>
         {counts ? <Caption>{counts}</Caption> : null}
       </View>
-      <Text style={{ color: t.colors.accent, fontSize: t.font.title, fontWeight: '700' }}>
-        {row.selected ? '✓' : ''}
-      </Text>
+      <Text style={{ color: t.colors.accent, ...t.type.heading }}>{row.selected ? '✓' : ''}</Text>
     </Pressable>
   );
 }
@@ -122,7 +119,7 @@ function PlayerList({
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
+                <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>
                   {gone ? 'Undo' : 'Remove'}
                 </Text>
               </Pressable>
@@ -204,18 +201,18 @@ export default function Settings() {
                 alignItems: 'center',
               }}
             >
-              <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{l}</Text>
+              <Text style={{ color: t.colors.text, ...t.type.body }}>{l}</Text>
               <Switch
                 accessibilityLabel={l}
                 value={on}
                 disabled={locked}
                 onValueChange={() => toggleLeague(l)}
-                trackColor={{ true: t.colors.accent, false: t.colors.border }}
+                trackColor={{ true: t.colors.accentFill, false: t.colors.border }}
                 thumbColor={on ? t.colors.thumb : t.colors.textMuted}
                 // react-native-web takes the "on" thumb from this web-only prop (not in RN's types), else teal.
                 {...{ activeThumbColor: t.colors.thumb }}
                 // react-native-web draws a disabled switch with the given colors, unchanged.
-                style={{ opacity: locked ? 0.4 : 1 }}
+                style={{ opacity: locked ? t.opacity.disabled : 1 }}
               />
             </View>
           );
@@ -262,9 +259,7 @@ export default function Settings() {
       />
 
       <Card large title="About">
-        <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
-          Our Players
-        </Text>
+        <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>Our Players</Text>
         <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
         <Caption>Data from the public NHL and ESPN web APIs.</Caption>
         <Caption>Not affiliated with the NHL or NBA.</Caption>
@@ -276,9 +271,7 @@ export default function Settings() {
             onPress={() => router.push('/install')}
             style={{ minHeight: t.space.xl * 2, justifyContent: 'center' }}
           >
-            <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
-              Add to Home Screen
-            </Text>
+            <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>Add to Home Screen</Text>
           </Pressable>
         ) : null}
       </Card>

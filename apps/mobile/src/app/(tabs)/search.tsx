@@ -77,7 +77,7 @@ export default function Search() {
       <View
         style={{
           backgroundColor: t.colors.surface,
-          borderRadius: t.radius,
+          borderRadius: t.radius.sheet,
           padding: t.space.lg,
           gap: t.space.md,
         }}

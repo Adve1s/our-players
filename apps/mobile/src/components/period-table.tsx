@@ -11,35 +11,37 @@ export function PeriodTableView({ table }: { table: PeriodTable }) {
   const cell = (t.space.xl + t.space.md) * fontScale;
   const last = table.labels.length - 1;
   const label = periodTableLabel(table);
-  const line = (head: string, cells: string[], muted: boolean) => (
-    <View key={head} style={{ flexDirection: 'row' }}>
-      <Text
-        style={{
-          width: first,
-          color: muted ? t.colors.textMuted : t.colors.text,
-          fontSize: muted ? t.font.caption : t.font.body,
-          fontWeight: '600',
-        }}
-      >
-        {head}
-      </Text>
-      {cells.map((c, i) => (
+  const line = (head: string, cells: string[], muted: boolean) => {
+    // The header row (muted) is a size smaller; the head and totals columns are bold.
+    const [plain, bold] = muted ? [t.type.meta, t.type.label] : [t.type.body, t.type.bodyStrong];
+    return (
+      <View key={head} style={{ flexDirection: 'row' }}>
         <Text
-          // biome-ignore lint/suspicious/noArrayIndexKey: a column's place is its identity.
-          key={i}
           style={{
-            width: cell,
-            textAlign: 'center',
+            width: first,
             color: muted ? t.colors.textMuted : t.colors.text,
-            fontSize: muted ? t.font.caption : t.font.body,
-            fontWeight: i === last ? '700' : '400',
+            ...bold,
           }}
         >
-          {c}
+          {head}
         </Text>
-      ))}
-    </View>
-  );
+        {cells.map((c, i) => (
+          <Text
+            // biome-ignore lint/suspicious/noArrayIndexKey: a column's place is its identity.
+            key={i}
+            style={{
+              width: cell,
+              textAlign: 'center',
+              color: muted ? t.colors.textMuted : t.colors.text,
+              ...(i === last ? bold : plain),
+            }}
+          >
+            {c}
+          </Text>
+        ))}
+      </View>
+    );
+  };
   return (
     <ScrollView horizontal>
       <View accessible accessibilityLabel={label} style={{ gap: t.space.sm }}>

@@ -39,16 +39,16 @@ export function PlayerRow({
           }),
         }}
       >
-        <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
+        <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>
           {`${row.player.firstName} ${row.player.lastName}  `}
-          <Text style={{ color: t.colors.textMuted, fontWeight: '400' }}>{team}</Text>
+          <Text style={{ color: t.colors.textMuted, ...t.type.body }}>{team}</Text>
         </Text>
         {rowText(row, status).map((line) => (
           <Text
             key={line}
             style={{
               color: row.type === 'line' ? t.colors.text : t.colors.textMuted,
-              fontSize: t.font.body,
+              ...t.type.body,
             }}
           >
             {line}

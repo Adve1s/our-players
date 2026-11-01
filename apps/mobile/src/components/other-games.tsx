@@ -24,10 +24,8 @@ export function OtherGames({ games }: { games: DayGameResponse[] }) {
           paddingHorizontal: t.space.xs,
         }}
       >
-        <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
-          {title}
-        </Text>
-        <Text style={{ color: t.colors.accent, fontSize: t.font.body }}>{open ? '▴' : '▾'}</Text>
+        <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>{title}</Text>
+        <Text style={{ color: t.colors.accent, ...t.type.body }}>{open ? '▴' : '▾'}</Text>
       </Pressable>
       {open ? games.map((g) => <GameCard key={g.id} game={g} compact />) : null}
     </View>

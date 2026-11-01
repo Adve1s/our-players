@@ -25,11 +25,11 @@ function Bio({ player }: { player: PlayerResponse }) {
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space.md }}>
         <View style={{ flex: 1, gap: t.space.xs }}>
-          <Text style={{ color: t.colors.text, fontSize: t.font.title, fontWeight: '700' }}>
+          <Text style={{ color: t.colors.text, ...t.type.title }}>
             {`${player.firstName} ${player.lastName}`}
           </Text>
           {bioLines(player, localDate(new Date())).map((line) => (
-            <Text key={line} style={{ color: t.colors.textMuted, fontSize: t.font.body }}>
+            <Text key={line} style={{ color: t.colors.textMuted, ...t.type.body }}>
               {line}
             </Text>
           ))}
@@ -52,9 +52,7 @@ function Season({ entry }: { entry: SeasonStatsEntry }) {
         {seasonCells(entry).map((cell) => (
           <View key={cell.label} accessible style={{ width: '25%', gap: t.space.xs }}>
             <Caption>{cell.label}</Caption>
-            <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
-              {cell.value}
-            </Text>
+            <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>{cell.value}</Text>
           </View>
         ))}
       </View>
@@ -81,7 +79,7 @@ function LogRow({ entry, player }: { entry: GameLogEntry; player: PlayerResponse
           key={line}
           style={{
             color: entry.type === 'line' ? t.colors.text : t.colors.textMuted,
-            fontSize: t.font.body,
+            ...t.type.body,
           }}
         >
           {line}

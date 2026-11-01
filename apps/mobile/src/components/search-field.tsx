@@ -28,13 +28,13 @@ export function SearchField({
       onBlur={() => setFocused(false)}
       style={{
         color: t.colors.text,
-        fontSize: t.font.body,
+        ...t.type.body,
         borderWidth: 1,
         // The accent border is the focus indicator; a 0-width solid outline hides the browser's (style auto ignores width).
         borderColor: focused ? t.colors.accent : t.colors.border,
         outlineStyle: 'solid',
         outlineWidth: 0,
-        borderRadius: t.radius,
+        borderRadius: t.radius.control,
         paddingHorizontal: t.space.md,
         paddingVertical: t.space.sm,
       }}

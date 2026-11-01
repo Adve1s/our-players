@@ -35,12 +35,10 @@ export default function GamePage() {
         <Card>
           <View style={{ gap: t.space.xs }}>
             <Caption>{g.league}</Caption>
-            <Text style={{ color: t.colors.text, fontSize: t.font.title, fontWeight: '700' }}>
-              {scoreText(g)}
-            </Text>
+            <Text style={{ color: t.colors.text, ...t.type.title }}>{scoreText(g)}</Text>
             {/* A scheduled game's status is its start time, which the line below already has. */}
             {g.status === 'SCHEDULED' ? null : (
-              <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{statusLabel(g)}</Text>
+              <Text style={{ color: t.colors.text, ...t.type.body }}>{statusLabel(g)}</Text>
             )}
             <Caption>{gameWhen(g)}</Caption>
           </View>

@@ -13,7 +13,7 @@ export function GameCard({ game, compact = false }: { game: DayGameResponse; com
     <View
       style={{
         backgroundColor: t.colors.surface,
-        borderRadius: t.radius,
+        borderRadius: t.radius.sheet,
         paddingHorizontal: t.space.lg,
         paddingVertical: compact ? t.space.md : t.space.lg,
         gap: t.space.md,
@@ -32,13 +32,9 @@ export function GameCard({ game, compact = false }: { game: DayGameResponse; com
           marginVertical: -t.space.md,
         }}
       >
-        <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption, fontWeight: '600' }}>
-          {game.league}
-        </Text>
-        <Text style={{ flex: 1, color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
-          {score}
-        </Text>
-        <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{status}</Text>
+        <Text style={{ color: t.colors.textMuted, ...t.type.label }}>{game.league}</Text>
+        <Text style={{ flex: 1, color: t.colors.text, ...t.type.bodyStrong }}>{score}</Text>
+        <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{status}</Text>
       </Pressable>
       {game.rows.map((row) => (
         <PlayerRow

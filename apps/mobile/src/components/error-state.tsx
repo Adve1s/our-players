@@ -16,9 +16,7 @@ export function RetryMessage({ message, onRetry }: { message: string; onRetry: (
         gap: t.space.lg,
       }}
     >
-      <Text style={{ color: t.colors.text, fontSize: t.font.body, textAlign: 'center' }}>
-        {message}
-      </Text>
+      <Text style={{ color: t.colors.text, ...t.type.body, textAlign: 'center' }}>{message}</Text>
       <AccentButton label="Try again" onPress={onRetry} />
     </View>
   );

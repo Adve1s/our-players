@@ -19,7 +19,7 @@ export function Card({
     <View
       style={{
         backgroundColor: t.colors.surface,
-        borderRadius: t.radius,
+        borderRadius: t.radius.sheet,
         padding: t.space.lg,
         gap: t.space.md,
       }}
@@ -32,14 +32,13 @@ export function Card({
             accessibilityRole="header"
             style={{
               color: t.colors.text,
-              fontSize: large ? t.font.title : t.font.body,
-              fontWeight: '600',
+              ...(large ? t.type.heading : t.type.bodyStrong),
             }}
           >
             {title}
           </Text>
           {aside ? (
-            <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{aside}</Text>
+            <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{aside}</Text>
           ) : null}
         </View>
       ) : null}

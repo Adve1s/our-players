@@ -29,7 +29,7 @@ function Banner({ text, onRetry }: { text: string; onRetry?: () => void }) {
       style={{
         borderWidth: 1,
         borderColor: t.colors.border,
-        borderRadius: t.radius,
+        borderRadius: t.radius.sheet,
         paddingVertical: t.space.md,
         // Minus the 1px border so the text lines up with card content.
         paddingHorizontal: t.space.lg - 1,
@@ -37,7 +37,7 @@ function Banner({ text, onRetry }: { text: string; onRetry?: () => void }) {
         alignItems: 'flex-start',
       }}
     >
-      <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{text}</Text>
+      <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{text}</Text>
       {onRetry ? <AccentButton label="Try again" onPress={onRetry} /> : null}
     </View>
   );

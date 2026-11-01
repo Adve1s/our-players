@@ -14,8 +14,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: t.colors.textMuted,
         // Zero the beside-icon margins (meant for the gap to an icon) so labels center in their tab.
         tabBarLabelStyle: {
-          fontSize: t.font.body,
-          fontWeight: '600',
+          ...t.type.bodyStrong,
           marginStart: 0,
           marginEnd: 0,
         },
