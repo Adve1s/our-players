@@ -28,7 +28,7 @@
   6. On your Android phone (Expo Go), in light and dark and at the largest font size, and in a desktop browser, the app looks right and nothing is clipped (you).
   7. `pnpm verify` green.
 - Screenshots: `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium pnpm screenshots` (writes `apps/mobile/.screenshots/`). After a task that changes a screen, the task reviewer (not the implementer) compares that screen's light and dark shots with the matching mockup PNG.
-- **Session cut (§S17 size rule):** this session runs Tasks 1–6 (tokens, fonts and icons, helpers, shared components, brand), then stops for `/handoff`; Tasks 7–11 run in a Resume session on the same branch.
+- **Session cut (§S17 size rule):** this session runs Tasks 1–6 (tokens, fonts and icons, helpers, shared components, brand) and stops at that task boundary (no `/handoff` mid-plan, SESSIONS.md "Sizing"); Tasks 7–11, the final review and the owner checks run in a Resume session on the same branch, from the same ledger.
 
 ## Review Focus
 
@@ -168,7 +168,7 @@ Column sets (labels exact):
 - [ ] **Step 3:** Update `app.json`, `manifest.json`, `index.html`; delete `assets/expo.icon`. `grep -n "E6F4FE\|208AEF\|expo.icon" apps/mobile/app.json` → nothing. Run `pnpm test apps/mobile/test/web-headers` (it reads `public/`) and `pnpm verify` → green.
 - [ ] **Step 4: Commit** `feat(mobile): sunrise icon, adaptive layers and splash from one SVG`
 
-**— Part 1 ends here: `pnpm verify` green, `pnpm screenshots` re-run, then the session stops for `/handoff` (PROGRESS names Task 7 as the Resume start).**
+**— Part 1 ends here: `pnpm verify` green, `pnpm screenshots` re-run; the session stops at this boundary and continues with SESSIONS.md's Resume template (the ledger names Task 7 as the next task).**
 
 ## Part 2 — Resume session
 
