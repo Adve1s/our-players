@@ -192,8 +192,7 @@ const SHOTS: Shot[] = [
     take: async (page) => {
       await day(page, '2026-03-16');
       await page.getByRole('button', { name: 'Other games (8)' }).click();
-      // The plate splits the score into separate texts; its button label keeps it whole.
-      await page.getByRole('button', { name: /ORL 112 – 124 ATL/ }).waitFor();
+      await seen(page, 'ORL 112 – 124 ATL');
       await page
         .getByText('Other games (8)')
         .evaluate((el) => el.scrollIntoView({ block: 'start' }));
@@ -693,6 +692,8 @@ async function main(): Promise<void> {
           viewport: { width: 412, height: 915 },
           deviceScaleFactor: 2,
           colorScheme,
+          // The app's fades and the skeleton pulse show their end state, so a shot never lands mid-animation.
+          reducedMotion: 'reduce',
           timezoneId: 'Europe/Riga',
           locale: 'en-GB',
         });

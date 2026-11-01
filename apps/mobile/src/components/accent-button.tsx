@@ -9,16 +9,19 @@ export function AccentButton({ label, onPress }: { label: string; onPress: () =>
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={{
+      style={({ pressed }) => ({
         backgroundColor: t.colors.accentFill,
         borderRadius: t.radius.control,
-        minHeight: t.space.xl * 2,
+        minHeight: t.layout.target,
         justifyContent: 'center',
         paddingVertical: t.space.sm,
         paddingHorizontal: t.space.lg,
-      }}
+        opacity: pressed ? t.opacity.pressed : 1,
+      })}
     >
-      <Text style={{ color: t.colors.onAccent, ...t.type.bodyStrong }}>{label}</Text>
+      <Text style={{ color: t.colors.onAccent, textAlign: 'center', ...t.type.bodyStrong }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }

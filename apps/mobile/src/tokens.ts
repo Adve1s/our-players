@@ -98,4 +98,4 @@ export const layout = {
 } as const;
 // The Latest pill only; boxes stay flat.
 export const shadow = { float: '0 4px 14px rgba(0, 0, 0, 0.25)' } as const;
-export const opacity = { pressed: 0.6, disabled: 0.4 } as const;
+export const opacity = { pressed: 0.6, disabled: 0.4, dimmed: 0.5 } as const;

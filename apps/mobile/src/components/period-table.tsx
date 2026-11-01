@@ -11,20 +11,13 @@ export function PeriodTableView({ table }: { table: PeriodTable }) {
   const cell = (t.space.xl + t.space.md) * fontScale;
   const last = table.labels.length - 1;
   const label = periodTableLabel(table);
-  const line = (head: string, cells: string[], muted: boolean) => {
-    // The header row (muted) is a size smaller; the head and totals columns are bold.
-    const [plain, bold] = muted ? [t.type.meta, t.type.label] : [t.type.body, t.type.bodyStrong];
+  const line = (head: string, cells: string[], header: boolean) => {
+    // The header row is all label; below it the team and totals columns are bold.
+    const [plain, bold] = header ? [t.type.label, t.type.label] : [t.type.body, t.type.bodyStrong];
+    const color = header ? t.colors.textMuted : t.colors.text;
     return (
       <View key={head} style={{ flexDirection: 'row' }}>
-        <Text
-          style={{
-            width: first,
-            color: muted ? t.colors.textMuted : t.colors.text,
-            ...bold,
-          }}
-        >
-          {head}
-        </Text>
+        <Text style={{ width: first, color, ...bold }}>{head}</Text>
         {cells.map((c, i) => (
           <Text
             // biome-ignore lint/suspicious/noArrayIndexKey: a column's place is its identity.
@@ -32,7 +25,8 @@ export function PeriodTableView({ table }: { table: PeriodTable }) {
             style={{
               width: cell,
               textAlign: 'center',
-              color: muted ? t.colors.textMuted : t.colors.text,
+              color,
+              fontVariant: ['tabular-nums'],
               ...(i === last ? bold : plain),
             }}
           >

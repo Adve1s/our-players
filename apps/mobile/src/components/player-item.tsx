@@ -24,8 +24,8 @@ export function PlayerItem({
         alignItems: 'center',
         gap: t.space.md,
         paddingVertical: t.space.sm,
-        minHeight: t.space.xl * 2,
-        borderTopWidth: divider ? 1 : 0,
+        minHeight: t.layout.target,
+        borderTopWidth: divider ? t.layout.hairline : 0,
         borderTopColor: t.colors.border,
       }}
     >
@@ -36,8 +36,8 @@ export function PlayerItem({
         onPress={() => router.push(`/player/${player.id}`)}
         style={{
           flex: 1,
-          opacity: dimmed ? 0.5 : 1,
-          minHeight: t.space.xl * 2,
+          opacity: dimmed ? t.opacity.dimmed : 1,
+          minHeight: t.layout.target,
           justifyContent: 'center',
           marginVertical: -t.space.sm,
         }}

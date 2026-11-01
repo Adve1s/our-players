@@ -2,15 +2,14 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { useTheme } from '../theme';
 
-// Settings heads its cards at title size; the player and game pages' sections read as body text.
 export function Card({
   title,
   aside,
-  large = false,
   children,
 }: {
   title?: string;
   aside?: string;
+  // shortcut: ignored since every title is a heading; Settings still passes it until Task 10 removes it.
   large?: boolean;
   children: ReactNode;
 }) {
@@ -28,13 +27,7 @@ export function Card({
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
         >
-          <Text
-            accessibilityRole="header"
-            style={{
-              color: t.colors.text,
-              ...(large ? t.type.heading : t.type.bodyStrong),
-            }}
-          >
+          <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.heading }}>
             {title}
           </Text>
           {aside ? (

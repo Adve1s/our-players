@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { PublicId } from '@our-players/shared';
 import type { ReactNode } from 'react';
 import { Pressable, Text } from 'react-native';
@@ -24,12 +25,15 @@ export function MarkButton({
       aria-checked={checked}
       accessibilityLabel={label}
       onPress={onPress}
-      style={{
-        minWidth: t.space.xl * 2,
-        minHeight: t.space.xl * 2,
+      style={({ pressed }) => ({
+        minWidth: t.layout.target,
+        minHeight: t.layout.target,
+        flexDirection: 'row',
+        gap: t.space.xs,
         alignItems: 'center',
         justifyContent: 'center',
-      }}
+        opacity: pressed ? t.opacity.pressed : 1,
+      })}
     >
       {children}
     </Pressable>
@@ -47,37 +51,31 @@ export function MarkToggles({
   const toggleFavorite = usePrefs((s) => s.toggleFavorite);
   const toggleHidden = usePrefs((s) => s.toggleHidden);
   const name = `${player.firstName} ${player.lastName}`;
+  const hideColor = mark === 'hidden' ? t.colors.accent : t.colors.textMuted;
   return (
     <>
-      {/* Hide is the secondary action: small, quiet, away from the edge. */}
+      {/* Hide is the secondary action: muted, away from the edge. */}
       <MarkButton
         label={`Hide ${name}`}
         checked={mark === 'hidden'}
         onPress={() => toggleHidden(player.id)}
       >
-        <Text
-          style={{
-            color: mark === 'hidden' ? t.colors.accent : t.colors.textMuted,
-            ...t.type.meta,
-          }}
-        >
+        <Ionicons name="eye-off-outline" size={t.icon.bar} color={hideColor} />
+        <Text style={{ color: hideColor, ...t.type.bodyStrong }}>
           {mark === 'hidden' ? 'Hidden' : 'Hide'}
         </Text>
       </MarkButton>
-      {/* The star is why people search: on the edge, large, in text colour even when off. */}
+      {/* The star is why people search: on the edge and larger than Hide's text. */}
       <MarkButton
         label={`Favorite ${name}`}
         checked={mark === 'favorite'}
         onPress={() => toggleFavorite(player.id)}
       >
-        <Text
-          style={{
-            color: mark === 'favorite' ? t.colors.accent : t.colors.text,
-            fontSize: t.icon.bar,
-          }}
-        >
-          {mark === 'favorite' ? '★' : '☆'}
-        </Text>
+        <Ionicons
+          name={mark === 'favorite' ? 'star' : 'star-outline'}
+          size={t.icon.bar}
+          color={mark === 'favorite' ? t.colors.accent : t.colors.textMuted}
+        />
       </MarkButton>
     </>
   );

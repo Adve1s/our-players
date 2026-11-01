@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { TextInput } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { useTheme } from '../theme';
 
 export function SearchField({
@@ -15,29 +16,44 @@ export function SearchField({
 }) {
   const t = useTheme();
   const [focused, setFocused] = useState(false);
+  const border = focused ? 2 * t.layout.hairline : t.layout.hairline;
   return (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={label}
-      accessibilityLabel={label}
-      maxLength={maxLength}
-      autoCorrect={false}
-      placeholderTextColor={t.colors.textMuted}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+    <View
       style={{
-        color: t.colors.text,
-        ...t.type.body,
-        borderWidth: 1,
-        // The accent border is the focus indicator; a 0-width solid outline hides the browser's (style auto ignores width).
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.sm,
+        minHeight: t.layout.target,
+        backgroundColor: t.colors.surface,
+        // The accent border is the focus indicator; the padding takes up its extra width, so the text doesn't move.
+        borderWidth: border,
         borderColor: focused ? t.colors.accent : t.colors.border,
-        outlineStyle: 'solid',
-        outlineWidth: 0,
         borderRadius: t.radius.control,
-        paddingHorizontal: t.space.md,
-        paddingVertical: t.space.sm,
+        paddingHorizontal: t.space.md + 2 * t.layout.hairline - border,
       }}
-    />
+    >
+      <Ionicons name="search" size={t.icon.inline} color={t.colors.textMuted} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={label}
+        accessibilityLabel={label}
+        maxLength={maxLength}
+        autoCorrect={false}
+        placeholderTextColor={t.colors.textMuted}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          flex: 1,
+          alignSelf: 'stretch',
+          color: t.colors.text,
+          ...t.type.body,
+          // A 0-width solid outline hides the browser's own focus ring (style auto ignores width).
+          outlineStyle: 'solid',
+          outlineWidth: 0,
+          paddingVertical: t.space.sm,
+        }}
+      />
+    </View>
   );
 }
