@@ -71,7 +71,7 @@ const strongLabels = (kind: LineStats['kind'], set: ColumnSet) =>
 describe('columns', () => {
   it.each<[LineStats['kind'], ColumnSet, string[], string[], string[]]>([
     ['hockey_skater', 'today', ['G', 'A', '+/-', 'SOG', 'TOI'], ['TOI'], ['G', 'A']],
-    ['hockey_goalie', 'today', ['SV/SA', 'SV%', 'GA', 'DEC'], ['SV/SA'], ['DEC']],
+    ['hockey_goalie', 'today', ['SV/SA', 'SV%', 'GA', 'DEC'], ['SV/SA', 'SV%'], ['DEC']],
     ['basketball_player', 'today', ['PTS', 'REB', 'AST', 'MIN'], [], ['PTS']],
     [
       'hockey_skater',
@@ -80,7 +80,7 @@ describe('columns', () => {
       ['TOI'],
       ['PTS'],
     ],
-    ['hockey_goalie', 'box', ['SV/SA', 'SV%', 'GA', 'TOI', 'DEC'], ['SV/SA', 'TOI'], []],
+    ['hockey_goalie', 'box', ['SV/SA', 'SV%', 'GA', 'TOI', 'DEC'], ['SV/SA', 'SV%', 'TOI'], []],
     [
       'basketball_player',
       'box',

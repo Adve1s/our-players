@@ -41,7 +41,12 @@ const skater = {
 };
 const goalie = {
   SVSA: cell<HockeyGoalieStats>('SV/SA', (s) => `${s.saves}/${s.shotsAgainst}`, true),
-  SVP: cell<HockeyGoalieStats>('SV%', (s) => (s.savePct === null ? DASH : savePct(s.savePct))),
+  // Wide: a shutout's "1.000" wraps in a narrow column.
+  SVP: cell<HockeyGoalieStats>(
+    'SV%',
+    (s) => (s.savePct === null ? DASH : savePct(s.savePct)),
+    true,
+  ),
   GA: cell<HockeyGoalieStats>('GA', (s) => String(s.goalsAgainst)),
   TOI: cell<HockeyGoalieStats>('TOI', (s) => toi(s.toiSeconds), true),
   DEC: cell<HockeyGoalieStats>('DEC', (s) => s.decision ?? DASH),
