@@ -9,7 +9,7 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function TabsLayout() {
   const t = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const tabIcon =
     (active: IconName, idle: IconName) =>
@@ -43,8 +43,9 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: t.colors.textMuted,
         tabBarLabelStyle: t.type.label,
         tabBarStyle: {
-          // The fixed default (49 + inset) clips a label under the icon; size to the content instead.
-          height: 'auto',
+          // The default (49 + inset) clips a label under the icon, and 'auto' collapses the bar's
+          // flex: 1 content to zero on native. Fit the uikit item: 5 padding twice, a 28 icon slot, the label.
+          height: 2 * 5 + 28 + t.type.label.lineHeight * fontScale + insets.bottom,
           backgroundColor: t.colors.surface,
           borderTopWidth: t.layout.hairline,
           borderTopColor: t.colors.border,
