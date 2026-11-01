@@ -86,7 +86,14 @@ export const radius = { control: 8, sheet: 12, full: 999 } as const;
 // Milliseconds.
 export const motion = { press: 100, expand: 200, pulse: 900 } as const;
 export const icon = { inline: 16, bar: 22 } as const;
-export const layout = { target: 48, maxWidth: 600, hairline: 1, markBar: 3 } as const;
+export const layout = {
+  target: 48,
+  maxWidth: 600,
+  hairline: 1,
+  markBar: 3,
+  statColumn: 34,
+  statColumnWide: 52,
+} as const;
 // The Latest pill only; boxes stay flat.
 export const shadow = { float: '0 4px 14px rgba(0, 0, 0, 0.25)' } as const;
 export const opacity = { pressed: 0.6, disabled: 0.4 } as const;
