@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   type LayoutRectangle,
+  Platform,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -50,6 +51,8 @@ export function DayStrip({ date, disabled, onGo }: Props) {
               accessibilityRole="button"
               accessibilityLabel={dayLabel(d)}
               aria-current={selected ? 'date' : undefined}
+              // RN Android ignores aria-current; aria-selected is invalid on a web button.
+              aria-selected={Platform.OS === 'web' ? undefined : selected}
               aria-disabled={disabled}
               disabled={disabled}
               onPress={() => onGo(d)}
