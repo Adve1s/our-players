@@ -206,6 +206,6 @@ describe('boxSections', () => {
 
 describe('gameWhen', () => {
   it('a start on the next local day shows its weekday', () => {
-    expect(gameWhen(hockey, 'en-GB', 'Europe/Riga')).toBe('Mon, Mar 16 · Tue 01:00');
+    expect(gameWhen(hockey, 'en-GB', 'Europe/Riga')).toBe('Mon, Mar 16, Tue 01:00');
   });
 });

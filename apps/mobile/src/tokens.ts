@@ -93,6 +93,8 @@ export const layout = {
   markBar: 3,
   statColumn: 34,
   statColumnWide: 52,
+  // The fixed name column of a scrolling box score, its inset included.
+  statLead: 140,
   // Plate scores stop growing here, so two 3-digit scores and the status fit a 360 dp phone at font scale 2.
   scoreMaxScale: 1.3,
 } as const;

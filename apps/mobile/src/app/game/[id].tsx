@@ -1,5 +1,5 @@
-import { ApiError } from '@our-players/shared';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { ApiError, type BoxScoreRow } from '@our-players/shared';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useGame } from '../../api/queries';
@@ -8,10 +8,12 @@ import { Card } from '../../components/card';
 import { DayMessageCard } from '../../components/day-message';
 import { ErrorState } from '../../components/error-state';
 import { PeriodTableView } from '../../components/period-table';
-import { PlayerRow } from '../../components/player-row';
+import { Plate } from '../../components/plate';
 import { Skeleton } from '../../components/skeleton';
-import { pageId, scoreText, statusLabel } from '../../lib/format';
+import { StatTable, type StatTableRow } from '../../components/stat-table';
+import { pageId, rowLabel, rowText, scoreText, statusLabel } from '../../lib/format';
 import { boxSections, gameWhen, periodTable } from '../../lib/game-page';
+import { boxGroups, type ColumnSet, columns, todayGroups, values } from '../../lib/stat-table';
 import { usePrefs } from '../../state/prefs-store';
 import { useTheme } from '../../theme';
 
@@ -26,49 +28,101 @@ export default function GamePage() {
   const q = useGame(id, { leagues, countries, favorites, hidden });
   const g = q.data;
 
+  const column = { width: '100%', maxWidth: t.layout.maxWidth, alignSelf: 'center' } as const;
+  const box = {
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.sheet,
+    overflow: 'hidden',
+  } as const;
+
   let body: ReactNode;
   if (g) {
     const table = periodTable(g);
-    const sections = boxSections(g);
+    // null period scores: a schedule-only game, whose rows are upcoming ones, shown as on Today.
+    const upcoming = g.periodScores === null;
+    const sections = upcoming ? [] : boxSections(g);
+    // A box-score row leaves the team out (its box is headed by it); an upcoming row names it, as on Today.
+    const tableRow = (row: BoxScoreRow, team: string, set: ColumnSet): StatTableRow => ({
+      key: row.player.id,
+      lead: (
+        <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>
+          {`${row.player.firstName} ${row.player.lastName}`}
+          {set === 'today' ? (
+            <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{` ${team}`}</Text>
+          ) : null}
+        </Text>
+      ),
+      values: row.type === 'line' ? values(row.line, set) : null,
+      text: rowText(row, g.status)[0],
+      label: `${rowLabel(row, g.status, team)}${row.shown ? ', your player' : ''}`,
+      onPress: () => router.push(`/player/${row.player.id}`),
+      marked: row.shown,
+    });
+    const noBox = (
+      <Card>
+        <Caption>No box score yet.</Caption>
+      </Card>
+    );
     body = (
-      <ScrollView contentContainerStyle={{ padding: t.space.lg, gap: t.space.md }}>
-        <Card>
-          <View style={{ gap: t.space.xs }}>
-            <Caption>{g.league}</Caption>
-            <Text style={{ color: t.colors.text, ...t.type.title }}>{scoreText(g)}</Text>
-            {/* A scheduled game's status is its start time, which the line below already has. */}
-            {g.status === 'SCHEDULED' ? null : (
-              <Text style={{ color: t.colors.text, ...t.type.body }}>{statusLabel(g)}</Text>
-            )}
-            <Caption>{gameWhen(g)}</Caption>
+      <ScrollView>
+        <View style={[column, { padding: t.space.md, gap: t.space.md }]}>
+          <View style={box}>
+            <Plate
+              away={g.away}
+              home={g.home}
+              status={statusLabel(g)}
+              league={g.league}
+              size="page"
+              when={gameWhen(g)}
+            />
+            {table ? (
+              <View style={{ padding: t.space.lg }}>
+                <PeriodTableView table={table} />
+              </View>
+            ) : null}
+            {upcoming && g.rows.length > 0 ? (
+              <View style={{ paddingHorizontal: t.space.lg, paddingVertical: t.space.xs }}>
+                {todayGroups(g.rows).map((group) => (
+                  <StatTable
+                    key={group.rows[0]?.player.id}
+                    columns={group.kind ? columns(group.kind, 'today') : null}
+                    rows={group.rows.map((row) => tableRow(row, g[row.side].abbrev, 'today'))}
+                  />
+                ))}
+              </View>
+            ) : null}
           </View>
-          {table ? <PeriodTableView table={table} /> : null}
-        </Card>
-        {sections.length > 0 ? (
-          sections.map((s) => (
-            <Card key={s.side} title={s.abbrev}>
-              {s.rows.map((row) => (
-                <PlayerRow
-                  key={row.player.id}
-                  row={row}
-                  status={g.status}
-                  team={s.abbrev}
-                  marked={row.shown}
+          {sections.map((s) => (
+            <View key={s.side} style={[box, { paddingTop: t.space.lg }]}>
+              <Text
+                accessibilityRole="header"
+                style={{
+                  color: t.colors.text,
+                  ...t.type.heading,
+                  paddingHorizontal: t.space.lg,
+                  paddingBottom: t.space.sm,
+                }}
+              >
+                {s.abbrev}
+              </Text>
+              {boxGroups(s.rows).map((group) => (
+                <StatTable
+                  key={group.kind ?? 'text'}
+                  scroll
+                  columns={group.kind ? columns(group.kind, 'box') : null}
+                  rows={group.rows.map((row) => tableRow(row, s.abbrev, 'box'))}
                 />
               ))}
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <Caption>No box score yet.</Caption>
-          </Card>
-        )}
+            </View>
+          ))}
+          {(upcoming ? g.rows.length === 0 : sections.length === 0) ? noBox : null}
+        </View>
       </ScrollView>
     );
   } else if (id === null || (q.error instanceof ApiError && q.error.status === 404)) {
     // Trying again can't make the game exist.
     body = (
-      <View style={{ padding: t.space.lg }}>
+      <View style={[column, { padding: t.space.md }]}>
         <DayMessageCard text="No such game." />
       </View>
     );

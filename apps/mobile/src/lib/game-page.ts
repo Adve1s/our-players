@@ -40,4 +40,4 @@ export const boxSections = (game: GameResponse): BoxSection[] =>
   })).filter((s) => s.rows.length > 0);
 
 export const gameWhen = (game: GameResponse, locale?: string, timeZone?: string): string =>
-  `${dayLabel(game.gameDate)} · ${startTime(game.startTimeUtc, game.gameDate, locale, timeZone)}`;
+  `${dayLabel(game.gameDate)}, ${startTime(game.startTimeUtc, game.gameDate, locale, timeZone)}`;
