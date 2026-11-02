@@ -4,5 +4,5 @@ import { useTheme } from '../theme';
 
 export function Caption({ children }: { children: ReactNode }) {
   const t = useTheme();
-  return <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>{children}</Text>;
+  return <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{children}</Text>;
 }

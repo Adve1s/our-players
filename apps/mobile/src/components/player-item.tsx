@@ -24,8 +24,8 @@ export function PlayerItem({
         alignItems: 'center',
         gap: t.space.md,
         paddingVertical: t.space.sm,
-        minHeight: t.space.xl * 2,
-        borderTopWidth: divider ? 1 : 0,
+        minHeight: t.layout.target,
+        borderTopWidth: divider ? t.layout.hairline : 0,
         borderTopColor: t.colors.border,
       }}
     >
@@ -36,18 +36,16 @@ export function PlayerItem({
         onPress={() => router.push(`/player/${player.id}`)}
         style={{
           flex: 1,
-          opacity: dimmed ? 0.5 : 1,
-          minHeight: t.space.xl * 2,
+          opacity: dimmed ? t.opacity.dimmed : 1,
+          minHeight: t.layout.target,
           justifyContent: 'center',
           marginVertical: -t.space.sm,
         }}
       >
-        <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
+        <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>
           {player.firstName} {player.lastName}
         </Text>
-        <Text style={{ color: t.colors.textMuted, fontSize: t.font.caption }}>
-          {playerMeta(player)}
-        </Text>
+        <Text style={{ color: t.colors.textMuted, ...t.type.meta }}>{playerMeta(player)}</Text>
       </Pressable>
       {/* The buttons' 48 px touch targets reach into the row's padding, so a row is as tall as a CountryItem. */}
       <View style={{ flexDirection: 'row', marginVertical: -t.space.sm }}>{children}</View>

@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { League, PublicId } from '@our-players/shared';
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
@@ -9,11 +10,13 @@ import {
   ScrollView,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCountries, usePlayers } from '../../api/queries';
 import { Caption } from '../../components/caption';
-import { Card } from '../../components/card';
+import { Section } from '../../components/card';
 import { ErrorState } from '../../components/error-state';
 import { PlayerItem } from '../../components/player-item';
 import { SearchField } from '../../components/search-field';
@@ -27,9 +30,10 @@ const LEAGUES: League[] = ['NHL', 'NBA'];
 
 function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void }) {
   const t = useTheme();
+  const { fontScale } = useWindowDimensions();
   const counts = LEAGUES.filter((l) => row.counts[l])
     .map((l) => `${l} ${row.counts[l]}`)
-    .join(' · ');
+    .join(', ');
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -41,28 +45,35 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
         alignItems: 'center',
         gap: t.space.md,
         paddingVertical: t.space.sm,
-        minHeight: t.space.xl * 2,
-        borderTopWidth: 1,
+        minHeight: t.layout.target,
+        borderTopWidth: t.layout.hairline,
         borderTopColor: t.colors.border,
       }}
     >
       <Text
         style={{
           color: t.colors.text,
-          fontSize: t.font.body,
-          fontWeight: '700',
-          minWidth: t.space.xl * 2,
+          ...t.type.bodyStrong,
+          // Wide enough for any code at the default size, so the names line up.
+          minWidth: t.layout.target,
         }}
       >
         {row.code}
       </Text>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{row.name}</Text>
+        <Text style={{ color: t.colors.text, ...t.type.body }}>{row.name}</Text>
         {counts ? <Caption>{counts}</Caption> : null}
       </View>
-      <Text style={{ color: t.colors.accent, fontSize: t.font.title, fontWeight: '700' }}>
-        {row.selected ? '✓' : ''}
-      </Text>
+      {row.selected ? (
+        // Grows with the text it marks.
+        <Ionicons
+          name="checkmark"
+          size={t.icon.bar * Math.max(1, fontScale)}
+          color={t.colors.accent}
+          // Clear of the list's scroll indicator.
+          style={{ marginRight: t.space.md }}
+        />
+      ) : null}
     </Pressable>
   );
 }
@@ -106,23 +117,24 @@ function PlayerList({
   } else {
     body = (
       <View>
-        {rows.map(({ player, removed: gone }) => {
+        {rows.map(({ player, removed: gone }, i) => {
           const name = `${player.firstName} ${player.lastName}`;
           return (
-            <PlayerItem key={player.id} player={player} dimmed={gone}>
+            // The box's top edge already bounds the first row.
+            <PlayerItem key={player.id} player={player} dimmed={gone} divider={i > 0}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={gone ? `Undo removing ${name}` : `Remove ${name}`}
                 onPress={() => (gone ? onUndo(player.id) : onRemove(player.id))}
                 style={{
-                  minWidth: t.space.xl * 2,
-                  minHeight: t.space.xl * 2,
+                  minWidth: t.layout.target,
+                  minHeight: t.layout.target,
                   // Right-aligned: Remove ↔ Undo keeps the label on the card's edge.
                   alignItems: 'flex-end',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
+                <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>
                   {gone ? 'Undo' : 'Remove'}
                 </Text>
               </Pressable>
@@ -136,18 +148,19 @@ function PlayerList({
   // No count until the list is in: "0" beside a spinner reads as "your favorites are gone".
   const counted = view === 'empty' || view === 'none-shown' || view === 'rows';
   return (
-    <Card
-      large
+    <Section
       title={title}
       aside={counted ? `${rows.filter((row) => !row.removed).length}` : undefined}
     >
       {body}
-    </Card>
+    </Section>
   );
 }
 
 export default function Settings() {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const leagues = usePrefs((s) => s.leagues);
   const countries = usePrefs((s) => s.countries);
   const toggleLeague = usePrefs((s) => s.toggleLeague);
@@ -185,103 +198,119 @@ export default function Settings() {
     status = <ErrorState error={error} onRetry={() => void refetch()} />;
   }
 
+  // The tab hides the navigator's header, so the status bar inset is the screen's own.
   return (
     <ScrollView
       style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ padding: t.space.lg, gap: t.space.lg }}
+      contentContainerStyle={{ paddingTop: insets.top }}
       keyboardShouldPersistTaps="handled"
     >
-      <Card large title="Leagues">
-        {LEAGUES.map((l) => {
-          const on = leagues.includes(l);
-          const locked = on && leagues.length === 1;
-          return (
-            <View
-              key={l}
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: t.colors.text, fontSize: t.font.body }}>{l}</Text>
-              <Switch
-                accessibilityLabel={l}
-                value={on}
-                disabled={locked}
-                onValueChange={() => toggleLeague(l)}
-                trackColor={{ true: t.colors.accent, false: t.colors.border }}
-                thumbColor={on ? t.colors.thumb : t.colors.textMuted}
-                // react-native-web takes the "on" thumb from this web-only prop (not in RN's types), else teal.
-                {...{ activeThumbColor: t.colors.thumb }}
-                // react-native-web draws a disabled switch with the given colors, unchanged.
-                style={{ opacity: locked ? 0.4 : 1 }}
-              />
-            </View>
-          );
-        })}
-        {leagues.length === 1 ? <Caption>At least one league stays on.</Caption> : null}
-      </Card>
-
-      <Card large title="Countries" aside={`${countries.length} selected`}>
-        <SearchField value={query} onChangeText={setQuery} label="Search countries" />
-        {countries.length === 0 ? (
-          <Caption>No countries selected — Today stays empty until you pick one.</Caption>
-        ) : null}
-        {status}
-        {/* No gap between rows: the Card's gap would add a band under each row's text. */}
-        {rows.length > 0 ? (
-          <View>
-            {rows.map((row) => (
-              <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
-            ))}
-          </View>
-        ) : null}
-        {data && rows.length === 0 && query.trim() ? (
-          <Caption>No country matches "{query.trim()}".</Caption>
-        ) : null}
-      </Card>
-
-      <PlayerList
-        title="Favorites"
-        mark="favorite"
-        empty="No favorites yet. Star players in Search."
-        noneShown="None of your favorites play in the leagues you have on."
-        removed={removed}
-        onRemove={remove}
-        onUndo={undo}
-      />
-      <PlayerList
-        title="Hidden"
-        mark="hidden"
-        empty="Nobody hidden. Hidden players never show on Today."
-        noneShown="None of your hidden players play in the leagues you have on."
-        removed={removed}
-        onRemove={remove}
-        onUndo={undo}
-      />
-
-      <Card large title="About">
-        <Text style={{ color: t.colors.text, fontSize: t.font.body, fontWeight: '600' }}>
-          Our Players
+      <View style={[t.column, { padding: t.space.lg, gap: t.space.xl }]}>
+        <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
+          Settings
         </Text>
-        <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
-        <Caption>Data from the public NHL and ESPN web APIs.</Caption>
-        <Caption>Not affiliated with the NHL or NBA.</Caption>
-        {/* Web only: on Android the app is already installed. */}
-        {Platform.OS === 'web' ? (
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel="Add to Home Screen"
-            onPress={() => router.push('/install')}
-            style={{ minHeight: t.space.xl * 2, justifyContent: 'center' }}
-          >
-            <Text style={{ color: t.colors.accent, fontSize: t.font.body, fontWeight: '600' }}>
-              Add to Home Screen
-            </Text>
-          </Pressable>
-        ) : null}
-      </Card>
+        <Section title="Leagues">
+          {/* No gap between rows: each draws its own divider. */}
+          <View>
+            {LEAGUES.map((l, i) => {
+              const on = leagues.includes(l);
+              const locked = on && leagues.length === 1;
+              return (
+                <View
+                  key={l}
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    minHeight: t.layout.target,
+                    borderTopWidth: i > 0 ? t.layout.hairline : 0,
+                    borderTopColor: t.colors.border,
+                  }}
+                >
+                  <Text style={{ color: t.colors.text, ...t.type.body }}>{l}</Text>
+                  <Switch
+                    accessibilityLabel={l}
+                    value={on}
+                    disabled={locked}
+                    onValueChange={() => toggleLeague(l)}
+                    trackColor={{ true: t.colors.accentFill, false: t.colors.border }}
+                    thumbColor={on ? t.colors.thumb : t.colors.textMuted}
+                    // react-native-web takes the "on" thumb from this web-only prop (not in RN's types), else teal.
+                    {...{ activeThumbColor: t.colors.thumb }}
+                    // react-native-web draws a disabled switch with the given colors, unchanged.
+                    style={{ opacity: locked ? t.opacity.disabled : 1 }}
+                  />
+                </View>
+              );
+            })}
+          </View>
+          {leagues.length === 1 ? <Caption>At least one league stays on.</Caption> : null}
+        </Section>
+
+        <Section title="Countries" aside={`${countries.length} selected`}>
+          <SearchField value={query} onChangeText={setQuery} label="Search countries" />
+          {countries.length === 0 ? (
+            <Caption>No countries selected — Today stays empty until you pick one.</Caption>
+          ) : null}
+          {status}
+          {/* No gap between rows: the Card's gap would add a band under each row's text. */}
+          {/* The list scrolls inside its box, so Favorites and Hidden stay a short scroll away;
+              about six rows show, the cut one hinting there is more. */}
+          {rows.length > 0 ? (
+            <ScrollView
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 6.5 * t.layout.target * Math.max(1, fontScale) }}
+            >
+              {rows.map((row) => (
+                <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
+              ))}
+            </ScrollView>
+          ) : null}
+          {data && rows.length === 0 && query.trim() ? (
+            <Caption>No country matches "{query.trim()}".</Caption>
+          ) : null}
+        </Section>
+
+        <PlayerList
+          title="Favorites"
+          mark="favorite"
+          empty="No favorites yet. Star players in Search."
+          noneShown="None of your favorites play in the leagues you have on."
+          removed={removed}
+          onRemove={remove}
+          onUndo={undo}
+        />
+        <PlayerList
+          title="Hidden"
+          mark="hidden"
+          empty="Nobody hidden. Hidden players never show on Today."
+          noneShown="None of your hidden players play in the leagues you have on."
+          removed={removed}
+          onRemove={remove}
+          onUndo={undo}
+        />
+
+        <Section title="About">
+          <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>Our Players</Text>
+          <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
+          <Caption>Data from the public NHL and ESPN web APIs.</Caption>
+          <Caption>Not affiliated with the NHL or NBA.</Caption>
+          {/* Web only: on Android the app is already installed. */}
+          {Platform.OS === 'web' ? (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Add to Home Screen"
+              onPress={() => router.push('/install')}
+              style={{ minHeight: t.layout.target, justifyContent: 'center' }}
+            >
+              <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>
+                Add to Home Screen
+              </Text>
+            </Pressable>
+          ) : null}
+        </Section>
+      </View>
     </ScrollView>
   );
 }

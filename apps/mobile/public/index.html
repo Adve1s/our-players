@@ -12,8 +12,8 @@
     <meta name="apple-mobile-web-app-title" content="Our Players" />
     <!-- default, not black-translucent: content never goes under the iPhone status bar without safe-area work. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1E1E20" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F1F1EF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131517" media="(prefers-color-scheme: dark)" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -25,13 +25,13 @@
       body {
         overflow: hidden;
       }
-      /* Theme background (theme.ts), so there is no white flash before the app paints. */
+      /* Theme background (tokens.ts), so there is no white flash before the app paints. */
       body {
-        background: #F2F2F5;
+        background: #F1F1EF;
       }
       @media (prefers-color-scheme: dark) {
         body {
-          background: #121212;
+          background: #131517;
         }
       }
       /* These styles make the root element full-height */

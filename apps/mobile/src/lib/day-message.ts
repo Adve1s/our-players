@@ -2,7 +2,7 @@ import type { DayResponse } from '@our-players/shared';
 import type { QueryObserverResult } from '@tanstack/react-query';
 import { dayLabel } from './format';
 
-export type DayMessage = { text: string; action: 'prev' | 'next' | 'settings' | null };
+export type DayMessage = { text: string; actions: ('prev' | 'next' | 'settings')[] };
 
 // The design's states 4–7, in its priority; null means the day has rows to show.
 export function dayMessage(
@@ -11,19 +11,30 @@ export function dayMessage(
   following: boolean,
 ): DayMessage | null {
   const label = dayLabel(day.gameDate);
-  if (day.games.length === 0) return { text: `No games on ${label}.`, action: null };
+  // Nothing stored after a future day means the schedule job hasn't reached it, not a day off.
+  const unscheduled = day.nextGameDate === null && latest !== null && day.gameDate > latest;
+  if (day.games.length === 0)
+    return {
+      text: unscheduled
+        ? `No games on ${label} yet. The schedule is loaded about a week ahead.`
+        : `No games on ${label}.`,
+      actions: [
+        ...(day.prevGameDate === null ? [] : (['prev'] as const)),
+        ...(day.nextGameDate === null ? [] : (['next'] as const)),
+      ],
+    };
   if (!following)
-    return { text: "You're not following any countries or players yet.", action: 'settings' };
+    return { text: "You're not following any countries or players yet.", actions: ['settings'] };
   if (day.games.some((g) => g.rows.length > 0)) return null;
   // Without a latest game day (meta failed) the day reads as past.
   if (latest !== null && day.gameDate > latest)
     return {
       text: `None of your players play on ${label}.`,
-      action: day.nextGameDate === null ? null : 'next',
+      actions: day.nextGameDate === null ? [] : ['next'],
     };
   return {
     text: `None of your players played on ${label}.`,
-    action: day.prevGameDate === null ? null : 'prev',
+    actions: day.prevGameDate === null ? [] : ['prev'],
   };
 }
 
