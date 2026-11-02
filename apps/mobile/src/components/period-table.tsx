@@ -11,35 +11,31 @@ export function PeriodTableView({ table }: { table: PeriodTable }) {
   const cell = (t.space.xl + t.space.md) * fontScale;
   const last = table.labels.length - 1;
   const label = periodTableLabel(table);
-  const line = (head: string, cells: string[], muted: boolean) => (
-    <View key={head} style={{ flexDirection: 'row' }}>
-      <Text
-        style={{
-          width: first,
-          color: muted ? t.colors.textMuted : t.colors.text,
-          fontSize: muted ? t.font.caption : t.font.body,
-          fontWeight: '600',
-        }}
-      >
-        {head}
-      </Text>
-      {cells.map((c, i) => (
-        <Text
-          // biome-ignore lint/suspicious/noArrayIndexKey: a column's place is its identity.
-          key={i}
-          style={{
-            width: cell,
-            textAlign: 'center',
-            color: muted ? t.colors.textMuted : t.colors.text,
-            fontSize: muted ? t.font.caption : t.font.body,
-            fontWeight: i === last ? '700' : '400',
-          }}
-        >
-          {c}
-        </Text>
-      ))}
-    </View>
-  );
+  const line = (head: string, cells: string[], header: boolean) => {
+    // The header row is all label; below it the team and totals columns are bold.
+    const [plain, bold] = header ? [t.type.label, t.type.label] : [t.type.body, t.type.bodyStrong];
+    const color = header ? t.colors.textMuted : t.colors.text;
+    return (
+      <View key={head} style={{ flexDirection: 'row' }}>
+        <Text style={{ width: first, color, ...bold }}>{head}</Text>
+        {cells.map((c, i) => (
+          <Text
+            // biome-ignore lint/suspicious/noArrayIndexKey: a column's place is its identity.
+            key={i}
+            style={{
+              width: cell,
+              textAlign: 'center',
+              color,
+              fontVariant: ['tabular-nums'],
+              ...(i === last ? bold : plain),
+            }}
+          >
+            {c}
+          </Text>
+        ))}
+      </View>
+    );
+  };
   return (
     <ScrollView horizontal>
       <View accessible accessibilityLabel={label} style={{ gap: t.space.sm }}>

@@ -31,17 +31,35 @@ export function startTime(
   const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(at);
   const day = localDate(at, timeZone);
   if (day === gameDate) return time;
-  return `${abbr(WEEKDAYS, new Date(`${day}T00:00:00Z`).getUTCDay())} ${time}`;
+  return `${abbr(WEEKDAYS, utc(day).getUTCDay())} ${time}`;
 }
 
-const WEEKDAYS = 'SunMonTueWedThuFriSat';
-const MONTHS = 'JanFebMarAprMayJunJulAugSepOctNovDec';
-const abbr = (names: string, i: number) => names.slice(i * 3, i * 3 + 3);
+const WEEKDAYS = 'Sunday Monday Tuesday Wednesday Thursday Friday Saturday'.split(' ');
+const MONTHS =
+  'January February March April May June July August September October November December'.split(
+    ' ',
+  );
+const full = (names: string[], i: number) => names[i] ?? '';
+const abbr = (names: string[], i: number) => full(names, i).slice(0, 3);
+const utc = (date: string) => new Date(`${date}T00:00:00Z`);
 
 // Without Intl, so neither Hermes' locale data nor the device's zone can shift the calendar day.
 export function dayLabel(date: string): string {
-  const d = new Date(`${date}T00:00:00Z`);
+  const d = utc(date);
   return `${abbr(WEEKDAYS, d.getUTCDay())}, ${abbr(MONTHS, d.getUTCMonth())} ${d.getUTCDate()}`;
+}
+
+export function dayTitle(date: string): string {
+  const d = utc(date);
+  return `${full(WEEKDAYS, d.getUTCDay())}, ${full(MONTHS, d.getUTCMonth())} ${d.getUTCDate()}`;
+}
+
+// UTC days are all 24 h, so stepping by a day's milliseconds never skips or repeats one at DST.
+export function stripDays(date: string, span = 14): string[] {
+  const start = utc(date).getTime();
+  return Array.from({ length: 2 * span + 1 }, (_, i) =>
+    new Date(start + (i - span) * 86_400_000).toISOString().slice(0, 10),
+  );
 }
 
 export function statusLabel(

@@ -1,69 +1,56 @@
-import { useColorScheme } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AccessibilityInfo, useColorScheme } from 'react-native';
+import {
+  type Colors,
+  dark as darkColors,
+  icon,
+  layout,
+  light as lightColors,
+  motion,
+  opacity,
+  radius,
+  shadow,
+  space,
+  type,
+} from './tokens';
 
 export type Theme = {
-  colors: {
-    background: string;
-    surface: string;
-    text: string;
-    textMuted: string;
-    // Disabled controls only: dimmer than textMuted, so below 4.5:1 by design.
-    textDisabled: string;
-    border: string;
-    accent: string;
-    onAccent: string;
-    // A switch's "on" thumb: light in both schemes so it reads against the accent track.
-    thumb: string;
-    danger: string;
-  };
-  space: { xs: 4; sm: 8; md: 12; lg: 16; xl: 24 };
-  font: { caption: 13; body: 16; title: 20; icon: 28 };
-  radius: 12;
+  colors: Colors;
+  space: typeof space;
+  radius: typeof radius;
+  type: typeof type;
+  motion: typeof motion;
+  icon: typeof icon;
+  layout: typeof layout;
+  shadow: typeof shadow;
+  opacity: typeof opacity;
+  column: typeof column;
   dark: boolean;
 };
 
-const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
-// icon: glyph buttons like the search star, which read small at text sizes.
-const font = { caption: 13, body: 16, title: 20, icon: 28 } as const;
-
-// Text and textMuted keep >= 4.5:1 contrast on both background and surface.
-const light: Theme = {
-  colors: {
-    background: '#F2F2F5',
-    surface: '#FFFFFF',
-    text: '#1C1C1E',
-    textMuted: '#5C5F66',
-    textDisabled: '#9A9DA3',
-    border: '#D1D1D6',
-    accent: '#1A5FB4',
-    onAccent: '#FFFFFF',
-    thumb: '#FFFFFF',
-    danger: '#B3261E',
-  },
-  space,
-  font,
-  radius: 12,
-  dark: false,
-};
-
-const dark: Theme = {
-  colors: {
-    background: '#121212',
-    surface: '#1E1E20',
-    text: '#F2F2F2',
-    textMuted: '#A8A8AD',
-    textDisabled: '#6E6E73',
-    border: '#3A3A3C',
-    accent: '#8AB4F8',
-    onAccent: '#0B1F3A',
-    thumb: '#FFFFFF',
-    danger: '#F2B8B5',
-  },
-  space,
-  font,
-  radius: 12,
-  dark: true,
-};
+// Wide windows: every screen's content sits in one centered column.
+const column = { width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center' } as const;
+const shared = { space, radius, type, motion, icon, layout, shadow, opacity, column };
+const light: Theme = { colors: lightColors, ...shared, dark: false };
+const dark: Theme = { colors: darkColors, ...shared, dark: true };
 
 export function useTheme(): Theme {
   return useColorScheme() === 'dark' ? dark : light;
+}
+
+// false until the system answers, so the first frame may animate; with reduce motion on, show end states.
+export function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((on) => {
+      if (live) setReduced(on);
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, []);
+  return reduced;
 }

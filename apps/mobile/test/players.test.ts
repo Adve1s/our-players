@@ -46,19 +46,19 @@ describe('searchTerm', () => {
 
 describe('playerMeta', () => {
   it('shows league, team, position and nationality', () => {
-    expect(playerMeta(porzingis)).toBe('NBA · BOS · C · LVA');
+    expect(playerMeta(porzingis)).toBe('NBA, BOS, C, LVA');
   });
 
   it('shows "No team" for a player without a team', () => {
-    expect(playerMeta({ ...porzingis, team: null })).toBe('NBA · No team · C · LVA');
+    expect(playerMeta({ ...porzingis, team: null })).toBe('NBA, No team, C, LVA');
   });
 
   it('leaves the code out for a player without a nationality', () => {
-    expect(playerMeta({ ...porzingis, nationality: null })).toBe('NBA · BOS · C');
+    expect(playerMeta({ ...porzingis, nationality: null })).toBe('NBA, BOS, C');
   });
 
   it('leaves the position out for a player without one (ESPN "NA")', () => {
-    expect(playerMeta({ ...porzingis, position: null })).toBe('NBA · BOS · LVA');
+    expect(playerMeta({ ...porzingis, position: null })).toBe('NBA, BOS, LVA');
   });
 });
 

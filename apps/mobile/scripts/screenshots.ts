@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { type Browser, chromium, type Page } from 'playwright';
 import { DEFAULT_PREFS, type StoredPrefs } from '../src/state/prefs';
+import { layout } from '../src/tokens';
 import { serveWeb } from './web-server';
 
 // Own ports, so this runs next to `pnpm dev:server` (:3001) and `pnpm dev:mobile` (:8081).
@@ -185,6 +186,11 @@ const SHOTS: Shot[] = [
       await day(page, '2026-03-16');
       await seen(page, 'Other games (8)', 'Silovs', 'Rust', 'Porzingis');
     },
+    // The pill answers to the words it shows, for voice control.
+    after: async (page) => {
+      await page.getByRole('button', { name: 'Latest: Mon, Mar 23' }).click({ timeout: 5000 });
+      await page.getByRole('heading', { name: 'Monday, March 23' }).waitFor();
+    },
   },
   {
     name: 'night-busy',
@@ -280,17 +286,28 @@ const SHOTS: Shot[] = [
       await day(page, '2026-03-23');
       await seen(page, 'Other games (9)', 'Porzingis');
       await page.context().route(`${API}/v1/days/**`, (r) => r.abort());
-      await page.getByRole('button', { name: 'Previous game day' }).click();
+      await page.getByRole('button', { name: 'Mon, Mar 16' }).click();
       await seen(page, "Couldn't load Mon, Mar 16.", 'Try again');
-      await page.getByRole('heading', { name: 'Mon, Mar 23' }).waitFor();
+      await page.getByRole('heading', { name: 'Monday, March 23' }).waitFor();
       // Not `aria-disabled="false"`: react-native-web leaves the attribute out when it's false.
-      await page.getByRole('button', { name: 'Previous game day', disabled: false }).waitFor();
+      await page.getByRole('button', { name: 'Mon, Mar 16', disabled: false }).waitFor();
     },
-    // Tapping ‹ again toward the day that failed tries it again.
+    // Tapping the day that failed again tries it again.
     after: async (page) => {
+      // One line of text keeps the box at one touch target, its button reaching into the padding.
+      const line = await page.getByRole('alert').first().boundingBox();
+      if (line?.height !== layout.target)
+        throw new Error(`one-line banner is ${line?.height} px, not ${layout.target}`);
+      // Narrow like a large font: the wrapped text still keeps air inside its box.
+      await page.setViewportSize({ width: 200, height: 915 });
+      const box = await page.getByRole('alert').first().boundingBox();
+      const text = await shown(page, "Couldn't load Mon, Mar 16.").first().boundingBox();
+      if (!box || !text || text.y - box.y < 4 || box.y + box.height - text.y - text.height < 4)
+        throw new Error(`banner text touches its box: ${JSON.stringify({ box, text })}`);
+      await page.setViewportSize({ width: 412, height: 915 });
       await page.context().unroute(`${API}/v1/days/**`);
-      await page.getByRole('button', { name: 'Previous game day' }).click();
-      await page.getByRole('heading', { name: 'Mon, Mar 16' }).waitFor();
+      await page.getByRole('button', { name: 'Mon, Mar 16' }).click();
+      await page.getByRole('heading', { name: 'Monday, March 16' }).waitFor();
       await gone(page, "Couldn't load Mon, Mar 16.");
     },
   },
@@ -300,7 +317,7 @@ const SHOTS: Shot[] = [
       await day(page, '2026-03-23');
       await seen(page, 'Other games (9)', 'Porzingis');
       await page.context().setOffline(true);
-      await page.getByRole('button', { name: 'Previous game day' }).click();
+      await page.getByRole('button', { name: 'Mon, Mar 16' }).click();
       await seen(page, "You're offline — couldn't open Mon, Mar 16.");
     },
   },
@@ -429,7 +446,7 @@ const SHOTS: Shot[] = [
         .getByRole('checkbox', { name: 'Favorite Kristaps Porzingis', checked: true })
         .waitFor();
       await switchTo(page, 'Today');
-      await seen(page, 'Mon, Mar 16', 'Porzingis');
+      await seen(page, 'Monday, March 16', 'Porzingis');
     },
   },
   {
@@ -437,7 +454,7 @@ const SHOTS: Shot[] = [
     name: 'flow-hidden',
     take: async (page) => {
       await day(page, '2026-03-16');
-      await seen(page, 'Mon, Mar 16', 'Silovs', 'Porzingis');
+      await seen(page, 'Monday, March 16', 'Silovs', 'Porzingis');
       await switchTo(page, 'Search');
       await search(page, 'silovs');
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs' }).click();
@@ -445,21 +462,21 @@ const SHOTS: Shot[] = [
       await switchTo(page, 'Today');
       // The date first: while Today is still aria-hidden, "gone" would pass on no match at all.
       // Once it's on screen, keepPreviousData holds the old day until the refetch lands.
-      await seen(page, 'Mon, Mar 16');
+      await seen(page, 'Monday, March 16');
       await gone(page, 'Silovs');
       await seen(page, 'Porzingis');
       await switchTo(page, 'Search');
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs' }).click();
       await page.getByRole('checkbox', { name: 'Hide Arturs Silovs', checked: false }).waitFor();
       await switchTo(page, 'Today');
-      await seen(page, 'Mon, Mar 16', 'Silovs', 'Porzingis');
+      await seen(page, 'Monday, March 16', 'Silovs', 'Porzingis');
     },
   },
   {
     name: 'player-skater',
     take: async (page) => {
       await player(page, RUST);
-      await seen(page, 'Regular season 2025-26', 'TOI/GP', 'Mon, Mar 16 · PIT 7 – 2 COL · Final');
+      await seen(page, 'Regular season 2025-26', 'TOI/GP', 'Mon, Mar 16', 'PIT 7 – 2 COL, Final');
     },
   },
   {
@@ -511,7 +528,22 @@ const SHOTS: Shot[] = [
       await tab(page, 'Search');
       await search(page, 'porzingis');
       await page.getByRole('button', { name: 'Open Kristaps Porzingis' }).click();
-      await seen(page, 'Born Liepaja, LVA', 'Mon, Mar 23 · GS 137 – 131 DAL');
+      await seen(page, 'Liepaja, LVA', 'Mon, Mar 23', 'GS 137 – 131 DAL, Final/OT');
+    },
+    // Back keeps the search; another tab clears it.
+    after: async (page) => {
+      const query = (value: string) =>
+        page.waitForFunction(
+          (v) =>
+            document.querySelector<HTMLInputElement>('input[aria-label="Search players"]')
+              ?.value === v,
+          value,
+        );
+      await page.getByLabel(BACK, { exact: true }).click();
+      await query('porzingis');
+      await switchTo(page, 'Today');
+      await switchTo(page, 'Search');
+      await query('');
     },
   },
   {
@@ -692,6 +724,8 @@ async function main(): Promise<void> {
           viewport: { width: 412, height: 915 },
           deviceScaleFactor: 2,
           colorScheme,
+          // The app's fades and the skeleton pulse show their end state, so a shot never lands mid-animation.
+          reducedMotion: 'reduce',
           timezoneId: 'Europe/Riga',
           locale: 'en-GB',
         });

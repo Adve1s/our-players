@@ -1,4 +1,11 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+// Per-weight imports, so the unused italics stay out of the bundle.
+import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans/400Regular';
+import { InstrumentSans_500Medium } from '@expo-google-fonts/instrument-sans/500Medium';
+import { InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans/600SemiBold';
+import { InstrumentSans_700Bold } from '@expo-google-fonts/instrument-sans/700Bold';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
 import {
   DarkTheme,
   DefaultTheme,
@@ -12,6 +19,7 @@ import { retryQuery } from '../api/queries';
 import { RetryMessage } from '../components/error-state';
 import { usePrefs } from '../state/prefs-store';
 import { useTheme } from '../theme';
+import { FONTS } from '../tokens';
 
 // shortcut: the cache lives in memory only, so a cold start offline shows the error; persist it
 // when the v2 revisit item (offline after restart) comes up.
@@ -45,7 +53,15 @@ function useHydrated(): boolean {
 export default function RootLayout() {
   const t = useTheme();
   const hydrated = useHydrated();
-  if (!hydrated) return null;
+  const [fontsLoaded, fontError] = useFonts({
+    [FONTS.regular]: InstrumentSans_400Regular,
+    [FONTS.medium]: InstrumentSans_500Medium,
+    [FONTS.semiBold]: InstrumentSans_600SemiBold,
+    [FONTS.bold]: InstrumentSans_700Bold,
+    ...Ionicons.font,
+  });
+  // A font error falls back to the system font rather than a blank app.
+  if (!hydrated || (!fontsLoaded && !fontError)) return null;
 
   const base = t.dark ? DarkTheme : DefaultTheme;
   const navTheme = {
@@ -65,8 +81,10 @@ export default function RootLayout() {
       <ThemeProvider value={navTheme}>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: t.colors.surface },
+            headerStyle: { backgroundColor: t.colors.background },
+            headerShadowVisible: false,
             headerTintColor: t.colors.text,
+            headerTitleStyle: t.type.heading,
             contentStyle: { backgroundColor: t.colors.background },
             // The screen below is the tab group, titled "(tabs)"; "Back" makes the label "Go back".
             headerBackTitle: 'Back',
@@ -76,7 +94,8 @@ export default function RootLayout() {
           {/* Until the page sets its own title, the header would show the route name. */}
           <Stack.Screen name="player/[id]" options={{ title: 'Player' }} />
           <Stack.Screen name="game/[id]" options={{ title: 'Game' }} />
-          <Stack.Screen name="install" options={{ title: 'Add to Home Screen' }} />
+          {/* The page draws its own title, as the tabs do; this one names the web tab. */}
+          <Stack.Screen name="install" options={{ title: 'Add to Home Screen', headerTitle: '' }} />
         </Stack>
       </ThemeProvider>
     </QueryClientProvider>

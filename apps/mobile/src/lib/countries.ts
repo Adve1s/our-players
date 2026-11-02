@@ -15,9 +15,6 @@ export type CountryRow = {
 // "Côte" → "cote": search ignores case and diacritics.
 const fold = (s: string): string => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 
-const total = (counts: CountryRow['counts']): number =>
-  Object.values(counts).reduce((sum, n) => sum + n, 0);
-
 export function countryRows(
   countries: CountriesResponse['countries'],
   selected: readonly CountryCode[],
@@ -38,10 +35,5 @@ export function countryRows(
       selected: selected.includes(c.code),
     }))
     .filter((r) => fold(r.code).includes(q) || fold(r.name).includes(q))
-    .sort(
-      (a, b) =>
-        Number(b.selected) - Number(a.selected) ||
-        total(b.counts) - total(a.counts) ||
-        a.name.localeCompare(b.name),
-    );
+    .sort((a, b) => Number(b.selected) - Number(a.selected) || a.name.localeCompare(b.name));
 }

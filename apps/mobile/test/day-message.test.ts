@@ -25,6 +25,8 @@ const withRows: DayGameResponse = {
   ],
 };
 
+const TODAY = '2026-03-24';
+
 type Day = Pick<DayResponse, 'gameDate' | 'games' | 'prevGameDate' | 'nextGameDate'>;
 const day = (over: Partial<Day>): Day => ({
   gameDate: '2026-03-16',
@@ -36,52 +38,93 @@ const day = (over: Partial<Day>): Day => ({
 
 describe('dayMessage', () => {
   it('a day with no games says so', () => {
-    expect(dayMessage(day({ gameDate: '2026-03-17', games: [] }), '2026-03-23', true)).toEqual({
+    expect(
+      dayMessage(day({ gameDate: '2026-03-17', games: [] }), '2026-03-23', true, TODAY),
+    ).toEqual({
       text: 'No games on Tue, Mar 17.',
-      action: null,
+      actions: [],
     });
   });
 
+  it.each([
+    ['both neighbours', '2026-03-16', '2026-03-18', ['prev', 'next']],
+    ['only a previous game day', '2026-03-16', null, ['prev']],
+    ['no neighbours', null, null, []],
+  ] as const)('a day with no games and %s offers the jumps there are', (_, prev, next, actions) => {
+    const d = day({ gameDate: '2026-03-17', games: [], prevGameDate: prev, nextGameDate: next });
+    expect(dayMessage(d, '2026-03-23', true, TODAY)?.actions).toEqual(actions);
+  });
+
+  it('a future day with no games and none after it says the schedule stops short, with Previous game day', () => {
+    const d = day({ gameDate: '2026-04-02', games: [], prevGameDate: '2026-03-30' });
+    expect(dayMessage(d, '2026-03-23', true, TODAY)).toEqual({
+      text: 'No games on Thu, Apr 2 yet. The schedule is loaded about a week ahead.',
+      actions: ['prev'],
+    });
+  });
+
+  it('the first day past the loaded week says the schedule stops short', () => {
+    const d = day({ gameDate: '2026-03-30', games: [], prevGameDate: '2026-03-23' });
+    expect(dayMessage(d, '2026-03-23', true, TODAY)?.text).toBe(
+      'No games on Mon, Mar 30 yet. The schedule is loaded about a week ahead.',
+    );
+  });
+
+  it('a day inside the loaded week with nothing after it is a real day off, not "yet"', () => {
+    const d = day({ gameDate: '2026-03-29', games: [], prevGameDate: '2026-03-23' });
+    expect(dayMessage(d, '2026-03-23', true, TODAY)?.text).toBe('No games on Sun, Mar 29.');
+  });
+
+  it('a day already past in the off-season is not "yet", even after the last game', () => {
+    const d = day({ gameDate: '2026-07-01', games: [], prevGameDate: '2026-06-20' });
+    expect(dayMessage(d, '2026-06-20', true, '2026-09-01')?.text).toBe('No games on Wed, Jul 1.');
+  });
+
+  it('a future day with no games but a later game day is a real day off', () => {
+    const d = day({ gameDate: '2026-03-25', games: [], nextGameDate: '2026-03-26' });
+    expect(dayMessage(d, '2026-03-23', true, TODAY)?.text).toBe('No games on Wed, Mar 25.');
+  });
+
   it('following nothing points to Settings', () => {
-    expect(dayMessage(day({}), '2026-03-23', false)).toEqual({
+    expect(dayMessage(day({}), '2026-03-23', false, TODAY)).toEqual({
       text: "You're not following any countries or players yet.",
-      action: 'settings',
+      actions: ['settings'],
     });
   });
 
   it('a day with a game that has rows needs no message', () => {
-    expect(dayMessage(day({ games: [withRows] }), '2026-03-23', true)).toBeNull();
+    expect(dayMessage(day({ games: [withRows] }), '2026-03-23', true, TODAY)).toBeNull();
   });
 
   it('no rows on a day after the latest game day says who plays, with Next game day', () => {
     const d = day({ gameDate: '2026-03-25', nextGameDate: '2026-03-26' });
-    expect(dayMessage(d, '2026-03-23', true)).toEqual({
+    expect(dayMessage(d, '2026-03-23', true, TODAY)).toEqual({
       text: 'None of your players play on Wed, Mar 25.',
-      action: 'next',
+      actions: ['next'],
     });
   });
 
   it('no rows on a day after the latest game day with no next game day has no action', () => {
     const d = day({ gameDate: '2026-03-25', nextGameDate: null });
-    expect(dayMessage(d, '2026-03-23', true)).toEqual({
+    expect(dayMessage(d, '2026-03-23', true, TODAY)).toEqual({
       text: 'None of your players play on Wed, Mar 25.',
-      action: null,
+      actions: [],
     });
   });
 
   it('no rows on a day before the latest game day says who played, with Previous game day', () => {
     const d = day({ gameDate: '2026-03-16', prevGameDate: '2026-03-14' });
-    expect(dayMessage(d, '2026-03-23', true)).toEqual({
+    expect(dayMessage(d, '2026-03-23', true, TODAY)).toEqual({
       text: 'None of your players played on Mon, Mar 16.',
-      action: 'prev',
+      actions: ['prev'],
     });
   });
 
   it('no rows on a past day with no previous game day has no action', () => {
     const d = day({ gameDate: '2026-03-16', prevGameDate: null });
-    expect(dayMessage(d, '2026-03-23', true)).toEqual({
+    expect(dayMessage(d, '2026-03-23', true, TODAY)).toEqual({
       text: 'None of your players played on Mon, Mar 16.',
-      action: null,
+      actions: [],
     });
   });
 
@@ -91,17 +134,17 @@ describe('dayMessage', () => {
       prevGameDate: '2026-03-23',
       nextGameDate: '2026-03-26',
     });
-    expect(dayMessage(d, null, true)).toEqual({
+    expect(dayMessage(d, null, true, TODAY)).toEqual({
       text: 'None of your players played on Wed, Mar 25.',
-      action: 'prev',
+      actions: ['prev'],
     });
   });
 
   it('no rows on the latest game day itself read as played', () => {
     const d = day({ gameDate: '2026-03-23', prevGameDate: '2026-03-16' });
-    expect(dayMessage(d, '2026-03-23', true)).toEqual({
+    expect(dayMessage(d, '2026-03-23', true, TODAY)).toEqual({
       text: 'None of your players played on Mon, Mar 23.',
-      action: 'prev',
+      actions: ['prev'],
     });
   });
 });

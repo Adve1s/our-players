@@ -1,29 +1,46 @@
-import type { DayResponse } from '@our-players/shared';
+import { addDays, type DayResponse } from '@our-players/shared';
 import type { QueryObserverResult } from '@tanstack/react-query';
 import { dayLabel } from './format';
 
-export type DayMessage = { text: string; action: 'prev' | 'next' | 'settings' | null };
+export type DayMessage = { text: string; actions: ('prev' | 'next' | 'settings')[] };
+
+// The schedule job stores seven days from its own date, which can be a day behind the phone's,
+// so this many days after today are normally stored (a failed daily run leaves them a day short).
+const LOADED_DAYS = 5;
 
 // The design's states 4–7, in its priority; null means the day has rows to show.
 export function dayMessage(
   day: Pick<DayResponse, 'gameDate' | 'games' | 'prevGameDate' | 'nextGameDate'>,
   latest: string | null,
   following: boolean,
+  today: string,
 ): DayMessage | null {
   const label = dayLabel(day.gameDate);
-  if (day.games.length === 0) return { text: `No games on ${label}.`, action: null };
+  // Nothing stored after a day the schedule job hasn't reached says nothing about that day; a loaded
+  // day with nothing after it is a real day off (the off-season too).
+  const unscheduled = day.nextGameDate === null && day.gameDate > addDays(today, LOADED_DAYS);
+  if (day.games.length === 0)
+    return {
+      text: unscheduled
+        ? `No games on ${label} yet. The schedule is loaded about a week ahead.`
+        : `No games on ${label}.`,
+      actions: [
+        ...(day.prevGameDate === null ? [] : (['prev'] as const)),
+        ...(day.nextGameDate === null ? [] : (['next'] as const)),
+      ],
+    };
   if (!following)
-    return { text: "You're not following any countries or players yet.", action: 'settings' };
+    return { text: "You're not following any countries or players yet.", actions: ['settings'] };
   if (day.games.some((g) => g.rows.length > 0)) return null;
   // Without a latest game day (meta failed) the day reads as past.
   if (latest !== null && day.gameDate > latest)
     return {
       text: `None of your players play on ${label}.`,
-      action: day.nextGameDate === null ? null : 'next',
+      actions: day.nextGameDate === null ? [] : ['next'],
     };
   return {
     text: `None of your players played on ${label}.`,
-    action: day.prevGameDate === null ? null : 'prev',
+    actions: day.prevGameDate === null ? [] : ['prev'],
   };
 }
 

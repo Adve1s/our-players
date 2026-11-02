@@ -11,10 +11,10 @@ const countries: CountriesResponse['countries'] = [
 ];
 
 describe('countryRows', () => {
-  it('lists selected countries first, then by total players, then by display name', () => {
-    // SWE and CHE tie on 80: "Sweden" sorts before "Switzerland".
-    const codes = countryRows(countries, ['LVA'], '').map((r) => r.code);
-    expect(codes).toEqual(['LVA', 'CAN', 'SWE', 'CHE', 'CIV']);
+  it('lists selected countries first, then the rest by display name', () => {
+    // By name, not code or player count: Canada, Côte d'Ivoire, Sweden, Switzerland.
+    const codes = countryRows(countries, ['LVA', 'SWE'], '').map((r) => r.code);
+    expect(codes).toEqual(['LVA', 'SWE', 'CAN', 'CIV', 'CHE']);
   });
 
   it('builds a row with code, display name, counts and the selected flag', () => {
