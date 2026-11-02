@@ -11,9 +11,13 @@ export function dayMessage(
   following: boolean,
 ): DayMessage | null {
   const label = dayLabel(day.gameDate);
+  // Nothing stored after a future day means the schedule job hasn't reached it, not a day off.
+  const unscheduled = day.nextGameDate === null && latest !== null && day.gameDate > latest;
   if (day.games.length === 0)
     return {
-      text: `No games on ${label}.`,
+      text: unscheduled
+        ? `No games on ${label} yet. The schedule is loaded about a week ahead.`
+        : `No games on ${label}.`,
       actions: [
         ...(day.prevGameDate === null ? [] : (['prev'] as const)),
         ...(day.nextGameDate === null ? [] : (['next'] as const)),

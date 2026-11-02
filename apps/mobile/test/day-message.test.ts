@@ -51,6 +51,19 @@ describe('dayMessage', () => {
     expect(dayMessage(d, '2026-03-23', true)?.actions).toEqual(actions);
   });
 
+  it('a future day with no games and none after it says the schedule stops short, with Previous game day', () => {
+    const d = day({ gameDate: '2026-04-02', games: [], prevGameDate: '2026-03-30' });
+    expect(dayMessage(d, '2026-03-23', true)).toEqual({
+      text: 'No games on Thu, Apr 2 yet. The schedule is loaded about a week ahead.',
+      actions: ['prev'],
+    });
+  });
+
+  it('a future day with no games but a later game day is a real day off', () => {
+    const d = day({ gameDate: '2026-03-25', games: [], nextGameDate: '2026-03-26' });
+    expect(dayMessage(d, '2026-03-23', true)?.text).toBe('No games on Wed, Mar 25.');
+  });
+
   it('following nothing points to Settings', () => {
     expect(dayMessage(day({}), '2026-03-23', false)).toEqual({
       text: "You're not following any countries or players yet.",
