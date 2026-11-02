@@ -198,119 +198,118 @@ export default function Settings() {
     status = <ErrorState error={error} onRetry={() => void refetch()} />;
   }
 
-  // The tab hides the navigator's header, so the status bar inset is the screen's own.
+  // The tab hides the navigator's header, so the status bar inset is the screen's own; outside the
+  // scrolling part, or the content slides under the status bar.
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ paddingTop: insets.top }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={[t.column, { padding: t.space.lg, gap: t.space.xl }]}>
-        <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
-          Settings
-        </Text>
-        <Section title="Leagues">
-          {/* No gap between rows: each draws its own divider. */}
-          <View>
-            {LEAGUES.map((l, i) => {
-              const on = leagues.includes(l);
-              const locked = on && leagues.length === 1;
-              return (
-                <View
-                  key={l}
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    minHeight: t.layout.target,
-                    borderTopWidth: i > 0 ? t.layout.hairline : 0,
-                    borderTopColor: t.colors.border,
-                  }}
-                >
-                  <Text style={{ color: t.colors.text, ...t.type.body }}>{l}</Text>
-                  <Switch
-                    accessibilityLabel={l}
-                    value={on}
-                    disabled={locked}
-                    onValueChange={() => toggleLeague(l)}
-                    trackColor={{ true: t.colors.accentFill, false: t.colors.border }}
-                    thumbColor={on ? t.colors.thumb : t.colors.textMuted}
-                    // react-native-web takes the "on" thumb from this web-only prop (not in RN's types), else teal.
-                    {...{ activeThumbColor: t.colors.thumb }}
-                    // react-native-web draws a disabled switch with the given colors, unchanged.
-                    style={{ opacity: locked ? t.opacity.disabled : 1 }}
-                  />
-                </View>
-              );
-            })}
-          </View>
-          {leagues.length === 1 ? <Caption>At least one league stays on.</Caption> : null}
-        </Section>
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: t.colors.background }}>
+      <ScrollView keyboardShouldPersistTaps="handled">
+        <View style={[t.column, { padding: t.space.lg, gap: t.space.xl }]}>
+          <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
+            Settings
+          </Text>
+          <Section title="Leagues">
+            {/* No gap between rows: each draws its own divider. */}
+            <View>
+              {LEAGUES.map((l, i) => {
+                const on = leagues.includes(l);
+                const locked = on && leagues.length === 1;
+                return (
+                  <View
+                    key={l}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      minHeight: t.layout.target,
+                      borderTopWidth: i > 0 ? t.layout.hairline : 0,
+                      borderTopColor: t.colors.border,
+                    }}
+                  >
+                    <Text style={{ color: t.colors.text, ...t.type.body }}>{l}</Text>
+                    <Switch
+                      accessibilityLabel={l}
+                      value={on}
+                      disabled={locked}
+                      onValueChange={() => toggleLeague(l)}
+                      trackColor={{ true: t.colors.accentFill, false: t.colors.border }}
+                      thumbColor={on ? t.colors.thumb : t.colors.textMuted}
+                      // react-native-web takes the "on" thumb from this web-only prop (not in RN's types), else teal.
+                      {...{ activeThumbColor: t.colors.thumb }}
+                      // react-native-web draws a disabled switch with the given colors, unchanged.
+                      style={{ opacity: locked ? t.opacity.disabled : 1 }}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+            {leagues.length === 1 ? <Caption>At least one league stays on.</Caption> : null}
+          </Section>
 
-        <Section title="Countries" aside={`${countries.length} selected`}>
-          <SearchField value={query} onChangeText={setQuery} label="Search countries" />
-          {countries.length === 0 ? (
-            <Caption>No countries selected — Today stays empty until you pick one.</Caption>
-          ) : null}
-          {status}
-          {/* No gap between rows: the Card's gap would add a band under each row's text. */}
-          {/* The list scrolls inside its box, so Favorites and Hidden stay a short scroll away;
+          <Section title="Countries" aside={`${countries.length} selected`}>
+            <SearchField value={query} onChangeText={setQuery} label="Search countries" />
+            {countries.length === 0 ? (
+              <Caption>No countries selected — Today stays empty until you pick one.</Caption>
+            ) : null}
+            {status}
+            {/* No gap between rows: the Card's gap would add a band under each row's text. */}
+            {/* The list scrolls inside its box, so Favorites and Hidden stay a short scroll away;
               about six rows show, the cut one hinting there is more. */}
-          {rows.length > 0 ? (
-            <ScrollView
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: 6.5 * t.layout.target * Math.max(1, fontScale) }}
-            >
-              {rows.map((row) => (
-                <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
-              ))}
-            </ScrollView>
-          ) : null}
-          {data && rows.length === 0 && query.trim() ? (
-            <Caption>No country matches "{query.trim()}".</Caption>
-          ) : null}
-        </Section>
+            {rows.length > 0 ? (
+              <ScrollView
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                style={{ maxHeight: 6.5 * t.layout.target * Math.max(1, fontScale) }}
+              >
+                {rows.map((row) => (
+                  <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
+                ))}
+              </ScrollView>
+            ) : null}
+            {data && rows.length === 0 && query.trim() ? (
+              <Caption>No country matches "{query.trim()}".</Caption>
+            ) : null}
+          </Section>
 
-        <PlayerList
-          title="Favorites"
-          mark="favorite"
-          empty="No favorites yet. Star players in Search."
-          noneShown="None of your favorites play in the leagues you have on."
-          removed={removed}
-          onRemove={remove}
-          onUndo={undo}
-        />
-        <PlayerList
-          title="Hidden"
-          mark="hidden"
-          empty="Nobody hidden. Hidden players never show on Today."
-          noneShown="None of your hidden players play in the leagues you have on."
-          removed={removed}
-          onRemove={remove}
-          onUndo={undo}
-        />
+          <PlayerList
+            title="Favorites"
+            mark="favorite"
+            empty="No favorites yet. Star players in Search."
+            noneShown="None of your favorites play in the leagues you have on."
+            removed={removed}
+            onRemove={remove}
+            onUndo={undo}
+          />
+          <PlayerList
+            title="Hidden"
+            mark="hidden"
+            empty="Nobody hidden. Hidden players never show on Today."
+            noneShown="None of your hidden players play in the leagues you have on."
+            removed={removed}
+            onRemove={remove}
+            onUndo={undo}
+          />
 
-        <Section title="About">
-          <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>Our Players</Text>
-          <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
-          <Caption>Data from the public NHL and ESPN web APIs.</Caption>
-          <Caption>Not affiliated with the NHL or NBA.</Caption>
-          {/* Web only: on Android the app is already installed. */}
-          {Platform.OS === 'web' ? (
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel="Add to Home Screen"
-              onPress={() => router.push('/install')}
-              style={{ minHeight: t.layout.target, justifyContent: 'center' }}
-            >
-              <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>
-                Add to Home Screen
-              </Text>
-            </Pressable>
-          ) : null}
-        </Section>
-      </View>
-    </ScrollView>
+          <Section title="About">
+            <Text style={{ color: t.colors.text, ...t.type.bodyStrong }}>Our Players</Text>
+            <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
+            <Caption>Data from the public NHL and ESPN web APIs.</Caption>
+            <Caption>Not affiliated with the NHL or NBA.</Caption>
+            {/* Web only: on Android the app is already installed. */}
+            {Platform.OS === 'web' ? (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Add to Home Screen"
+                onPress={() => router.push('/install')}
+                style={{ minHeight: t.layout.target, justifyContent: 'center' }}
+              >
+                <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>
+                  Add to Home Screen
+                </Text>
+              </Pressable>
+            ) : null}
+          </Section>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

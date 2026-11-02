@@ -73,25 +73,24 @@ export default function Search() {
     );
   }
 
-  // The tab hides the navigator's header, so the status bar inset is the screen's own.
+  // The tab hides the navigator's header, so the status bar inset is the screen's own; outside the
+  // scrolling part, or the content slides under the status bar.
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ paddingTop: insets.top }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={[t.column, { padding: t.space.lg, gap: t.space.lg }]}>
-        <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
-          Search
-        </Text>
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          label="Search players"
-          maxLength={SEARCH_MAX}
-        />
-        <Card>{body}</Card>
-      </View>
-    </ScrollView>
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: t.colors.background }}>
+      <ScrollView keyboardShouldPersistTaps="handled">
+        <View style={[t.column, { padding: t.space.lg, gap: t.space.lg }]}>
+          <Text accessibilityRole="header" style={{ color: t.colors.text, ...t.type.title }}>
+            Search
+          </Text>
+          <SearchField
+            value={query}
+            onChangeText={setQuery}
+            label="Search players"
+            maxLength={SEARCH_MAX}
+          />
+          <Card>{body}</Card>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
