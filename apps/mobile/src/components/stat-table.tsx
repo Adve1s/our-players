@@ -21,14 +21,17 @@ export type StatTableRow = {
   marked?: boolean;
 };
 
-// Past this share of the table's width the columns crowd the name, so each row stacks.
-const STACK_SHARE = 0.6;
+// Side by side, the name keeps at least this share of the width (it wraps); past that the table
+// switches to the box score's layout: names fixed, stats scrolling.
+const NAME_SHARE = 0.3;
 // The fixed name column of a scrolling table takes at most this share, so a stat column always shows.
 const LEAD_SHARE = 0.45;
 
 // One header row over the rows of one stat kind; each row is a single button for the screen reader.
 // `scroll` (the box score) keeps the names fixed and scrolls every stat column; it runs edge to edge
 // in its box and insets the names itself, so the mark bar sits on the box edge and never scrolls away.
+// Without `scroll` the table sits in a box padded `lg`; when its columns crowd the names it takes the
+// same layout, stretched over that padding.
 export function StatTable({
   columns,
   rows,
@@ -50,8 +53,9 @@ export function StatTable({
   };
   const widths = columns?.map((c) => columnWidth(c.wide, fontScale)) ?? [];
   const total = widths.reduce((sum, w) => sum + w, 0);
-  const stacked = width !== null && total > width * STACK_SHARE;
-  const scrolls = width !== null && total > width;
+  const crowded = !scroll && width !== null && width * NAME_SHARE + t.space.md + total > width;
+  // The fixed layout runs edge to edge; a crowded table measures inside its box's padding.
+  const edge = width === null ? null : crowded ? width + 2 * t.space.lg : width;
   const cell = (i: number, value: string, color: string, type: TextStyle) => (
     <Text
       key={i}
@@ -66,11 +70,12 @@ export function StatTable({
       {value}
     </Text>
   );
-  if (scroll) {
+  let content: ReactNode;
+  if (scroll || crowded) {
     const lines = rows.filter((row) => row.values !== null);
     const lead = Math.min(
       t.layout.statLead * Math.max(1, fontScale),
-      (width ?? Number.POSITIVE_INFINITY) * LEAD_SHARE,
+      (edge ?? Number.POSITIVE_INFINITY) * LEAD_SHARE,
     );
     const rule = { borderTopWidth: t.layout.hairline, borderTopColor: t.colors.border };
     const inset = (marked?: boolean) =>
@@ -88,8 +93,8 @@ export function StatTable({
       alignItems: 'center',
       paddingRight: t.space.lg,
     } as const;
-    return (
-      <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+    content = (
+      <View style={crowded ? { marginHorizontal: -t.space.lg } : undefined}>
         {lines.length > 0 ? (
           <View style={{ flexDirection: 'row' }}>
             <View
@@ -154,7 +159,7 @@ export function StatTable({
             </ScrollView>
           </View>
         ) : null}
-        {/* A text row has no stat cells, so it spans the box outside the scroller. */}
+        {/* A text row has no stat cells: its name sits in the same fixed column, its text spans the rest. */}
         {rows
           .filter((row) => row.values === null)
           .map((row) => (
@@ -165,38 +170,50 @@ export function StatTable({
               onPress={row.onPress}
               style={({ pressed }) => [
                 rule,
-                inset(row.marked),
-                {
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  alignContent: 'center',
-                  columnGap: t.space.md,
-                  minHeight: t.layout.target,
-                  paddingVertical: t.space.xs,
-                  paddingRight: t.space.lg,
-                },
+                { flexDirection: 'row', minHeight: t.layout.target },
                 pressed && { opacity: t.opacity.pressed },
               ]}
             >
-              {row.lead}
-              <Text style={{ color: t.colors.textMuted, ...t.type.body }}>{row.text}</Text>
+              <View
+                style={[
+                  inset(row.marked),
+                  {
+                    width: lead,
+                    justifyContent: 'center',
+                    paddingVertical: t.space.xs,
+                    paddingRight: t.space.sm,
+                    borderRightWidth: t.layout.hairline,
+                    borderRightColor: t.colors.border,
+                  },
+                ]}
+              >
+                {row.lead}
+              </View>
+              <Text
+                style={{
+                  flex: 1,
+                  alignSelf: 'center',
+                  paddingHorizontal: t.space.md,
+                  color: t.colors.textMuted,
+                  ...t.type.body,
+                }}
+              >
+                {row.text}
+              </Text>
             </Pressable>
           ))}
       </View>
     );
-  }
-  const table = (
-    <>
-      {columns ? (
-        <View style={{ flexDirection: 'row', paddingTop: t.space.xs }}>
-          <View style={{ flex: 1 }} />
-          {columns.map((c, i) => cell(i, c.label, t.colors.textMuted, t.type.label))}
-        </View>
-      ) : null}
-      {rows.map((row) => {
-        const stack = stacked && row.values !== null;
-        return (
+  } else {
+    content = (
+      <>
+        {columns ? (
+          <View style={{ flexDirection: 'row', paddingTop: t.space.xs }}>
+            <View style={{ flex: 1 }} />
+            {columns.map((c, i) => cell(i, c.label, t.colors.textMuted, t.type.label))}
+          </View>
+        ) : null}
+        {rows.map((row) => (
           <Pressable
             key={row.key}
             accessibilityRole="button"
@@ -204,11 +221,11 @@ export function StatTable({
             onPress={row.onPress}
             style={({ pressed }) => [
               {
-                flexDirection: stack ? 'column' : 'row',
-                alignItems: stack ? 'stretch' : 'center',
-                justifyContent: 'center',
-                gap: stack ? t.space.xs : t.space.md,
-                paddingVertical: stack ? t.space.xs : 0,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space.md,
+                // A name wrapped onto two lines keeps some air above and below.
+                paddingVertical: t.space.xs,
                 minHeight: t.layout.target,
               },
               row.marked && {
@@ -220,17 +237,10 @@ export function StatTable({
               pressed && { opacity: t.opacity.pressed },
             ]}
           >
-            {/* A text row lets name and text share the width; a stat row gives the name what the columns leave.
-                Scrolling, the name keeps the visible width so it wraps where the reader sees it. */}
-            <View
-              style={
-                stack ? (scrolls ? { width } : {}) : row.values ? { flex: 1 } : { flexShrink: 1 }
-              }
-            >
-              {row.lead}
-            </View>
+            {/* A text row lets name and text share the width; a stat row gives the name what the columns leave. */}
+            <View style={row.values ? { flex: 1 } : { flexShrink: 1 }}>{row.lead}</View>
             {row.values ? (
-              <View style={{ flexDirection: 'row', alignSelf: stack ? 'flex-end' : 'auto' }}>
+              <View style={{ flexDirection: 'row' }}>
                 {row.values.map((v, i) =>
                   cell(i, v, t.colors.text, columns?.[i]?.strong ? t.type.bodyStrong : t.type.body),
                 )}
@@ -249,20 +259,9 @@ export function StatTable({
               </Text>
             )}
           </Pressable>
-        );
-      })}
-    </>
-  );
-  return (
-    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-      {scrolls ? (
-        // Header and values scroll together, one scroller per group.
-        <ScrollView horizontal>
-          <View style={{ width: total }}>{table}</View>
-        </ScrollView>
-      ) : (
-        table
-      )}
-    </View>
-  );
+        ))}
+      </>
+    );
+  }
+  return <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>{content}</View>;
 }
