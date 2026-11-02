@@ -38,7 +38,7 @@ export const light: Colors = {
   accentWash: '#FCEBCB',
   inverse: '#1D2024',
   onInverse: '#F5F5F4',
-  thumb: '#FFFFFF',
+  thumb: '#2A1700',
   danger: '#B3261E',
 };
 
@@ -58,7 +58,7 @@ export const dark: Colors = {
   accentWash: '#3A2F1C',
   inverse: '#ECEDEF',
   onInverse: '#17191C',
-  thumb: '#FFFFFF',
+  thumb: '#2A1700',
   danger: '#F2B8B5',
 };
 
@@ -97,6 +97,9 @@ export const layout = {
   statLead: 140,
   // Plate scores stop growing here, so two 3-digit scores and the status fit a 360 dp phone at font scale 2.
   scoreMaxScale: 1.3,
+  // expo-router's private tab item geometry; test/tokens.test.ts fails when an upgrade changes it.
+  tabItemPadding: 5,
+  tabIconSlot: 28,
 } as const;
 // The Latest pill only; boxes stay flat.
 export const shadow = { float: '0 4px 14px rgba(0, 0, 0, 0.25)' } as const;

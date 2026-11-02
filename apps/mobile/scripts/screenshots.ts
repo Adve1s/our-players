@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { type Browser, chromium, type Page } from 'playwright';
 import { DEFAULT_PREFS, type StoredPrefs } from '../src/state/prefs';
+import { layout } from '../src/tokens';
 import { serveWeb } from './web-server';
 
 // Own ports, so this runs next to `pnpm dev:server` (:3001) and `pnpm dev:mobile` (:8081).
@@ -185,6 +186,11 @@ const SHOTS: Shot[] = [
       await day(page, '2026-03-16');
       await seen(page, 'Other games (8)', 'Silovs', 'Rust', 'Porzingis');
     },
+    // The pill answers to the words it shows, for voice control.
+    after: async (page) => {
+      await page.getByRole('button', { name: 'Latest: Mon, Mar 23' }).click({ timeout: 5000 });
+      await page.getByRole('heading', { name: 'Monday, March 23' }).waitFor();
+    },
   },
   {
     name: 'night-busy',
@@ -288,6 +294,17 @@ const SHOTS: Shot[] = [
     },
     // Tapping the day that failed again tries it again.
     after: async (page) => {
+      // One line of text keeps the box at one touch target, its button reaching into the padding.
+      const line = await page.getByRole('alert').first().boundingBox();
+      if (line?.height !== layout.target)
+        throw new Error(`one-line banner is ${line?.height} px, not ${layout.target}`);
+      // Narrow like a large font: the wrapped text still keeps air inside its box.
+      await page.setViewportSize({ width: 200, height: 915 });
+      const box = await page.getByRole('alert').first().boundingBox();
+      const text = await shown(page, "Couldn't load Mon, Mar 16.").first().boundingBox();
+      if (!box || !text || text.y - box.y < 4 || box.y + box.height - text.y - text.height < 4)
+        throw new Error(`banner text touches its box: ${JSON.stringify({ box, text })}`);
+      await page.setViewportSize({ width: 412, height: 915 });
       await page.context().unroute(`${API}/v1/days/**`);
       await page.getByRole('button', { name: 'Mon, Mar 16' }).click();
       await page.getByRole('heading', { name: 'Monday, March 16' }).waitFor();

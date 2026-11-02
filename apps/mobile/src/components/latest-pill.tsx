@@ -7,6 +7,7 @@ import { useReducedMotion, useTheme } from '../theme';
 // Floats over the list, above the tab bar; the screen mounts it only off the latest day.
 export function LatestPill({ date, onPress }: { date: string; onPress: () => void }) {
   const t = useTheme();
+  const text = `Latest: ${dayLabel(date)}`;
   const reduced = useReducedMotion();
   const fade = useRef(new Animated.Value(0)).current;
   // Before paint, so it never shows a frame at full opacity before fading in.
@@ -30,7 +31,7 @@ export function LatestPill({ date, onPress }: { date: string; onPress: () => voi
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Latest game day"
+        accessibilityLabel={text}
         onPress={onPress}
         style={({ pressed }) => ({
           flexDirection: 'row',
@@ -44,9 +45,7 @@ export function LatestPill({ date, onPress }: { date: string; onPress: () => voi
           opacity: pressed ? t.opacity.pressed : 1,
         })}
       >
-        <Text style={{ color: t.colors.onInverse, ...t.type.bodyStrong }}>
-          {`Latest: ${dayLabel(date)}`}
-        </Text>
+        <Text style={{ color: t.colors.onInverse, ...t.type.bodyStrong }}>{text}</Text>
         <Ionicons name="chevron-forward" size={t.icon.inline} color={t.colors.onInverse} />
       </Pressable>
     </Animated.View>

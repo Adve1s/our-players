@@ -1,5 +1,7 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { type ColorRole, type Colors, dark, light } from '../src/tokens';
+import { type ColorRole, type Colors, dark, layout, light } from '../src/tokens';
 
 // WCAG 2.x relative luminance of a #RRGGBB color.
 function luminance(hex: string): number {
@@ -48,5 +50,26 @@ describe('color tokens', () => {
 
   it.each(cases)('%s: %s on %s reaches 4.5:1', (_scheme, _fg, _bg, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // A control, not text: WCAG 1.4.11 asks 3:1.
+  it.each(schemes)('%s: the on-state switch thumb stands out on its track', (_scheme, colors) => {
+    expect(contrast(colors.thumb, colors.accentFill)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('tab bar geometry', () => {
+  // The tab bar's height copies these two private values; an upgrade that changes them clips the label.
+  const views = '../../../node_modules/expo-router/build/react-navigation/bottom-tabs/views/';
+  const source = (file: string) => readFileSync(new URL(views + file, import.meta.url), 'utf8');
+
+  it('matches the item padding of the installed expo-router', () => {
+    expect(source('BottomTabItem.js')).toMatch(
+      new RegExp(`tabVerticalUiKit: \\{[^}]*padding: ${layout.tabItemPadding}\\b`),
+    );
+  });
+
+  it('matches the icon slot of the installed expo-router', () => {
+    expect(source('TabBarIcon.js')).toContain(`ICON_SIZE_TALL = ${layout.tabIconSlot};`);
   });
 });

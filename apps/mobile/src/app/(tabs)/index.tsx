@@ -1,4 +1,4 @@
-import type { DayResponse } from '@our-players/shared';
+import { type DayResponse, localDate } from '@our-players/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -35,7 +35,7 @@ function Banner({ text, onRetry }: { text: string; onRetry?: () => void }) {
         backgroundColor: t.colors.surface,
         borderRadius: t.radius.sheet,
         paddingHorizontal: t.space.lg,
-        paddingVertical: onRetry ? 0 : t.space.md,
+        paddingVertical: t.space.md,
       }}
     >
       <Text style={{ flex: 1, color: t.colors.textMuted, ...t.type.meta }}>{text}</Text>
@@ -46,6 +46,8 @@ function Banner({ text, onRetry }: { text: string; onRetry?: () => void }) {
           onPress={onRetry}
           style={({ pressed }) => ({
             minHeight: t.layout.target,
+            // The target reaches into the box's padding, so one line of text keeps the 48 px box.
+            marginVertical: -t.space.md,
             justifyContent: 'center',
             opacity: pressed ? t.opacity.pressed : 1,
           })}
@@ -142,6 +144,7 @@ export default function Today() {
     data,
     latest,
     countries.length > 0 || favorites.length > 0,
+    localDate(new Date()),
   );
   const shown = data.games.filter((g) => g.rows.length > 0);
   const others = data.games.filter((g) => g.rows.length === 0);

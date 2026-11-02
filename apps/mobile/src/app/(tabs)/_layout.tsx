@@ -44,10 +44,15 @@ export default function TabsLayout() {
         tabBarLabelStyle: t.type.label,
         tabBarStyle: {
           // The default (49 + inset) clips a label under the icon, and 'auto' collapses the bar's
-          // flex: 1 content to zero on native. Fit the uikit item: 5 padding twice, a 28 icon slot, the label,
+          // flex: 1 content to zero on native. Fit the uikit item: its padding twice, its icon slot, the label,
           // plus the top border, which counts inside the height.
+          // shortcut: copies expo-router's private item geometry (pinned by test/tokens.test.ts), drop it if the bar can ever size itself on native.
           height:
-            2 * 5 + 28 + t.type.label.lineHeight * fontScale + t.layout.hairline + insets.bottom,
+            2 * t.layout.tabItemPadding +
+            t.layout.tabIconSlot +
+            t.type.label.lineHeight * fontScale +
+            t.layout.hairline +
+            insets.bottom,
           backgroundColor: t.colors.surface,
           borderTopWidth: t.layout.hairline,
           borderTopColor: t.colors.border,
