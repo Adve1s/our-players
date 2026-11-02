@@ -524,8 +524,8 @@ const SHOTS: Shot[] = [
         );
       await page.getByLabel(BACK, { exact: true }).click();
       await query('porzingis');
-      await tab(page, 'Today');
-      await tab(page, 'Search');
+      await switchTo(page, 'Today');
+      await switchTo(page, 'Search');
       await query('');
     },
   },
