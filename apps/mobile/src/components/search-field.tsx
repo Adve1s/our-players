@@ -62,10 +62,10 @@ export function SearchField({
           accessibilityLabel="Clear search"
           onPress={() => onChangeText('')}
           // The icon is small; the slop makes its target full size.
-          hitSlop={(t.layout.target - t.icon.inline) / 2}
+          hitSlop={(t.layout.target - t.icon.bar) / 2}
           style={({ pressed }) => ({ opacity: pressed ? t.opacity.pressed : 1 })}
         >
-          <Ionicons name="close-circle" size={t.icon.inline} color={t.colors.textMuted} />
+          <Ionicons name="close-circle" size={t.icon.bar} color={t.colors.textMuted} />
         </Pressable>
       ) : null}
     </View>
