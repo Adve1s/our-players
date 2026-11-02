@@ -10,6 +10,7 @@ import {
   ScrollView,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -151,6 +152,7 @@ function PlayerList({
 export default function Settings() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const leagues = usePrefs((s) => s.leagues);
   const countries = usePrefs((s) => s.countries);
   const toggleLeague = usePrefs((s) => s.toggleLeague);
@@ -244,12 +246,18 @@ export default function Settings() {
           ) : null}
           {status}
           {/* No gap between rows: the Card's gap would add a band under each row's text. */}
+          {/* The list scrolls inside its box, so Favorites and Hidden stay a short scroll away;
+              about six rows show, the cut one hinting there is more. */}
           {rows.length > 0 ? (
-            <View>
+            <ScrollView
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 6.5 * t.layout.target * Math.max(1, fontScale) }}
+            >
               {rows.map((row) => (
                 <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
               ))}
-            </View>
+            </ScrollView>
           ) : null}
           {data && rows.length === 0 && query.trim() ? (
             <Caption>No country matches "{query.trim()}".</Caption>
