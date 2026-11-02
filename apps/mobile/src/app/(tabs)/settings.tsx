@@ -30,6 +30,7 @@ const LEAGUES: League[] = ['NHL', 'NBA'];
 
 function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void }) {
   const t = useTheme();
+  const { fontScale } = useWindowDimensions();
   const counts = LEAGUES.filter((l) => row.counts[l])
     .map((l) => `${l} ${row.counts[l]}`)
     .join(', ');
@@ -64,7 +65,12 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
         {counts ? <Caption>{counts}</Caption> : null}
       </View>
       {row.selected ? (
-        <Ionicons name="checkmark" size={t.icon.bar} color={t.colors.accent} />
+        // Grows with the text it marks.
+        <Ionicons
+          name="checkmark"
+          size={t.icon.bar * Math.max(1, fontScale)}
+          color={t.colors.accent}
+        />
       ) : null}
     </Pressable>
   );
@@ -253,6 +259,8 @@ export default function Settings() {
               nestedScrollEnabled
               keyboardShouldPersistTaps="handled"
               style={{ maxHeight: 6.5 * t.layout.target * Math.max(1, fontScale) }}
+              // Keeps the checkmarks clear of the scroll indicator.
+              contentContainerStyle={{ paddingRight: t.space.md }}
             >
               {rows.map((row) => (
                 <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
