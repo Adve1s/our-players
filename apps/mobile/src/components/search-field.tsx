@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { useTheme } from '../theme';
 
 export function SearchField({
@@ -56,6 +56,18 @@ export function SearchField({
           paddingHorizontal: 0,
         }}
       />
+      {value ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          onPress={() => onChangeText('')}
+          // The icon is small; the slop makes its target full size.
+          hitSlop={(t.layout.target - t.icon.inline) / 2}
+          style={({ pressed }) => ({ opacity: pressed ? t.opacity.pressed : 1 })}
+        >
+          <Ionicons name="close-circle" size={t.icon.inline} color={t.colors.textMuted} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
