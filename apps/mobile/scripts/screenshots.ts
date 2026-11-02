@@ -513,6 +513,21 @@ const SHOTS: Shot[] = [
       await page.getByRole('button', { name: 'Open Kristaps Porzingis' }).click();
       await seen(page, 'Liepaja, LVA', 'Mon, Mar 23', 'GS 137 – 131 DAL, Final/OT');
     },
+    // Back keeps the search; another tab clears it.
+    after: async (page) => {
+      const query = (value: string) =>
+        page.waitForFunction(
+          (v) =>
+            document.querySelector<HTMLInputElement>('input[aria-label="Search players"]')
+              ?.value === v,
+          value,
+        );
+      await page.getByLabel(BACK, { exact: true }).click();
+      await query('porzingis');
+      await tab(page, 'Today');
+      await tab(page, 'Search');
+      await query('');
+    },
   },
   {
     // AC5: a deep link renders, and Today sits under it (anchor), so back goes somewhere.

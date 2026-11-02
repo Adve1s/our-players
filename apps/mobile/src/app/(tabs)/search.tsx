@@ -1,4 +1,5 @@
 import type { PlayerSummary } from '@our-players/shared';
+import { useSegments } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,12 @@ export default function Search() {
   const insets = useSafeAreaInsets();
   const leagues = usePrefs((s) => s.leagues);
   const [query, setQuery] = useState('');
+  // Switching to another tab clears the search; opening a player over it keeps it for Back.
+  const segments = useSegments();
+  const otherTab = segments[0] === '(tabs)' && segments[1] !== 'search';
+  useEffect(() => {
+    if (otherTab) setQuery('');
+  }, [otherTab]);
   const term = searchTerm(useDebounced(query, 300));
   const result = useSearch(term, leagues);
   const view = searchView(term, result);
