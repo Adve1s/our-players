@@ -70,6 +70,8 @@ function CountryItem({ row, onPress }: { row: CountryRow; onPress: () => void })
           name="checkmark"
           size={t.icon.bar * Math.max(1, fontScale)}
           color={t.colors.accent}
+          // Clear of the list's scroll indicator.
+          style={{ marginRight: t.space.md }}
         />
       ) : null}
     </Pressable>
@@ -259,8 +261,6 @@ export default function Settings() {
               nestedScrollEnabled
               keyboardShouldPersistTaps="handled"
               style={{ maxHeight: 6.5 * t.layout.target * Math.max(1, fontScale) }}
-              // Keeps the checkmarks clear of the scroll indicator.
-              contentContainerStyle={{ paddingRight: t.space.md }}
             >
               {rows.map((row) => (
                 <CountryItem key={row.code} row={row} onPress={() => toggleCountry(row.code)} />
