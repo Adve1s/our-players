@@ -40,7 +40,8 @@ export default function Search() {
   const leagues = usePrefs((s) => s.leagues);
   const [query, setQuery] = useState('');
   // Switching to another tab clears the search; opening a player over it keeps it for Back.
-  const segments = useSegments();
+  // Widened: without Expo's generated route types (CI) the tuple has one element.
+  const segments: string[] = useSegments();
   const otherTab = segments[0] === '(tabs)' && segments[1] !== 'search';
   useEffect(() => {
     if (otherTab) setQuery('');
