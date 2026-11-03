@@ -691,7 +691,7 @@ const STORE_SHOTS: { name: string; scroll?: (page: Page) => Promise<void> }[] = 
         .evaluate((el) => el.scrollIntoView({ block: 'end' })),
   },
   { name: 'player-skater' },
-  { name: 'search-results' },
+  // No search-results: the seed lacks most rosters, so its "No team" would misrepresent real players.
   // Unscrolled, so Latvia shows ticked. The country list is its own 5.67-row scroller, so a row is always cut.
   { name: 'settings' },
 ];
