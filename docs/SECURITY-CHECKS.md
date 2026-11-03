@@ -160,8 +160,9 @@ systemctl is-active unattended-upgrades && apt-config dump APT::Periodic
 stat -c '%a %n' /opt/our-players /opt/our-players/.env /root/.ssh /root/.ssh/authorized_keys
 wc -l < /root/.ssh/authorized_keys
 docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedSince}}'
-docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -cE 'remote_ip|client_ip'
+docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -cE 'remote_ip|client_ip|X-Forwarded-For'
 docker compose logs --since 48h api | grep -c '"path":"[^"]*?'
+docker compose logs --since 48h api | grep -c 'Failed query'
 journalctl --disk-usage && du -sh /var/lib/docker/containers
 ```
 Success, line by line:
@@ -172,7 +173,7 @@ Success, line by line:
 - `active`, and `APT::Periodic::Update-Package-Lists "1"` and `APT::Periodic::Unattended-Upgrade "1"`.
 - `755 /opt/our-players`, `600 /opt/our-players/.env`, `700 /root/.ssh`, `600 /root/.ssh/authorized_keys`; `1` key (yours; more means someone else can log in).
 - The API's newest image is your last deploy; `caddy:2` and `postgres:17` were created within the last month (section 6 pulls them).
-- `0` and `0`: no client IPs in Caddy's logs, no query strings (preferences) in the API's. The first command skips Caddy's `admin.api` lines: each deploy's `caddy reload` logs one with `"remote_ip":"127.0.0.1"` (Caddy reloading itself, not a visitor).
+- `0`, `0` and `0`: no client IPs in Caddy's logs (the `X-Forwarded-For` header included), no query strings (preferences) in the API's, and no failed-query params in the API's (a Drizzle query error's message carries them). The second and third `0` are separate checks: the query-string one looks only at `path`. The `Failed query` check, and `X-Forwarded-For` in the first, apply after S11's API deploy; before it either can be above `0`. The first command skips Caddy's `admin.api` lines: each deploy's `caddy reload` logs one with `"remote_ip":"127.0.0.1"` (Caddy reloading itself, not a visitor).
 - The journal and container logs stay small (S16: 45.5M and 3.2M); Docker rotates container logs at 5 × 10 MB.
 
 ### 4.4 Android

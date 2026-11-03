@@ -106,7 +106,7 @@ The package change reaches `app.json`, VISION §11 (with the Analytics wording f
 - **Sent to our server:** to fetch the right results, the app sends those preferences and any search text in each request's query, over HTTPS. They're used to answer that request and then discarded, and are never written to a log or database.
 - **Your IP address:** your network address reaches our server, as with any internet request. It's held only in the server's memory to limit abusive traffic. The first request after each minute clears it, so it can stay longer when nobody else is using the app, and a server restart clears it too. It isn't saved to disk, written to a log or used to work out your location.
 - **What's logged:** each request's path (which may name a date, game or player), status and duration, with no query string or IP address, so a line can't be tied to a person. The proxy's error log, written when the API can't answer, holds the path and request headers such as the app or browser type. Logs are capped at 50 MB per service and overwritten as they fill, with no fixed time limit.
-- **Deletion:** no account and nothing tied to a person, so there's nothing we could find and delete on request. Clear your data by uninstalling the app, or clearing site data on the web.
+- **Deletion:** no account, and nothing in the app or on its server is tied to a person, so there's nothing there we could find and delete on request. Clear your data by uninstalling the app, or clearing site data on the web. If you've emailed us, ask and we'll delete your messages.
 - **Sharing:** nothing is sold or shared. The API runs on our rented server at Linode (Germany), which acts for us. The website version is served by Cloudflare, which handles visitors' addresses as any web host does; the Android app doesn't use it for data. Mail you send to the support address passes through Cloudflare's forwarding to Gmail, and is kept as long as needed to answer.
 - **Data sources:** player and game data comes from public NHL and ESPN web APIs, fetched by our server on a schedule. No user data goes to them. Not affiliated with the NHL, NBA or ESPN.
 - **Children:** the app isn't directed at children under 13. It asks for no personal information and has no ads or accounts.
@@ -139,7 +139,7 @@ The package change reaches `app.json`, VISION §11 (with the Analytics wording f
 
 ### Data safety answers
 
-Checked in the code: `packages/shared/src/client.ts` is the only `fetch`; preferences and `q` go in query strings; `apps/server/src/api/app.ts` logs `c.req.path`; `rate-limit.ts` keeps IPs in a one-minute in-memory map; `deploy/Caddyfile` strips the query and client IPs; `deploy/compose.yaml` caps logs at 5 × 10 MB. No analytics, crash reporting, ads or update SDK in `apps/mobile/package.json`. API DNS is grey-cloud, so Cloudflare doesn't see API traffic. The host part (`docs/SECURITY-CHECKS.md` §4.3, "0 and 0") is re-verified in the walkthrough.
+Checked in the code: `packages/shared/src/client.ts` is the only `fetch`; preferences and `q` go in query strings; `apps/server/src/api/app.ts` logs `c.req.path`; `rate-limit.ts` keeps IPs only in an in-memory map that the first request after each minute clears, as does a restart; `deploy/Caddyfile` strips the query and client IPs, `X-Forwarded-For` included; `deploy/compose.yaml` caps logs at 5 × 10 MB. No analytics, crash reporting, ads or update SDK in `apps/mobile/package.json`. API DNS is grey-cloud, so Cloudflare doesn't see API traffic. The host part (`docs/SECURITY-CHECKS.md` §4.3, "0, 0 and 0") is re-verified in the walkthrough.
 
 **Collects or shares required data?** Yes. **Encrypted in transit?** Yes (HTTPS only; HTTP redirects). **Way to request deletion?** No (owner, 2026-11-04): there's no account and nothing links to a person, so nobody could act on a request. Log rotation is by size, so the 90-day route would need a host change for one listing line Google doesn't require, and that line would say users can request something they can't. Parked in PROGRESS for S15.
 
@@ -191,9 +191,9 @@ Owner time: about an hour, excluding EAS's queue.
 Then: ready for `/handoff`.
 
 **After the merge** (`release.md`)
-1. `curl https://ourplayers.adveis.dev/privacy | grep "Privacy policy"`, then tap the link on the phone.
-2. If the review changed the app: new AAB, §4.4, phone check.
-3. Deploy the API (`deploy/deploy.sh`), because the Data safety answers rely on the log fix.
+1. Right after the merge, deploy the API (`deploy/deploy.sh`, which also ships and reloads the Caddyfile), because the page goes live at merge and the Data safety answers rely on the log fixes.
+2. `curl https://ourplayers.adveis.dev/privacy | grep "Privacy policy"`, then tap the link on the phone.
+3. If the review changed the app: new AAB, §4.4, phone check.
 4. Console: account checks; App content from `app-content.md` and `data-safety.md`; listing and graphics; countries; closed track, tester list with the owner's account; promote the release; submit.
 5. On approval: opt in with the link, install, Today loads. People can then be added.
 6. If rejected: a bug-fix session, then a new version code and resubmit.
