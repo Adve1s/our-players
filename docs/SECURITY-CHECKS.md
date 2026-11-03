@@ -190,9 +190,13 @@ aapt dump permissions <path-to.apk>
 ```
 For an AAB (`bundletool` from github.com/google/bundletool):
 ```bash
-bundletool dump manifest --bundle=<path-to.aab> | grep uses-permission
+bundletool dump manifest --bundle=<path-to.aab> | grep -E 'uses-permission|targetSdkVersion|package='
 ```
-Success: `android.permission.INTERNET` and `io.github.adve1s.ourplayers.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (added by androidx.core: a signature-level permission the app defines for itself, not one the user grants), nothing else. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.)
+With no Java installed, download `bundletool.jar` from that page and run it through mise, which adds nothing to the repo:
+```bash
+mise x java@temurin-21 -- java -jar bundletool.jar dump manifest --bundle=<path-to.aab> | grep -E 'uses-permission|targetSdkVersion|package='
+```
+Success: `android.permission.INTERNET` and `dev.adveis.ourplayers.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (added by androidx.core: a signature-level permission the app defines for itself, not one the user grants), nothing else. In particular, no `com.google.android.gms.permission.AD_ID`: the Advertising ID form answers No. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.) The same output shows `android:targetSdkVersion` 36 and `package="dev.adveis.ourplayers"`.
 
 ### 4.5 Accounts and tokens
 
