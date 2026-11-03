@@ -127,3 +127,44 @@ describe('listing graphics', () => {
     }
   });
 });
+
+describe('store documents', () => {
+  const section = (md: string, title: string) =>
+    md.split(`## ${title}\n`)[1]?.split(/^## /m)[0]?.trim() ?? '';
+  const listing = read('../../../docs/store/listing.md');
+  it.each([
+    ['App name', 30],
+    ['Short description', 80],
+    ['Full description', 4000],
+  ])('%s fits within %i characters', (title, max) => {
+    const text = section(listing, title as string);
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.length).toBeLessThanOrEqual(max as number);
+  });
+  it('the full description carries the non-affiliation note', () => {
+    expect(section(listing, 'Full description')).toMatch(
+      /isn't affiliated with or endorsed by the NHL, the NBA/,
+    );
+  });
+  it('declares what the server log actually keeps', () => {
+    const ds = read('../../../docs/store/data-safety.md');
+    for (const type of [
+      'In-app search history',
+      'Other actions',
+      'App interactions',
+      'Other app performance data',
+    ]) {
+      expect(ds).toContain(type);
+    }
+  });
+  it('holds no email address but the public support one', () => {
+    for (const f of readdirSync(new URL('../../../docs/store/', import.meta.url))) {
+      if (!f.endsWith('.md')) continue;
+      // The domain starts with a letter so a pinned package (a CLI name @ its version) isn't read as an address.
+      const found =
+        read(`../../../docs/store/${f}`).match(/[\w.+-]+@[a-z][\w-]*(\.[\w-]+)*\.[a-z]{2,}\b/gi) ??
+        [];
+      expect(found.filter((e) => e !== 'ourplayers@adveis.dev')).toEqual([]);
+    }
+  });
+});

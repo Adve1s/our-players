@@ -139,6 +139,7 @@ Ideas that came up but are out of scope for now.
 - (2026-10-31, S16 AN1) If the app ever adds haptics, remove android.permission.VIBRATE from blockedPermissions in apps/mobile/app.json.
 - (2026-11-03, D-067) A dash in a stat other than `MIN` still fails the whole game's box score (owner: stays loud until it's actually seen). A `MIN` dash ESPN never fixes, or one on a backfilled or settled game, keeps its 0 for good, with only a warning in the log when the row has other stats (`msg` holds `with stats on the row`; it also fires on a re-fetch that kept stored minutes).
 - (2026-11-03, D-068) A re-fetch failing 24 h or more after the final only logs a warning and adds to `counts.correctionsFailed`, so nothing alerts on it: check `job_runs` if a line looks stale. A first correction that kept failing and succeeds after the 24 h mark gets no further re-fetch. `loadState` still loads old uncorrected finals every 10 min, which nothing uses now outside startup; removing that clause means changing the first `loadState` test (reviewer minor, left).
+- (2026-11-04, D-071) A 90-day cap on host logs would allow Data safety's deletion badge and a firmer sentence in the privacy policy, at the cost of a host change. Reconsider in S15.
 
 ## Session log
 <!--
