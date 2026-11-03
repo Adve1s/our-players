@@ -14,8 +14,8 @@ How to re-run the S16 security audit by hand: the scanners, the manual checklist
 | Every Monday, automatically | The **Audit** workflow (`.github/workflows/audit.yml`) runs `pnpm audit` (fails on high) and the API's runtime dependencies alone (fails on moderate). A red run emails you: read the advisory, then fix (an update or an `overrides` entry in `pnpm-workspace.yaml`) or accept it (an `audit.ignore` entry with the reason). |
 | After adding or upgrading a dependency | Section 2: `pnpm audit`. After an Expo SDK upgrade also re-check the accepted D1 and D3 advisories (section 5): the upgrade may fix them, then delete their `ignore` lines. |
 | Monthly | Section 2: `pnpm audit` and `trivy image`. Section 6: host updates and image pulls. |
-| Before S11b (closed test) and before S15 (public launch) | Everything: sections 2, 3 and 4. Before S15 also a Claude Security codebase scan (section 3). |
-| After the first Android build (S11a/S11b) | Section 4.4, "The built app". |
+| Before the closed test (S11) and before S15 (public launch) | Everything: sections 2, 3 and 4. Before S15 also a Claude Security codebase scan (section 3). |
+| Before uploading an Android build (S11) | Section 4.4, "The built app". |
 | Once, after S16 is merged | GitHub → the repo → Actions → **Audit** → Run workflow (branch `main`). Success: the run is green. This proves the workflow works before its first Monday. |
 
 ## 2. Scanners
@@ -184,7 +184,7 @@ pnpm exec expo config --type introspect --json 2>/dev/null | grep -o '"uses-perm
 ```
 Success: `android.permission.INTERNET` with nothing else, and `SYSTEM_ALERT_WINDOW`, `VIBRATE`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` each with `"tools:node":"remove"` (AN1: removed from the build). A new permission without `remove` came with a new library: check that it's needed, and that the Play Console Data safety answers still fit.
 
-**The built app (S11a/S11b, after the first Android build).** The final manifest is what Play sees. For an APK (`aapt` comes with the Android SDK build-tools):
+**The built app (S11, before uploading each build).** The final manifest is what Play sees. For an APK (`aapt` comes with the Android SDK build-tools):
 ```bash
 aapt dump permissions <path-to.apk>
 ```
@@ -220,7 +220,7 @@ Success, line by line:
 - `gh secret list` shows no Cloudflare secret; `--env production` shows `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (C2).
 - `0` deploy keys, `0` webhooks, collaborators only you.
 
-**You confirm** (consoles, no command): two-factor authentication is on for GitHub, Cloudflare, Linode, Google Play and, once it exists (S11a), Expo (X1). The Cloudflare API token (My Profile → API Tokens) is still the **Edit Cloudflare Workers** template limited to your account and the zone `adveis.dev` only; roll it as in `docs/DEPLOY.md` §6 if in doubt.
+**You confirm** (consoles, no command): two-factor authentication is on for GitHub, Cloudflare, Linode, Google Play and Expo (X1). The Cloudflare API token (My Profile → API Tokens) is still the **Edit Cloudflare Workers** template limited to your account and the zone `adveis.dev` only; roll it as in `docs/DEPLOY.md` §6 if in doubt.
 
 ### 4.6 Supply chain and tooling
 
