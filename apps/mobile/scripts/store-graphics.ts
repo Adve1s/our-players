@@ -18,10 +18,10 @@ const font = (weight: number, file: string) => {
   return `@font-face{font-family:Instrument Sans;font-weight:${weight};src:url(data:font/ttf;base64,${ttf.toString('base64')})}`;
 };
 
-// The mark's own box (see the coordinates in the SVG), so it sits on the layout without the icon's padding.
+// The mark's own box, round ray caps included, so it sits on the layout without the icon's padding.
 const mark = readFileSync(resolve('assets/icon.svg'), 'utf8')
   .replace(/<rect id="field"[^>]*\/>/, '')
-  .replace('viewBox="0 0 1024 1024"', 'viewBox="290 333 444 358" width="200" height="161"');
+  .replace('viewBox="0 0 1024 1024"', 'viewBox="287.5 332.5 449 358.5" width="202" height="161.3"');
 
 const FEATURE = `<!doctype html><style>
 ${font(700, '700Bold/InstrumentSans_700Bold.ttf')}
@@ -69,7 +69,6 @@ async function main(): Promise<void> {
       )
         throw new Error(`outside the central 80%: ${JSON.stringify(box)}`);
     }
-    console.log(JSON.stringify(boxes));
     await page.screenshot({ path: resolve(OUT, 'feature-graphic.png') });
     console.log(resolve(OUT, 'feature-graphic.png'));
   } finally {
