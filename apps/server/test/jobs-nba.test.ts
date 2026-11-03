@@ -234,6 +234,47 @@ describe('NBA corrections', () => {
     expect(client.requests.length).toBe(corrected);
   });
 
+  // The summary as re-published with a dash in Porziņģis's MIN (26 in the fixture) and one more point.
+  function dashSummaryRoute() {
+    const raw = loadFixture('espn-nba', 'summary', GAME) as {
+      boxscore: {
+        players: { statistics: { athletes: { athlete: { id: string }; stats: string[] }[] }[] }[];
+      };
+    };
+    const row = raw.boxscore.players
+      .flatMap((side) => side.statistics.flatMap((block) => block.athletes))
+      .find((r) => r.athlete.id === '3102531');
+    if (!row) throw new Error('test setup: Porziņģis not in the summary');
+    row.stats[0] = '-';
+    row.stats[1] = '31';
+    return { [espnUrls.summary(GAME)]: raw };
+  }
+
+  it('a dash in MIN on a re-fetch keeps the stored minutes and takes the other numbers', async () => {
+    await seedFetchedEarly();
+    useRoutes(dashSummaryRoute());
+    at(9 * H);
+    await results({ catchUp: true });
+
+    const line = (await linesOf(`nba-${GAME}`)).find((l) => l.player === PORZINGIS);
+    expect(line?.stats).toMatchObject({ minutes: 26, points: 31 });
+  });
+
+  it('logs the mapper warning for a dash in MIN on a row with stats', async () => {
+    await seedFetchedEarly();
+    const warned: string[] = [];
+    ctx.log = createLogger((level, line) => {
+      if (level === 'warn') warned.push((JSON.parse(line) as { msg: string }).msg);
+    });
+    useRoutes(dashSummaryRoute());
+    at(9 * H);
+    await results({ catchUp: true });
+
+    expect(warned).toContain(
+      `espn-nba summary: game ${GAME}: player 3102531: MIN "-" with stats on the row`,
+    );
+  });
+
   it('re-requests the summary once more 24 h after the final', async () => {
     await seedFetchedEarly();
     // The job stamps corrected_at with the database's clock, so a 6 h correction at START + 9 h is set by hand.

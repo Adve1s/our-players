@@ -3,6 +3,7 @@ import {
   type Game,
   type League,
   type Player,
+  type PublicId,
   type SeasonStats,
   type SeasonType,
   type StatLine,
@@ -22,7 +23,13 @@ export type LeagueAdapter = {
   boxscore(
     client: Client,
     externalId: string,
-  ): Promise<{ lines: StatLine[]; teams: Team[]; players: Player[] }>;
+  ): Promise<{
+    lines: StatLine[];
+    teams: Team[];
+    players: Player[];
+    minutesUnknown?: PublicId[];
+    warnings?: string[];
+  }>;
   player(client: Client, externalId: string): Promise<{ player: Player; warnings: string[] }>;
   teams(client: Client, date: string): Promise<{ teams: Team[] }>;
   roster(client: Client, team: Team): Promise<{ players: Player[]; warnings: string[] }>;

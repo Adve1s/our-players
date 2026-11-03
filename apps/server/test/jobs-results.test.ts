@@ -421,20 +421,42 @@ describe('corrections', () => {
     await results();
     const corrected = await merzStats();
 
+    // The job stamped corrected_at with the database's clock, months past this game's final, so the second re-fetch isn't owed either.
     useRoutes(fullRoutes());
-    at(26 * H);
+    at(30 * H);
     await results({ catchUp: true });
     expect(client.requestCount).toBe(0);
     expect(await merzStats()).toEqual(corrected);
   });
 
-  it('a correction more than 24 h after the final is left to a catch-up run', async () => {
+  it('a correction that kept failing is still fetched 25 h after the final', async () => {
     await seedFetchedEarly();
     useRoutes(correctedBoxRoute());
-    at(3 * H + 24 * H + 60 * 1000);
+    at(3 * H + 25 * H);
+    await results();
+
+    expect(await merzStats()).toMatchObject({ saves: 31 });
+  });
+
+  it('a correction 48 h after the final is left to a catch-up run', async () => {
+    await seedFetchedEarly();
+    useRoutes(correctedBoxRoute());
+    at(3 * H + 48 * H);
     await results();
 
     expect(client.requestCount).toBe(0);
+    expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
+  });
+
+  it('a correction failing 24 h after the final warns and leaves the run succeeded', async () => {
+    await seedFetchedEarly();
+    useRoutes({});
+    at(3 * H + 24 * H);
+    const result = await results();
+
+    expect(result.status).toBe('succeeded');
+    expect(countOf(result, 'correctionsFailed')).toBe(1);
+    expect(warnings().some((w) => w.startsWith(`correction nhl-${GAME}: `))).toBe(true);
     expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
   });
 
@@ -507,11 +529,12 @@ describe('corrections', () => {
       expect(client.requestCount).toBe(1);
     });
 
-    it('a failure keeps the old stamp and the next run retries', async () => {
+    it('a failure warns, keeps the old stamp, and the next run retries', async () => {
       await seedCorrected();
       useRoutes({});
       at(3 * H + 24 * H);
-      expect((await results()).status).toBe('partial');
+      expect((await results()).status).toBe('succeeded');
+      expect(warnings().some((w) => w.startsWith(`correction nhl-${GAME}: `))).toBe(true);
       expect((await gameRow(`nhl-${GAME}`)).correctedAt).toEqual(NINE_HOURS_IN());
 
       useRoutes(correctedBoxRoute());
@@ -519,13 +542,24 @@ describe('corrections', () => {
       expect(await merzStats()).toMatchObject({ saves: 31 });
     });
 
-    // Every restart is a catch-up run: without this bound each one would re-fetch the whole season.
-    it('stops 48 h after the final, on a catch-up run too', async () => {
+    it('stops 48 h after the final', async () => {
       await seedCorrected();
       useRoutes(correctedBoxRoute());
       at(3 * H + 48 * H);
-      await results({ catchUp: true });
+      await results();
       expect(client.requestCount).toBe(0);
+    });
+
+    it('a catch-up run takes it at any age, and only once', async () => {
+      await seedCorrected();
+      useRoutes(correctedBoxRoute());
+      at(30 * 24 * H);
+      await results({ catchUp: true });
+      expect(await merzStats()).toMatchObject({ saves: 31 });
+      expect(client.requestCount).toBe(1);
+
+      await results({ catchUp: true });
+      expect(client.requestCount).toBe(1);
     });
 
     it('skips a game first seen final 12 h or more after its start (backfill, settled)', async () => {
@@ -534,6 +568,7 @@ describe('corrections', () => {
       useRoutes(correctedBoxRoute());
       at(12 * H + 24 * H);
       await results();
+      await results({ catchUp: true });
       expect(client.requestCount).toBe(0);
     });
   });

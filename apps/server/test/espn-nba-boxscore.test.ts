@@ -446,6 +446,22 @@ describe('mapSummary: errors', () => {
     expect(s.points).toBe(12);
   });
 
+  it('lists a player whose MIN is a dash as minutes unknown, and no one else', () => {
+    expect(mapSummary(summary('401909095')).minutesUnknown).toEqual(['nba-5211983']);
+  });
+
+  it('warns about a dash MIN only when the row has other stats', () => {
+    const raw = summary('401909095');
+    expect(mapSummary(raw).warnings).toEqual([]);
+    const stats = rawRow(raw, '5211983').stats as string[];
+    stats[13] = '-2';
+    expect(mapSummary(raw).warnings).toEqual([]);
+    stats[8] = '1';
+    expect(mapSummary(raw).warnings).toEqual([
+      'espn-nba summary: game 401909095: player 5211983: MIN "--" with stats on the row',
+    ]);
+  });
+
   it('throws on any other non-numeric MIN ("DNP")', () => {
     const raw = summary('401909095');
     (rawRow(raw, '5211983').stats as string[])[0] = 'DNP';

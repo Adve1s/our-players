@@ -3,7 +3,7 @@ import { and, eq, gt, gte, inArray, isNull, lte, max, or, sql } from 'drizzle-or
 import type { Db } from '../db/client';
 import { games, jobRuns } from '../db/schema';
 import { JOBS } from '../jobs';
-import { LATE_CORRECTION_UNTIL_MS, RESULTS_WINDOW_MS } from '../jobs/results';
+import { CORRECTION_UNTIL_MS, RESULTS_WINDOW_MS } from '../jobs/results';
 import { type JobContext, runJob } from '../jobs/runner';
 import { type Decision, decide, type SchedulerState } from './decide';
 
@@ -12,8 +12,8 @@ export const TICK_MS = 10 * 60 * 1000;
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 // The rows decide() reads: the 24 h window and the future, uncorrected finals of any age, finals
-// still waiting for their second re-fetch, and at startup started-but-unfinished games of any age
-// (catch-up after downtime).
+// still waiting for their second re-fetch, and at startup every final and started-but-unfinished
+// game of any age (catch-up after downtime).
 export async function loadState(db: Db, now: Date, startup: boolean): Promise<SchedulerState> {
   const rows = await db
     .select({
@@ -31,10 +31,13 @@ export async function loadState(db: Db, now: Date, startup: boolean): Promise<Sc
         and(eq(games.status, 'FINAL'), isNull(games.correctedAt)),
         and(
           eq(games.status, 'FINAL'),
-          gt(games.finalAt, new Date(now.getTime() - LATE_CORRECTION_UNTIL_MS)),
+          gt(games.finalAt, new Date(now.getTime() - CORRECTION_UNTIL_MS)),
         ),
         startup
-          ? and(inArray(games.status, ['SCHEDULED', 'LIVE']), lte(games.startTimeUtc, now))
+          ? or(
+              eq(games.status, 'FINAL'),
+              and(inArray(games.status, ['SCHEDULED', 'LIVE']), lte(games.startTimeUtc, now)),
+            )
           : undefined,
       ),
     );
