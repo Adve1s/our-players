@@ -1,24 +1,74 @@
-import type { League, PublicId } from '@our-players/shared';
+import type { League, PublicId, StatLine } from '@our-players/shared';
 import { and, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
+import type { Db } from '../db/client';
 import { upsertGames, upsertStatLines } from '../db/games';
 import { upsertPlayers } from '../db/players';
-import { games, players, teams } from '../db/schema';
+import { games, players, statLines, teams } from '../db/schema';
 import { upsertTeams } from '../db/teams';
+import type { SchedulerGame } from '../scheduler/decide';
 import { ADAPTERS } from './adapters';
 import type { Job, JobContext, JobRun } from './runner';
 
 export const CORRECTION_DELAY_MS = 6 * 60 * 60 * 1000;
 // Regular-season games end within ~3.5 h, so a box score first fetched this long after the start is past CORRECTION_DELAY_MS.
 export const SETTLED_AFTER_START_MS = 12 * 60 * 60 * 1000;
-// Bounds re-fetching a box score that fails every time, and polling a stuck game (job and scheduler); catch-up runs take any age.
+// Bounds polling a stuck game and retrying a box score that fails every time (job and scheduler); catch-up runs take any age.
 export const RESULTS_WINDOW_MS = 24 * 60 * 60 * 1000;
+// ESPN can take hours to fix a row, so a final gets a second re-fetch in case the 6 h one read it too early (D-068).
+export const LATE_CORRECTION_MS = 24 * 60 * 60 * 1000;
+// Bounds retrying a re-fetch that fails every time; catch-up runs take any age.
+export const CORRECTION_UNTIL_MS = 48 * 60 * 60 * 1000;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
+// The one rule for re-fetching a final box score, read by this job and the scheduler. Never corrected: from
+// CORRECTION_DELAY_MS after the final. Corrected before the 24 h mark: once more from LATE_CORRECTION_MS, unless first
+// seen final SETTLED_AFTER_START_MS after the start. Either way until CORRECTION_UNTIL_MS, any age on a catch-up run.
+export function correctionDue(
+  g: Omit<SchedulerGame, 'league'>,
+  t: number,
+  catchUp?: boolean,
+): boolean {
+  if (g.status !== 'FINAL' || g.boxscoreFetchedAt === null || g.finalAt === null) return false;
+  const final = g.finalAt.getTime();
+  if (!catchUp && final <= t - CORRECTION_UNTIL_MS) return false;
+  if (g.correctedAt === null) return final <= t - CORRECTION_DELAY_MS;
+  return (
+    final <= t - LATE_CORRECTION_MS &&
+    g.correctedAt.getTime() < final + LATE_CORRECTION_MS &&
+    final < g.startTimeUtc.getTime() + SETTLED_AFTER_START_MS
+  );
+}
+
+// A dash means ESPN doesn't know the minutes right now, so it never replaces minutes already stored (D-067).
+async function keepStoredMinutes(
+  db: Db,
+  gamePublicId: PublicId,
+  lines: StatLine[],
+  unknown: PublicId[],
+): Promise<StatLine[]> {
+  if (unknown.length === 0) return lines;
+  const stored = await db
+    .select({ player: players.publicId, stats: statLines.stats })
+    .from(statLines)
+    .innerJoin(games, eq(games.id, statLines.gameId))
+    .innerJoin(players, eq(players.id, statLines.playerId))
+    .where(and(eq(games.publicId, gamePublicId), inArray(players.publicId, unknown)));
+  const minutes = new Map<string, number>();
+  for (const { player, stats } of stored) {
+    if (stats && 'minutes' in stats) minutes.set(player, stats.minutes);
+  }
+  return lines.map((line) => {
+    const kept = minutes.get(line.playerPublicId);
+    return line.kind === 'basketball_player' && line.played && kept
+      ? { ...line, stats: { ...line.stats, minutes: kept } }
+      : line;
+  });
+}
+
 // Without --date: the days of started games that aren't final, and of final games without a box score, that started
 // within RESULTS_WINDOW_MS (any age on a catch-up run), so a stuck game or a box score that always fails stops being retried.
-// Then each final box score is re-fetched once, CORRECTION_DELAY_MS after the final horn, for stat corrections:
-// within RESULTS_WINDOW_MS of the final, or of any age on a catch-up run (the scheduler's startup tick, a manual `pnpm job results`).
+// Then each final box score due under correctionDue is re-fetched for stat corrections.
 export const resultsJob: Job = async (ctx, run, args) => {
   const days = args.date
     ? [args.date]
@@ -46,25 +96,38 @@ export const resultsJob: Job = async (ctx, run, args) => {
   for (const day of days) await ingestDay(ctx, run, args.league, day);
 
   const now = ctx.now().getTime();
-  const due = await ctx.db
-    .select({ publicId: games.publicId, externalId: games.externalId })
+  const finals = await ctx.db
+    .select({
+      publicId: games.publicId,
+      externalId: games.externalId,
+      status: games.status,
+      startTimeUtc: games.startTimeUtc,
+      finalAt: games.finalAt,
+      boxscoreFetchedAt: games.boxscoreFetchedAt,
+      correctedAt: games.correctedAt,
+    })
     .from(games)
     .where(
       and(
         eq(games.league, args.league),
         eq(games.status, 'FINAL'),
         isNotNull(games.boxscoreFetchedAt),
-        isNull(games.correctedAt),
+        // A prefilter; correctionDue is the rule.
         lte(games.finalAt, new Date(now - CORRECTION_DELAY_MS)),
-        args.catchUp ? undefined : gt(games.finalAt, new Date(now - RESULTS_WINDOW_MS)),
+        args.catchUp ? undefined : gt(games.finalAt, new Date(now - CORRECTION_UNTIL_MS)),
       ),
     );
-  for (const game of due) {
+  for (const game of finals.filter((g) => correctionDue(g, now, args.catchUp))) {
     try {
       await finalizeGame(ctx, run, args.league, game, 'correction');
     } catch (e) {
-      // corrected_at stays null, so the next run retries this game.
-      run.fail(`correction ${game.publicId}: ${message(e)}`);
+      // corrected_at stays as it was, so the next run retries this game. A day after the final a
+      // box score is stored and read at least once, so this warns: a partial run turns /health/data red.
+      const text = `correction ${game.publicId}: ${message(e)}`;
+      if ((game.finalAt?.getTime() ?? now) <= now - LATE_CORRECTION_MS) {
+        run.log.warn(text);
+        run.add('correctionsFailed');
+      } else run.fail(text);
     }
   }
 };
@@ -168,7 +231,9 @@ async function finalizeGame(
       run.fail(`player ${stub.publicId}: ${message(e)}`);
     }
   }
-  run.add('lines', await upsertStatLines(ctx.db, game.publicId, box.lines));
+  for (const w of box.warnings ?? []) run.log.warn(w);
+  const lines = await keepStoredMinutes(ctx.db, game.publicId, box.lines, box.minutesUnknown ?? []);
+  run.add('lines', await upsertStatLines(ctx.db, game.publicId, lines));
   await ctx.db
     .update(games)
     .set(

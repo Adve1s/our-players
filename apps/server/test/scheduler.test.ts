@@ -94,10 +94,10 @@ const starts = (state: { games: readonly { startTimeUtc: Date }[] }) =>
 
 describe('loadState', () => {
   it('keeps recent and future games and uncorrected finals of any age, not old corrected ones', async () => {
-    await storeGame('2026020001', ago(30 * H), 'FINAL', {
-      finalAt: ago(27 * H),
-      boxscoreFetchedAt: ago(27 * H),
-      correctedAt: ago(20 * H),
+    await storeGame('2026020001', ago(51 * H), 'FINAL', {
+      finalAt: ago(48 * H),
+      boxscoreFetchedAt: ago(48 * H),
+      correctedAt: ago(42 * H),
     });
     await storeGame('2026020002', ago(7 * 24 * H), 'FINAL', {
       finalAt: ago(7 * 24 * H - 3 * H),
@@ -107,6 +107,25 @@ describe('loadState', () => {
     const state = await loadState(handle.db, NOW, false);
     expect(starts(state)).toEqual([ago(7 * 24 * H).toISOString(), TOMORROW.toISOString()]);
     expect(state.startup).toBe(false);
+  });
+
+  it('keeps a corrected final that is still waiting for its 24 h re-fetch', async () => {
+    await storeGame('2026020001', ago(30 * H), 'FINAL', {
+      finalAt: ago(27 * H),
+      boxscoreFetchedAt: ago(27 * H),
+      correctedAt: ago(20 * H),
+    });
+    expect(starts(await loadState(handle.db, NOW, false))).toEqual([ago(30 * H).toISOString()]);
+  });
+
+  it('loads a corrected final older than 48 h only at startup', async () => {
+    await storeGame('2026020001', ago(5 * 24 * H), 'FINAL', {
+      finalAt: ago(5 * 24 * H - 3 * H),
+      boxscoreFetchedAt: ago(5 * 24 * H - 3 * H),
+      correctedAt: ago(5 * 24 * H - 9 * H),
+    });
+    expect(starts(await loadState(handle.db, NOW, false))).toEqual([]);
+    expect(starts(await loadState(handle.db, NOW, true))).toEqual([ago(5 * 24 * H).toISOString()]);
   });
 
   it('loads a SCHEDULED game started days ago only at startup', async () => {

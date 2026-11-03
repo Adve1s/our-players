@@ -47,6 +47,13 @@ const results = (reason: string): Decision[] => [{ league: 'NHL', job: 'results'
 describe('decide — results', () => {
   const uncorrected = (finalAgo: number) =>
     game({ finalAt: ago(finalAgo), boxscoreFetchedAt: ago(finalAgo), correctedAt: null });
+  const correctedAt6h = (finalAgo: number) =>
+    game({
+      startTimeUtc: ago(finalAgo + 3 * H),
+      finalAt: ago(finalAgo),
+      boxscoreFetchedAt: ago(finalAgo),
+      correctedAt: ago(finalAgo - 6 * H),
+    });
 
   it.each<[string, SchedulerState, Decision[]]>([
     ['quiet afternoon with corrected finals only makes no decisions', state([game()]), []],
@@ -107,15 +114,53 @@ describe('decide — results', () => {
       state([uncorrected(6 * H)]),
       results('corrections due'),
     ],
-    ['a correction older than 24 h is left alone', state([uncorrected(25 * H)]), []],
     [
-      'a correction older than 24 h is caught up at startup',
-      state([uncorrected(25 * H)], { startup: true }),
+      'a correction that kept failing is still due 25 h after the final',
+      state([uncorrected(25 * H)]),
+      results('corrections due'),
+    ],
+    ['a correction 48 h after the final is left alone', state([uncorrected(48 * H)]), []],
+    [
+      'a correction 48 h after the final is caught up at startup',
+      state([uncorrected(48 * H)], { startup: true }),
       results('corrections due'),
     ],
     [
       'a corrected game with an old final needs nothing',
       state([game({ startTimeUtc: ago(80 * H), finalAt: ago(77 * H) })]),
+      [],
+    ],
+    [
+      'the second re-fetch is not due 23 h 59 m after the final',
+      state([correctedAt6h(24 * H - M)]),
+      [],
+    ],
+    [
+      'the second re-fetch is due 24 h after the final',
+      state([correctedAt6h(24 * H)]),
+      results('corrections due'),
+    ],
+    ['the second re-fetch stops 48 h after the final', state([correctedAt6h(48 * H)]), []],
+    [
+      'the second re-fetch 48 h after the final is caught up at startup',
+      state([correctedAt6h(48 * H)], { startup: true }),
+      results('corrections due'),
+    ],
+    [
+      'a game already re-fetched past the 24 h mark needs nothing',
+      state([game({ startTimeUtc: ago(33 * H), finalAt: ago(30 * H), correctedAt: ago(5 * H) })]),
+      [],
+    ],
+    [
+      'a game first seen final 12 h after its start gets no second re-fetch',
+      state([game({ startTimeUtc: ago(37 * H), finalAt: ago(25 * H), correctedAt: ago(25 * H) })]),
+      [],
+    ],
+    [
+      'a game first seen final 12 h after its start gets none at startup either',
+      state([game({ startTimeUtc: ago(37 * H), finalAt: ago(25 * H), correctedAt: ago(25 * H) })], {
+        startup: true,
+      }),
       [],
     ],
     [

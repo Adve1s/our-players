@@ -427,10 +427,45 @@ describe('mapSummary: errors', () => {
     expect(s.plusMinus).toBe(-2);
   });
 
-  it('throws on MIN "--" when the row has points (Dadiet with PTS "12")', () => {
+  // Mashack 4683934 in 401909914 (2026-11-03): MIN "-" for 2.5 h after the final, later "0" with STL "1".
+  it('reads MIN "-" as 0 minutes and keeps the steal on the row (STL "1")', () => {
+    const raw = summary('401909095');
+    const stats = rawRow(raw, '5211983').stats as string[];
+    stats[0] = '-';
+    stats[8] = '1';
+    const s = basketballStats(line(mapSummary(raw).lines, '5211983'));
+    expect(s.minutes).toBe(0);
+    expect(s.steals).toBe(1);
+  });
+
+  it('reads MIN "--" as 0 minutes and keeps the points on the row (PTS "12")', () => {
     const raw = summary('401909095');
     (rawRow(raw, '5211983').stats as string[])[1] = '12';
-    expect(() => mapSummary(raw)).toThrow(/player 5211983: malformed MIN "--"/);
+    const s = basketballStats(line(mapSummary(raw).lines, '5211983'));
+    expect(s.minutes).toBe(0);
+    expect(s.points).toBe(12);
+  });
+
+  it('lists a player whose MIN is a dash as minutes unknown, and no one else', () => {
+    expect(mapSummary(summary('401909095')).minutesUnknown).toEqual(['nba-5211983']);
+  });
+
+  it('warns about a dash MIN only when the row has other stats', () => {
+    const raw = summary('401909095');
+    expect(mapSummary(raw).warnings).toEqual([]);
+    const stats = rawRow(raw, '5211983').stats as string[];
+    stats[13] = '-2';
+    expect(mapSummary(raw).warnings).toEqual([]);
+    stats[8] = '1';
+    expect(mapSummary(raw).warnings).toEqual([
+      'espn-nba summary: game 401909095: player 5211983: MIN "--" with stats on the row',
+    ]);
+  });
+
+  it('throws on any other non-numeric MIN ("DNP")', () => {
+    const raw = summary('401909095');
+    (rawRow(raw, '5211983').stats as string[])[0] = 'DNP';
+    expect(() => mapSummary(raw)).toThrow(/player 5211983: malformed MIN "DNP"/);
   });
 
   it('throws on "--" in a stat other than MIN (PTS)', () => {

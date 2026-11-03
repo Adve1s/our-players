@@ -35,7 +35,7 @@ export function parseJobArgs(argv: string[]): { name: JobName; args: JobArgs } {
   if (values.date !== undefined) args.date = realDate('--date', values.date);
   if (values.from !== undefined) args.from = realDate('--from', values.from);
   if (values.to !== undefined) args.to = realDate('--to', values.to);
-  // A manual run is rare and deliberate, so it retries old corrections; only scheduler ticks keep the 24 h bound.
+  // A manual run is rare and deliberate, so it retries old corrections; only scheduler ticks keep the 48 h bound.
   if (name === 'results') args.catchUp = true;
   if (name === 'backfill') {
     if (args.from === undefined || args.to === undefined)
