@@ -29,7 +29,7 @@ Read `docs/PROGRESS.md` first in every session (current state + next step). Prod
 - `pnpm db:generate` (new migration after schema change) · `pnpm db:migrate` · `pnpm db:reset` (local only)
 - `pnpm build:web` — static web export to `apps/mobile/dist/`; API URL from `EXPO_PUBLIC_API_URL` (env or `apps/mobile/.env`; `http://localhost:3001` when neither sets it)
 - `pnpm serve:web` — serve that export on :8090 over the LAN with the SPA fallback
-- `pnpm screenshots` — capture the web build's key screens to `apps/mobile/.screenshots/` (S08+)
+- `pnpm screenshots` — capture the web build's key screens to `apps/mobile/.screenshots/` (S08+); `--store` writes the Play listing's phone screenshots to `docs/store/graphics/screenshots/`; `pnpm --filter @our-players/mobile store-graphics` writes its icon and feature graphic
 - `deploy/deploy.sh <ssh-target> [--ship-only]` — build the API image locally, ship it over ssh to the host and restart the stack; clean tree only (S10b, `docs/DEPLOY.md`)
 
 ## Architecture rules

@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PRIVACY_URL } from '../src/lib/links';
 
@@ -97,5 +97,33 @@ describe('privacy page', () => {
     expect(html).toContain('50 MB');
     // The log is declared as Analytics on the Data safety form, so the page can't say "no analytics" outright.
     expect(html).toContain('no analytics or tracking services');
+  });
+});
+
+describe('listing graphics', () => {
+  const png = (file: string) => {
+    const b = readFileSync(new URL(`../../../docs/store/graphics/${file}`, import.meta.url));
+    return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), type: b[25], bytes: b.length };
+  };
+  it('has a 512 px 32-bit icon', () => {
+    expect(png('icon-512.png')).toMatchObject({ w: 512, h: 512, type: 6 });
+    expect(png('icon-512.png').bytes).toBeLessThanOrEqual(1024 * 1024);
+  });
+  it('has a 1024x500 feature graphic without alpha', () => {
+    expect(png('feature-graphic.png')).toMatchObject({ w: 1024, h: 500, type: 2 });
+  });
+  it('has 4 to 8 screenshots Google accepts and can recommend', () => {
+    const files = readdirSync(
+      new URL('../../../docs/store/graphics/screenshots/', import.meta.url),
+    );
+    expect(files.length).toBeGreaterThanOrEqual(4);
+    expect(files.length).toBeLessThanOrEqual(8);
+    for (const f of files) {
+      const { w, h, type } = png(`screenshots/${f}`);
+      expect(type).toBe(2);
+      expect(Math.min(w, h)).toBeGreaterThanOrEqual(1080);
+      expect(Math.max(w, h)).toBeLessThanOrEqual(2 * Math.min(w, h));
+      expect(Math.max(w, h)).toBeLessThanOrEqual(3840);
+    }
   });
 });
