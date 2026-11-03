@@ -139,7 +139,7 @@ grep -rhoE 'EXPO_PUBLIC_[A-Z_]+' apps/mobile/dist | sort -u
 grep -rhoE 'https://[a-z.]*adveis\.dev' apps/mobile/dist | sort -u
 grep -o '<script[^>]*>' apps/mobile/dist/index.html
 ```
-Success: `0`, `0`, nothing, only `https://api.ourplayers.adveis.dev`, and every `<script` has a `src=` (no inline script, which the CSP would block).
+Success: `0`, `0`, nothing, only `https://api.ourplayers.adveis.dev` and `https://ourplayers.adveis.dev` (the privacy link), and every `<script` has a `src=` (no inline script, which the CSP would block).
 
 ### 4.3 Host
 

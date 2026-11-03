@@ -479,6 +479,8 @@ The first thing to look at:
 
 The Expo web export runs on Cloudflare Workers static assets: the Worker `our-players` (no Worker code, `apps/mobile/wrangler.jsonc`) at the custom domain `https://ourplayers.adveis.dev`. Cloudflare creates the domain's DNS record and certificate on the first deploy; there is no `workers.dev` address (D-061). It's built from `apps/mobile` with the API URL baked in: the `WEB_API_URL` repo variable, `https://api.ourplayers.adveis.dev`. Design: `docs/superpowers/specs/2026-10-26-s14b-web-live.md`.
 
+The privacy policy is `apps/mobile/public/privacy.html`, served at `/privacy` and deployed with the site; check it by its text, because a missing file answers 200 with the app: `curl -sS https://ourplayers.adveis.dev/privacy | grep -c 'Privacy policy'`.
+
 ### 10.1 First-time setup
 
 1. **API token (for CI):** Cloudflare → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**. Account Resources: your account. Zone Resources: Specific zone → `adveis.dev`. Continue → Create → copy the token (it's shown once).

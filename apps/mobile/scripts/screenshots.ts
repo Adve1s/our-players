@@ -393,6 +393,7 @@ const SHOTS: Shot[] = [
     take: async (page) => {
       await tab(page, 'Settings');
       await page.getByText('Sweden').waitFor();
+      await page.getByRole('link', { name: 'Privacy policy' }).waitFor();
       await page.getByRole('link', { name: 'Add to Home Screen' }).scrollIntoViewIfNeeded();
     },
   },

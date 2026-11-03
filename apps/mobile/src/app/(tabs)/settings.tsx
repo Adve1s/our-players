@@ -5,6 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { type ReactNode, useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -21,6 +22,7 @@ import { ErrorState } from '../../components/error-state';
 import { PlayerItem } from '../../components/player-item';
 import { SearchField } from '../../components/search-field';
 import { type CountryRow, countryRows } from '../../lib/countries';
+import { PRIVACY_URL } from '../../lib/links';
 import { listIds, listRows, listView } from '../../lib/players';
 import { type Mark, markOf } from '../../state/prefs';
 import { usePrefs } from '../../state/prefs-store';
@@ -294,6 +296,14 @@ export default function Settings() {
             <Caption>{`Version ${Constants.expoConfig?.version}`}</Caption>
             <Caption>Data from the public NHL and ESPN web APIs.</Caption>
             <Caption>Not affiliated with the NHL or NBA.</Caption>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Privacy policy"
+              onPress={() => void Linking.openURL(PRIVACY_URL)}
+              style={{ minHeight: t.layout.target, justifyContent: 'center' }}
+            >
+              <Text style={{ color: t.colors.accent, ...t.type.bodyStrong }}>Privacy policy</Text>
+            </Pressable>
             {/* Web only: on Android the app is already installed. */}
             {Platform.OS === 'web' ? (
               <Pressable
