@@ -8,6 +8,7 @@ import {
   publicIdSchema,
   searchQuerySchema,
 } from '@our-players/shared';
+import { DrizzleQueryError } from 'drizzle-orm';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
@@ -94,7 +95,15 @@ export function createApp({ db, now, log, corsOrigins = [], rateLimitPerMinute }
     if (err instanceof HTTPException && err.status === 400) {
       return errorBody(c, 400, 'BAD_REQUEST', err.message);
     }
-    log.error('request failed', { method: c.req.method, path: c.req.path, error: err.message });
+    // A query error's message carries its params (search text, preferences), and the driver's message can quote one.
+    const detail =
+      err instanceof DrizzleQueryError
+        ? {
+            error: 'DrizzleQueryError',
+            code: (err.cause as { code?: unknown } | undefined)?.code,
+          }
+        : { error: err.message };
+    log.error('request failed', { method: c.req.method, path: c.req.path, ...detail });
     return errorBody(c, 500, 'INTERNAL', 'internal error');
   });
 

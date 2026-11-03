@@ -80,6 +80,9 @@ describe('privacy page', () => {
   it('runs under the web CSP: no scripts, nothing external', () => {
     expect(html).not.toMatch(/<script|<link|src=/i);
   });
+  it('says preferences and search text never reach a log or database', () => {
+    expect(html.replace(/\s+/g, ' ')).toContain('never written to a log or database');
+  });
   it('claims only what the host is configured to do', () => {
     const compose = read('../../../deploy/compose.yaml');
     expect(compose).toContain('max-size: 10m');

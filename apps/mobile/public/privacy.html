@@ -57,27 +57,24 @@
     <p>
       To fetch the right results, the app sends those preferences and any search text in the web
       address of each request, over an encrypted HTTPS connection. They are used to answer that
-      request and then discarded. They are never saved in a database, and the request log leaves
-      them out. The one exception is the database error described under "What's logged".
+      request and then discarded, and are never written to a log or database.
     </p>
 
     <h2>Your IP address</h2>
     <p>
       Your network address reaches our server, as with any internet request. It is held only in the
-      server's memory, to limit abusive traffic, and is dropped by the first request after each
-      minute, so it can stay longer when nobody else is using the app. It isn't logged or used to
-      work out your location.
+      server's memory, to limit abusive traffic. The first request after each minute clears it, so
+      it can stay longer when nobody else is using the app, and a server restart clears it too. It
+      isn't saved to disk, written to a log or used to work out your location.
     </p>
 
     <h2>What's logged</h2>
     <p>
       For each request, the server logs the path (which may name a date, game or player), the status
       and how long it took. It logs no IP address and leaves out the rest of the web address, so a
-      line can't be tied to a person. If one of our database lookups fails, the error line can also
-      hold the values of that lookup, which can be your search text or the preferences above, still
-      with no IP address. The proxy's error log, written when the API can't answer, holds the path
-      and request headers such as the app or browser type. Logs are capped at 50 MB per service and
-      overwritten as they fill, with no fixed time limit.
+      line can't be tied to a person. The proxy's error log, written when the API can't answer,
+      holds the path and request headers such as the app or browser type. Logs are capped at 50 MB
+      per service and overwritten as they fill, with no fixed time limit.
     </p>
 
     <h2>Deletion</h2>
@@ -91,7 +88,9 @@
     <p>
       Nothing is sold or shared. The API runs on our rented server at Linode in Germany, which acts
       for us. The website version is served by Cloudflare, which handles visitors' addresses as any
-      web host does. The Android app doesn't use Cloudflare for its data.
+      web host does. The Android app doesn't use Cloudflare for its data. Mail you send to the
+      support address passes through Cloudflare's forwarding to Gmail, and is kept as long as needed
+      to answer.
     </p>
 
     <h2>Data sources</h2>

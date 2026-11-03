@@ -104,10 +104,10 @@ The package change reaches `app.json`, VISION §11 (with the Analytics wording f
 - **What the app is:** shows how players from chosen countries did. No account, no ads, and no analytics or tracking services in the app; the only record is the server log described below.
 - **On your device:** followed countries, leagues, favorites and hidden players are stored on the device. Android's automatic backup may copy them to your Google account (`allowBackup`, X3). Uninstalling removes them from the device.
 - **Sent to our server:** to fetch the right results, the app sends those preferences and any search text in each request's query, over HTTPS. They're used to answer that request and then discarded, and are never written to a log or database.
-- **Your IP address:** your network address reaches our server, as with any internet request. It's held in memory for up to a minute to limit abusive traffic, then dropped. It isn't logged or used to work out your location.
+- **Your IP address:** your network address reaches our server, as with any internet request. It's held only in the server's memory to limit abusive traffic. The first request after each minute clears it, so it can stay longer when nobody else is using the app, and a server restart clears it too. It isn't saved to disk, written to a log or used to work out your location.
 - **What's logged:** each request's path (which may name a date, game or player), status and duration, with no query string or IP address, so a line can't be tied to a person. The proxy's error log, written when the API can't answer, holds the path and request headers such as the app or browser type. Logs are capped at 50 MB per service and overwritten as they fill, with no fixed time limit.
 - **Deletion:** no account and nothing tied to a person, so there's nothing we could find and delete on request. Clear your data by uninstalling the app, or clearing site data on the web.
-- **Sharing:** nothing is sold or shared. The API runs on our rented server at Linode (Germany), which acts for us. The website version is served by Cloudflare, which handles visitors' addresses as any web host does; the Android app doesn't use it for data.
+- **Sharing:** nothing is sold or shared. The API runs on our rented server at Linode (Germany), which acts for us. The website version is served by Cloudflare, which handles visitors' addresses as any web host does; the Android app doesn't use it for data. Mail you send to the support address passes through Cloudflare's forwarding to Gmail, and is kept as long as needed to answer.
 - **Data sources:** player and game data comes from public NHL and ESPN web APIs, fetched by our server on a schedule. No user data goes to them. Not affiliated with the NHL, NBA or ESPN.
 - **Children:** the app isn't directed at children under 13. It asks for no personal information and has no ads or accounts.
 - **Your rights and changes:** write to the contact above with questions; you may also complain to a data protection authority. Changes appear on this page with a new date.
@@ -193,9 +193,10 @@ Then: ready for `/handoff`.
 **After the merge** (`release.md`)
 1. `curl https://ourplayers.adveis.dev/privacy | grep "Privacy policy"`, then tap the link on the phone.
 2. If the review changed the app: new AAB, §4.4, phone check.
-3. Console: account checks; App content from `app-content.md` and `data-safety.md`; listing and graphics; countries; closed track, tester list with the owner's account; promote the release; submit.
-4. On approval: opt in with the link, install, Today loads. People can then be added.
-5. If rejected: a bug-fix session, then a new version code and resubmit.
+3. Deploy the API (`deploy/deploy.sh`), because the Data safety answers rely on the log fix.
+4. Console: account checks; App content from `app-content.md` and `data-safety.md`; listing and graphics; countries; closed track, tester list with the owner's account; promote the release; submit.
+5. On approval: opt in with the link, install, Today loads. People can then be added.
+6. If rejected: a bug-fix session, then a new version code and resubmit.
 
 ## Left to the builder
 
