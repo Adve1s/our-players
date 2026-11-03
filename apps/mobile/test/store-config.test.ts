@@ -83,6 +83,13 @@ describe('privacy page', () => {
   it('says preferences and search text never reach a log or database', () => {
     expect(html.replace(/\s+/g, ' ')).toContain('never written to a log or database');
   });
+  it.each([
+    'request>remote_ip delete',
+    'request>client_ip delete',
+    'request>headers>X-Forwarded-For delete',
+  ])('backs "no IP in a log" with the proxy log filter: %s', (rule) => {
+    expect(read('../../../deploy/Caddyfile')).toContain(rule);
+  });
   it('claims only what the host is configured to do', () => {
     const compose = read('../../../deploy/compose.yaml');
     expect(compose).toContain('max-size: 10m');

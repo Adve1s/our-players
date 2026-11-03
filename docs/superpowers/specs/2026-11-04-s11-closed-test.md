@@ -191,7 +191,7 @@ Owner time: about an hour, excluding EAS's queue.
 Then: ready for `/handoff`.
 
 **After the merge** (`release.md`)
-1. Right after the merge, deploy the API (`deploy/deploy.sh`, which also ships and reloads the Caddyfile), because the page goes live at merge and the Data safety answers rely on the log fixes.
+1. Right after the merge, deploy the API (`deploy/deploy.sh`, which also ships and reloads the Caddyfile), because the page goes live at merge and the Data safety answers rely on the log fixes. Then, this first deploy only, on the host: `docker compose up -d --force-recreate caddy`, which drops any older log lines holding a client address.
 2. `curl https://ourplayers.adveis.dev/privacy | grep "Privacy policy"`, then tap the link on the phone.
 3. If the review changed the app: new AAB, §4.4, phone check.
 4. Console: account checks; App content from `app-content.md` and `data-safety.md`; listing and graphics; countries; closed track, tester list with the owner's account; promote the release; submit.
