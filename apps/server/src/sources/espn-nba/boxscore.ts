@@ -41,13 +41,10 @@ function stats(row: RawRow, cols: Record<Label, number>, where: string): Basketb
   // Counts are plain digits; only "+/-" carries a sign ("+7", "-8", "0").
   const int = (label: Label) => {
     const value = raw(label);
-    // A played row can show MIN "--" (2026-10-23, game 401909095) or, right after the final, "-"
-    // (2026-10-26) with every count 0: 0 minutes (+/- may move in a few seconds on court). With
-    // any other count it is malformed.
-    if (label === 'MIN' && (value === '-' || value === '--')) {
-      const counts = LABELS.filter((l) => l !== 'MIN' && l !== '+/-');
-      if (counts.every((l) => /^0(-0)?$/.test(raw(l)))) return 0;
-    }
+    // A played row can show MIN "--" (2026-10-23, game 401909095) or, after the final, "-"
+    // (2026-10-26, 2026-11-03), even with a stat on it: 0 minutes, whatever the other stats say.
+    // The correction fetches pick up real minutes if ESPN has fixed the row by then (D-067).
+    if (label === 'MIN' && (value === '-' || value === '--')) return 0;
     if (!(label === '+/-' ? /^[+-]?\d+$/ : /^\d+$/).test(value)) {
       throw new Error(`${where}: malformed ${label} "${value}"`);
     }
