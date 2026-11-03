@@ -47,7 +47,7 @@ All sessions and their helper agents run on **Opus 5.5**. **Effort** is what to 
 | S14b | Web go-live | `s14b-web-live` | S | medium | local | PC and iPhone friends use it |
 | S16 | Security audit + fixes | `s16-security-audit` | L | high | local | Every part of the stack checked, the findings fixed or decided, a re-runnable checklist |
 | S17 | Visual overhaul | `s17-visual-overhaul` | L | high | local | The app's own look, icon and splash on phone and web |
-| S11 | Google Play closed test | `s11-closed-test` | L | medium | local | The app is submitted to the closed track with the tester list ready |
+| S11 | Google Play closed test | `s11-closed-test` | L | medium | local | First build checked, store documents ready; after the merge you submit to the closed track |
 | — | Testers join over time (no session) | — | — | — | you | **12+ testers opted in for 14 days** |
 | S15 | Production access + runbook | `s15-launch` | S | medium | local | Public on Google Play |
 
@@ -609,7 +609,7 @@ Then plan and build it, screenshot the built site, and wait for my phone check. 
 
 ## Slice 7 — Launch
 
-The server bill starts with S10b. S10b and S14b put the API and the web app live; S16 then hardens what is public, S17 gives the app its final look, and S11 puts that finished app on Google Play's closed track (D-062). You then add testers over time with nothing open (D-069); their 14-day streak is the last fixed wait before S15 and the public Play release.
+The server bill starts with S10b. S10b and S14b put the API and the web app live; S16 then hardens what is public, S17 gives the app its final look, and S11 puts that finished app on Google Play's closed track (D-062). You then add testers over time with nothing open (D-069); their 14 days are the last fixed wait before S15 and the public Play release.
 
 ### S10b — Deploy the backend
 
@@ -775,51 +775,60 @@ Then plan and build it: tokens and shared components first, then screens, then t
 
 **When:** after S17, so the first upload carries the final icon (Overview, D-062). The production API is live by then (S10b).
 
-**Goal:** the finished app is submitted to Google Play's closed testing track with the tester list ready. The session ends there. Once Google approves it you can add testers, and getting people to install it happens on your own time, with no session or PR open (D-069).
+**Goal:** the finished app is ready for Google: its first build checked on your phone through internal testing, its store documents written, its security re-checked and all of it reviewed and merged. After the merge you submit it to the closed track with Claude's help. Once Google approves it you can add testers, on your own time, with no session or PR open (D-069).
 
 **In scope**
 - App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Icon, adaptive icon and splash come from S17's brand source (`assets/icon.svg` and the `icons` script); check `app.json` points at them.
 - `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build with the production `EXPO_PUBLIC_API_URL` (`https://api.ourplayers.adveis.dev`, DEPLOY.md §9).
-- Internal track first, because it has no review wait: this is the first native build, so check it on your phone (icon, adaptive icon, splash, fonts) and check its merged permissions (`docs/SECURITY-CHECKS.md` §4.4). Fix what it turns up, then the same kind of build goes to the closed track.
-- `docs/SECURITY-CHECKS.md` re-run (scanners and live checks), after the first AAB exists and before the closed-track submission; results in PROGRESS.md (VISION §12).
-- `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers and the other required forms' answers, privacy policy (a hosted page — GitHub Pages works for a public repo), tester invitation message and a "keep testers opted in" plan. The repo is public, so no tester names or emails go in it.
-- Play listing graphics per VISION §11: 512 px icon, 1024×500 feature graphic, phone screenshots.
-- Play Console: create the app, complete the forms and listing the closed track requires, create the tester list with your own account on it, submit the closed-track release for Google's review.
+- Check `docs/store/play-requirements.md` against Google's current rules, then meet them.
+- Internal track first, because it has no review wait: create the app, fill in what the console requires before an internal release, create an email list with your own account and upload. This is the first native build, so check it on your phone (icon, adaptive icon, splash, fonts).
+- Before uploading any AAB, check its merged permissions and target API (`docs/SECURITY-CHECKS.md` §4.4).
+- `docs/SECURITY-CHECKS.md` re-run, everything its first table lists before the closed test: sections 2, 3 and 4; results in PROGRESS.md (VISION §12).
+- Privacy policy: a page specific to this app, and a link to it inside the app (Settings → About). Google requires both. The URL must be settled before the build, because the app carries it.
+- `docs/store/`: listing texts (with the non-affiliation note), Data safety answers, content-rating answers and the other required forms' answers, tester invitation message and a "keep testers opted in" plan. The repo is public, so no tester names or emails go in it.
+- Play listing graphics per `docs/store/play-requirements.md`: 512 px icon, 1024×500 feature graphic, phone screenshots.
 - Back up the EAS signing credentials outside the repo.
-- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out) and how to add a tester.
+- `docs/store/release.md`: how to ship an update (build, version code, upload, roll out), how to submit to the closed track (the console checklist) and how to add a tester.
 
-**Out of scope:** new features; recruiting testers, the 14-day clock and production access (see "Between S11 and S15" and S15).
+**Out of scope:** new features beyond the privacy link; recruiting testers, the 14-day requirement and production access (see "Between S11 and S15" and S15).
 
 **Acceptance criteria**
 1. A production AAB builds (you run the EAS build; Claude fixes config issues).
 2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
 3. Installed from internal testing on your phone, it loads Today from the production API without crashing (run by you).
 4. Signing credentials backed up (you confirm); `docs/store/release.md` written.
-5. `docs/store/` complete, listing graphics ready; privacy policy URL live.
-6. Security re-run, including §4.4 on the first AAB, done before the closed-track submission; results in PROGRESS.md (run with you).
-7. In-app About shows the non-affiliation note; no logos or player photos anywhere.
-8. Closed-track release submitted for review, with the tester list ready (run by you).
-9. `pnpm verify` green.
+5. `docs/store/` complete, listing graphics ready; the privacy page is in the PR and the app links to its URL.
+6. Security re-run (sections 2, 3 and 4), including the built-app check on the uploaded AAB; results in PROGRESS.md (run with you).
+7. In-app About shows the non-affiliation note and the privacy link; no logos or player photos anywhere.
+8. `pnpm verify` green.
 
-**You:** check the internal-track install on your phone and time a warm open (VISION §2: under 2 s on a mid-range Android), noting the result in PROGRESS.md; do the host and console parts of the security re-run. After merging: Google's review can take days and the PR doesn't wait for it. Once the release is approved, install it through the opt-in link yourself; from then on you can add people. If Google rejects it, fix that in a Small change.
+**You:** check the internal-track install on your phone and time a warm open (VISION §2: under 2 s on a mid-range Android), noting the result in PROGRESS.md; do the host and console parts of the security re-run.
+
+**After merging, you (with Claude, following `docs/store/release.md`):**
+1. Check the privacy URL is live.
+2. If the review changed the app, build a new AAB, repeat the §4.4 check and check it on your phone.
+3. Complete the console's remaining forms and listing, create the closed-track tester list with your own account on it, and submit the release. No PR waits for Google's review.
+4. Once it's approved, install it through the opt-in link and check that Today loads. From then on you can add people.
+5. If Google rejects it, come back for a bug-fix session and ship the fix as `docs/store/release.md` says: new version code, new AAB, resubmit.
 
 ```text
 Session S11 — Google Play closed test (slice 7). Create branch `s11-closed-test` from the latest `main`.
 
-Read docs/PROGRESS.md, docs/SESSIONS.md §S11 (the contract) and "Between S11 and S15" (what follows), docs/VISION.md §4.6 and §11, and docs/DEPLOY.md. First run the tests.
+Read docs/PROGRESS.md, docs/SESSIONS.md §S11 (the contract) and "Between S11 and S15" (what follows), docs/store/play-requirements.md, docs/VISION.md §4.6 and §11, and docs/DEPLOY.md. First run the tests.
 
-Brainstorm with §S11 as the spec. The design must cover: confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; whether S17's icon, adaptive icon and splash meet Play's asset requirements; which Play Console forms the closed track requires (check the current rules); the docs/store/ files with draft contents; how the listing graphics are produced; how the privacy policy page is live before this PR merges (the console needs its URL); credential backup; and the step-by-step console checklist (EAS, internal track, then closed track). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
+Brainstorm with §S11 as the spec. The design must cover: whether docs/store/play-requirements.md still matches Google's current rules; confirmation that app.json matches the app identity in VISION §11; eas.json profiles and versioning; whether S17's icon, adaptive icon and splash meet Play's asset requirements; which Play Console forms the internal track and the closed track each require; the docs/store/ files with draft contents; where the privacy page is hosted and its URL, and the in-app link; how the listing graphics are produced; credential backup; and the step-by-step console checklist (EAS and the internal track in this session, the closed track after the merge). Keep the Data safety answers strictly truthful to how the app and API behave — check the code and the host's log configuration (VISION §11).
 
-Then plan and do the repo work; after the final review, walk me through the phone check, the host and console parts of the security re-run, and the console steps, one at a time, waiting for my confirmation. Then tell me it's ready for /handoff.
+Then plan and do the repo work; after the final review, walk me through the phone check, the host and console parts of the security re-run, and the internal-track console steps, one at a time, waiting for my confirmation. Then tell me it's ready for /handoff. After I've merged, walk me through "After merging" the same way.
 ```
 
 ### Between S11 and S15 — testers (no session)
 
-Nothing is open during this stretch, and it can take as long as it takes.
+Nothing is open during this stretch, and it can take as long as it takes. Google's exact rules are in `docs/store/play-requirements.md`.
 
 - Add people as you meet them: their Google-account email in the Play Console's tester list, then send them the opt-in link (`docs/store/release.md`).
-- Google needs **12+ testers opted in continuously for 14 days**, so the 14 days only count once the twelfth has joined, and a dropout below 12 can break the streak. Aim for 15 as a buffer, and remind people to keep it installed and actually open it: Google checks that testers used it.
-- Keep a private note outside the repo: when people joined, and any feedback they gave. S15's production-access answers need it.
+- Google needs **12+ testers opted in continuously for 14 days**, counted per tester. The earliest finish is 14 days after the twelfth tester who stays has joined, and someone who opts out before their 14 days doesn't count. Aim for 15 as a buffer, and keep everyone opted in until S15 is done.
+- Encourage people to use all of the app. Google sets no minimum, but it asks about usage, and too little can mean more testing.
+- Keep a private note outside the repo: the date Google approved the release, when each person joined, and any feedback they gave. S15's production-access answers need it.
 - Found a bug? Come back for a normal bug-fix session; `docs/store/release.md` covers shipping the update to testers.
 - Requirement met: come back and start S15.
 
@@ -827,20 +836,22 @@ Nothing is open during this stretch, and it can take as long as it takes.
 
 **When:** you start it once 12+ testers have been opted in for 14 continuous days, however long that takes after S11.
 
-**Goal:** the app is public on Google Play, and future-you knows how to keep it alive.
+**Goal:** the production-access answers and the runbook are ready and merged. After the merge you apply and, once approved, release the app publicly, with no PR waiting for Google (the same split as S11, D-069).
 
 **In scope**
 - Draft the production-access answers (`docs/store/production-access.md`) from your private tester notes, with no tester names or emails (the repo is public).
 - Fix tester-reported issues first, each in its own bug-fix session (template below).
+- Check `docs/store/play-requirements.md` against Google's current rules.
 - `docs/SECURITY-CHECKS.md` re-run before the production release; results in PROGRESS.md (VISION §12).
 - `docs/RUNBOOK.md`: upstream breakage (detect via the staleness alert and `job_runs` → record a fresh fixture → red test → fix the adapter), season rollover, adding a nationality override, adding a league (checklist), switching NHL to the ESPN backup.
 
 **Acceptance criteria**
-1. Application submitted; answers saved.
+1. Answers saved in `docs/store/production-access.md`.
 2. `RUNBOOK.md` covers the five scenarios.
-3. Production release live (you).
+3. Security re-run results in PROGRESS.md (run with you).
+4. `pnpm verify` green.
 
-**You:** afterwards, one more `/walkthrough the whole system end to end` for yourself.
+**After merging, you (with Claude):** submit the application; Google says review usually takes seven days or less. If it asks for more testing, carry on as in "Between S11 and S15". Once it's approved, release to production. Afterwards, one more `/walkthrough the whole system end to end` for yourself.
 
 ```text
 Session S15 — Production access + runbook (slice 7). Create branch `s15-launch` from the latest `main`.
@@ -849,7 +860,7 @@ Read docs/PROGRESS.md, docs/SESSIONS.md §S15 (the contract), docs/VISION.md §1
 
 Brainstorm with §S15 as the spec. The design must cover: the production-access answers based on our real closed test (ask me for tester feedback and numbers); the RUNBOOK.md outline per scenario, grounded in how the code actually works (cite files).
 
-Then plan and write them, and walk me through the release steps. Then tell me it's ready for /handoff.
+Then plan and write them. Then tell me it's ready for /handoff. After I've merged, walk me through the application and release steps.
 ```
 
 ---
