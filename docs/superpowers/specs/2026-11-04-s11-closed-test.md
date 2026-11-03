@@ -148,7 +148,7 @@ Checked in the code: `packages/shared/src/client.ts` is the only `fetch`; prefer
 | App activity → In-app search history | Yes | No | Yes | Optional | App functionality | `q`, never logged |
 | App activity → Other actions | Yes | No | Yes | Required | App functionality | countries, leagues, favorites, hidden in queries, never logged |
 | App activity → App interactions | Yes | No | No | Required | Analytics | the logged path shows which day, game or player page was requested |
-| App info and performance → Other app performance data | Yes | No | No | Required | Analytics | the logged status and duration |
+| App info and performance → Diagnostics | Yes | No | No | Required | Analytics | the logged status and duration |
 
 **Not declared, and why:** location (the IP is never used to work out a location, per Google's FAQ, and is held only in memory); device IDs (none exist); personal info (none); crash logs (no crash reporter). Linode is a service provider, so it's not "sharing".
 

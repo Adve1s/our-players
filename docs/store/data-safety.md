@@ -29,7 +29,7 @@ Tick these four and nothing else. For each one, the form then asks the questions
 | App activity → In-app search history | Yes | No | Yes | Optional | App functionality | Search text goes in the `q` query parameter (`packages/shared/src/client.ts`). The server answers and discards it, and it's never logged (`apps/server/src/api/app.ts`). |
 | App activity → Other actions | Yes | No | Yes | Required | App functionality | Followed countries, leagues, favorites and hidden players go in query parameters on each request and are never logged (same two files). |
 | App activity → App interactions | Yes | No | No | Required | Analytics | The logged path shows which day, game or player page was requested (`apps/server/src/api/app.ts`, which logs `c.req.path`). |
-| App info and performance → Other app performance data | Yes | No | No | Required | Analytics | The logged status and duration (same file). |
+| App info and performance → Diagnostics | Yes | No | No | Required | Analytics | The logged status and duration (same file). Google's definition of Diagnostics covers them: "loading time, latency, framerate, or any technical diagnostics". |
 
 **Why Analytics:** we read the log to watch the service's health and to diagnose bugs, and Google's definition of Analytics names exactly that ("to monitor app health, to diagnose and fix bugs or crashes"). Google has no exemption for anonymized data on the collection side, so a log with no IP address still gets declared.
 
@@ -48,7 +48,8 @@ Tick these four and nothing else. For each one, the form then asks the questions
 
 ## Not declared, and why
 
-- **Location:** the IP address is never used to work out a location, which per Google's FAQ is what would make it location data, and it's held only in memory.
+- **Location:** the IP address is never used to work out a location, which per Google's FAQ is what would make it location data.
+- **IP address:** leaving it out is a decision, not an oversight. The address is used only as the per-client key for the rate limit (`apps/server/src/api/rate-limit.ts`). It's held in memory, and never stored, logged or used for location. Google says to disclose IPs "based on their particular usage", and no data type on the form describes this use.
 - **Device or other IDs:** none exist.
 - **Personal info:** the app asks for none, and there's no account.
 - **Crash logs:** there's no crash reporter.
@@ -57,6 +58,6 @@ Tick these four and nothing else. For each one, the form then asks the questions
 
 ## How the listing will read
 
-"No data shared", collects "App activity" and "App info and performance", encrypted in transit. With "No" on deletion, Google may also show that the data can't be deleted; the console's wording may differ.
+"No data shared", collects "App activity" and "App info and performance", encrypted in transit. With "No" on deletion, Google may also show that the data can't be deleted *(not from Google)*; the console's wording may differ.
 
 This is more than the "no data" impression you might expect from an app with no accounts, and it's what Google's wording requires. The ephemeral rows are answered in the form but not shown on the listing, as Google's rules say.

@@ -1,6 +1,6 @@
 # Release guide
 
-How to build the app and get it to Google Play. Commands start from the repo root unless a step says otherwise. Replace anything in `<angle brackets>` with your own value.
+How to build the app and get it to Google Play. Commands start from the repo root unless a step says otherwise. A block that needs `apps/mobile` finds it from anywhere in the repo and leaves your terminal there; `cd "$(git rev-parse --show-toplevel)"` takes you back to the root. Replace anything in `<angle brackets>` with your own value.
 
 Play Console menu names change, so the paths below are the best current names: look for the nearest match. The console's wording may differ. If it asks something these files don't answer, stop and ask Claude rather than guess.
 
@@ -19,7 +19,7 @@ Play Console menu names change, so the paths below are the best current names: l
 EAS is Expo's build service: it turns the code into the Android App Bundle (AAB) you upload to Google. Its CLI isn't a repo dependency: `pnpm dlx` fetches the pinned version each time. You only need this section once per computer (login) or once ever (the rest).
 
 ```bash
-cd apps/mobile
+cd "$(git rev-parse --show-toplevel)/apps/mobile"
 pnpm dlx eas-cli@27.2.0 login
 pnpm dlx eas-cli@27.2.0 whoami
 pnpm dlx eas-cli@27.2.0 init
@@ -31,7 +31,7 @@ pnpm dlx eas-cli@27.2.0 init
 The first production build asks about signing, so run it yourself in a terminal:
 
 ```bash
-cd apps/mobile
+cd "$(git rev-parse --show-toplevel)/apps/mobile"
 pnpm dlx eas-cli@27.2.0 build -p android --profile production
 ```
 
@@ -45,7 +45,7 @@ Merge the change to `main` first, so what's built is what was reviewed.
 2. **Build:**
    ```bash
    git switch main && git pull
-   cd apps/mobile && pnpm dlx eas-cli@27.2.0 build -p android --profile production
+   cd "$(git rev-parse --show-toplevel)/apps/mobile" && pnpm dlx eas-cli@27.2.0 build -p android --profile production
    ```
    Success: it ends with a link to the finished build on expo.dev.
 3. **Download the AAB** from that page's download button (or expo.dev → the `our-players` project → Builds).
@@ -103,7 +103,7 @@ Success: `0`, `0` and `0`. Anything else: stop and tell Claude. Don't submit.
 gh run list --workflow "Deploy web" --branch main --limit 1
 curl -sS https://ourplayers.adveis.dev/privacy | grep -c 'Privacy policy'
 ```
-Success: the run shows `completed success`, and the count is above `0` (it's `2` today). `0` means the site answered with the app and not the policy. Checking the status code proves nothing, because a missing page still answers 200. Then on your phone, tap Settings → About → Privacy policy. Success: the browser opens the policy.
+Success: the run shows a ✓ in the terminal (`completed success` when piped), and the count is above `0` (it's `2` today). `0` means the site answered with the app and not the policy. Checking the status code proves nothing, because a missing page still answers 200. Then on your phone, tap Settings → About → Privacy policy. Success: the browser opens the policy.
 
 **4. If the review changed the app,** build a new AAB as in [Ship an update](#ship-an-update), repeat §4.4 and check it on your phone.
 
@@ -147,7 +147,7 @@ If the rejection is about a form rather than the app, the fix may be only a chan
 The EAS keystore is the **upload** key. With Play App Signing, Google holds the app-signing key, so a lost upload key can be reset through Google rather than losing the app. Back it up anyway:
 
 ```bash
-cd apps/mobile
+cd "$(git rev-parse --show-toplevel)/apps/mobile"
 pnpm dlx eas-cli@27.2.0 credentials -p android
 ```
 

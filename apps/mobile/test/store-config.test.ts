@@ -152,7 +152,7 @@ describe('store documents', () => {
       'In-app search history',
       'Other actions',
       'App interactions',
-      'Other app performance data',
+      'Diagnostics',
     ]) {
       expect(ds).toContain(type);
     }
