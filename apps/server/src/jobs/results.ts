@@ -1,4 +1,4 @@
-import type { League, PublicId } from '@our-players/shared';
+import type { GameStatus, League, PublicId } from '@our-players/shared';
 import { and, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { upsertGames, upsertStatLines } from '../db/games';
 import { upsertPlayers } from '../db/players';
@@ -12,13 +12,43 @@ export const CORRECTION_DELAY_MS = 6 * 60 * 60 * 1000;
 export const SETTLED_AFTER_START_MS = 12 * 60 * 60 * 1000;
 // Bounds re-fetching a box score that fails every time, and polling a stuck game (job and scheduler); catch-up runs take any age.
 export const RESULTS_WINDOW_MS = 24 * 60 * 60 * 1000;
+// ESPN can take hours to fix a row, so a final gets a second re-fetch in case the 6 h one read it too early (D-068).
+export const LATE_CORRECTION_MS = 24 * 60 * 60 * 1000;
+export const LATE_CORRECTION_UNTIL_MS = 48 * 60 * 60 * 1000;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
+// The one rule for re-fetching a final box score, read by this job and the scheduler. Never corrected: from
+// CORRECTION_DELAY_MS until RESULTS_WINDOW_MS after the final, any age on a catch-up run. Corrected before the
+// 24 h mark: once more from LATE_CORRECTION_MS, unless first seen final SETTLED_AFTER_START_MS after the start.
+// shortcut: a host down through the whole 24-48 h stretch misses it (a catch-up can't run it: every restart would re-fetch the season), widen the bound if that ever matters.
+export function correctionDue(
+  g: {
+    status: GameStatus;
+    startTimeUtc: Date;
+    finalAt: Date | null;
+    boxscoreFetchedAt: Date | null;
+    correctedAt: Date | null;
+  },
+  t: number,
+  catchUp: boolean | undefined,
+): boolean {
+  if (g.status !== 'FINAL' || g.boxscoreFetchedAt === null || g.finalAt === null) return false;
+  const final = g.finalAt.getTime();
+  if (g.correctedAt === null) {
+    return final <= t - CORRECTION_DELAY_MS && (catchUp || final > t - RESULTS_WINDOW_MS);
+  }
+  return (
+    final <= t - LATE_CORRECTION_MS &&
+    final > t - LATE_CORRECTION_UNTIL_MS &&
+    g.correctedAt.getTime() < final + LATE_CORRECTION_MS &&
+    final < g.startTimeUtc.getTime() + SETTLED_AFTER_START_MS
+  );
+}
+
 // Without --date: the days of started games that aren't final, and of final games without a box score, that started
 // within RESULTS_WINDOW_MS (any age on a catch-up run), so a stuck game or a box score that always fails stops being retried.
-// Then each final box score is re-fetched once, CORRECTION_DELAY_MS after the final horn, for stat corrections:
-// within RESULTS_WINDOW_MS of the final, or of any age on a catch-up run (the scheduler's startup tick, a manual `pnpm job results`).
+// Then each final box score due under correctionDue is re-fetched for stat corrections.
 export const resultsJob: Job = async (ctx, run, args) => {
   const days = args.date
     ? [args.date]
@@ -46,24 +76,31 @@ export const resultsJob: Job = async (ctx, run, args) => {
   for (const day of days) await ingestDay(ctx, run, args.league, day);
 
   const now = ctx.now().getTime();
-  const due = await ctx.db
-    .select({ publicId: games.publicId, externalId: games.externalId })
+  const finals = await ctx.db
+    .select({
+      publicId: games.publicId,
+      externalId: games.externalId,
+      status: games.status,
+      startTimeUtc: games.startTimeUtc,
+      finalAt: games.finalAt,
+      boxscoreFetchedAt: games.boxscoreFetchedAt,
+      correctedAt: games.correctedAt,
+    })
     .from(games)
     .where(
       and(
         eq(games.league, args.league),
         eq(games.status, 'FINAL'),
         isNotNull(games.boxscoreFetchedAt),
-        isNull(games.correctedAt),
-        lte(games.finalAt, new Date(now - CORRECTION_DELAY_MS)),
-        args.catchUp ? undefined : gt(games.finalAt, new Date(now - RESULTS_WINDOW_MS)),
+        // A prefilter; correctionDue is the rule.
+        or(isNull(games.correctedAt), gt(games.finalAt, new Date(now - LATE_CORRECTION_UNTIL_MS))),
       ),
     );
-  for (const game of due) {
+  for (const game of finals.filter((g) => correctionDue(g, now, args.catchUp))) {
     try {
       await finalizeGame(ctx, run, args.league, game, 'correction');
     } catch (e) {
-      // corrected_at stays null, so the next run retries this game.
+      // corrected_at stays as it was, so the next run retries this game.
       run.fail(`correction ${game.publicId}: ${message(e)}`);
     }
   }

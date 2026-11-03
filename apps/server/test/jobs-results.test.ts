@@ -414,7 +414,7 @@ describe('corrections', () => {
     expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeNull();
   });
 
-  it('a correction happens only once', async () => {
+  it('the 6 h correction happens only once', async () => {
     await seedFetchedEarly();
     useRoutes(correctedBoxRoute());
     at(9 * H);
@@ -422,7 +422,7 @@ describe('corrections', () => {
     const corrected = await merzStats();
 
     useRoutes(fullRoutes());
-    at(30 * H);
+    at(26 * H);
     await results({ catchUp: true });
     expect(client.requestCount).toBe(0);
     expect(await merzStats()).toEqual(corrected);
@@ -460,5 +460,81 @@ describe('corrections', () => {
     await results();
     expect((await gameRow(`nhl-${GAME}`)).correctedAt).toBeInstanceOf(Date);
     expect(await merzStats()).toMatchObject({ saves: 31 });
+  });
+
+  describe('the second re-fetch, 24 h after the final', () => {
+    const NINE_HOURS_IN = () => new Date(START + 9 * H);
+    const stamp = (values: { finalAt?: Date; correctedAt?: Date }) =>
+      handle.db
+        .update(games)
+        .set(values)
+        .where(eq(games.publicId, `nhl-${GAME}`));
+
+    // The job stamps corrected_at with the database's clock, not the test's, so a 6 h correction at START + 9 h is set by hand.
+    async function seedCorrected() {
+      await seedFetchedEarly();
+      await stamp({ correctedAt: NINE_HOURS_IN() });
+    }
+
+    it('updates changed numbers', async () => {
+      await seedCorrected();
+      useRoutes(correctedBoxRoute());
+      at(3 * H + 24 * H);
+      const result = await results();
+
+      expect(await merzStats()).toMatchObject({ saves: 31, shotsAgainst: 34 });
+      expect(countOf(result, 'corrected')).toBe(1);
+      expect(client.requests).toEqual([nhlUrls.boxscore(GAME)]);
+    });
+
+    it('is not due 1 min before the 24 h mark', async () => {
+      await seedCorrected();
+      useRoutes(correctedBoxRoute());
+      at(3 * H + 24 * H - 60 * 1000);
+      await results();
+      expect(client.requestCount).toBe(0);
+    });
+
+    it('happens only once', async () => {
+      await seedCorrected();
+      useRoutes(correctedBoxRoute());
+      at(3 * H + 24 * H);
+      await results();
+      expect(client.requestCount).toBe(1);
+
+      at(3 * H + 25 * H);
+      await results();
+      expect(client.requestCount).toBe(1);
+    });
+
+    it('a failure keeps the old stamp and the next run retries', async () => {
+      await seedCorrected();
+      useRoutes({});
+      at(3 * H + 24 * H);
+      expect((await results()).status).toBe('partial');
+      expect((await gameRow(`nhl-${GAME}`)).correctedAt).toEqual(NINE_HOURS_IN());
+
+      useRoutes(correctedBoxRoute());
+      await results();
+      expect(await merzStats()).toMatchObject({ saves: 31 });
+    });
+
+    // Every restart is a catch-up run: without this bound each one would re-fetch the whole season.
+    it('stops 48 h after the final, on a catch-up run too', async () => {
+      await seedCorrected();
+      useRoutes(correctedBoxRoute());
+      at(3 * H + 48 * H);
+      await results({ catchUp: true });
+      expect(client.requestCount).toBe(0);
+    });
+
+    it('skips a game first seen final 12 h or more after its start (backfill, settled)', async () => {
+      await seedFetchedEarly();
+      await stamp({ finalAt: new Date(START + 12 * H), correctedAt: new Date(START + 12 * H) });
+      useRoutes(correctedBoxRoute());
+      at(12 * H + 24 * H);
+      await results();
+      expect(client.requestCount).toBe(0);
+    });
   });
 });

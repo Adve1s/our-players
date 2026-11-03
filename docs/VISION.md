@@ -130,7 +130,7 @@ Android app / web app ──── HTTPS GET /v1/... (preferences in the query) 
 | Job | When (UTC) | What it does |
 |---|---|---|
 | `schedule` | daily 09:00, and at startup if no future games are stored | Upcoming games for the next 7 days, per league |
-| `results` | every 10 min | Only does work if some game has started and isn't final yet: fetch that game day's scoreboard; for each game that became final, fetch its box score once and store every player's stat line. Corrections: re-fetch each final box score once, at least 6 h after it went final |
+| `results` | every 10 min | Only does work if some game has started and isn't final yet: fetch that game day's scoreboard; for each game that became final, fetch its box score once and store every player's stat line. Corrections: re-fetch each final box score at least 6 h after it went final, and once more 24 h after (D-068) |
 | `roster` | daily 10:00 | All teams' rosters: players, teams, positions, birth countries; recompute nationalities with the overrides (§7). A player missing from every roster of his league gets no current team and `active = false`, but only when all of that league's rosters were fetched successfully; otherwise no `active` flag changes and the run records the partial failure. He becomes active again when he reappears |
 | `season-stats` | daily 11:00 | Official season stats for rostered players (bulk endpoints where they exist) |
 | `backfill` | manual (CLI) | Schedule + results for a date range — dev data, and the season-to-date at launch |

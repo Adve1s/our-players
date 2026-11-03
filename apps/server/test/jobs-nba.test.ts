@@ -234,6 +234,21 @@ describe('NBA corrections', () => {
     expect(client.requests.length).toBe(corrected);
   });
 
+  it('re-requests the summary once more 24 h after the final', async () => {
+    await seedFetchedEarly();
+    // The job stamps corrected_at with the database's clock, so a 6 h correction at START + 9 h is set by hand.
+    await handle.db
+      .update(games)
+      .set({ correctedAt: new Date(START + 9 * H) })
+      .where(eq(games.publicId, `nba-${GAME}`));
+    const sent = client.requests.length;
+    at(3 * H + 24 * H);
+    const result = await results();
+
+    expect(client.requests.slice(sent)).toEqual([espnUrls.summary(GAME)]);
+    expect(countOf(result, 'corrected')).toBe(1);
+  });
+
   it('asks only ESPN hosts across the day loop and the corrections (AC8)', async () => {
     await seedFetchedEarly();
     at(9 * H);
