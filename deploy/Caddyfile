@@ -3,6 +3,8 @@
 # the filter cuts it at `?` so preferences in the query (countries, favorites) never reach a log,
 # and drops the client address, so no log holds IP addresses. That includes X-Forwarded-For: the proxy's
 # own warning (a response cut off mid-copy) logs the outgoing request, with the client address in that header.
+# The same warning's `error` quotes the client address when a write to a client that left fails
+# ("write tcp <server>-><client>:<port>: ..."), so the regexp cuts the `->` part. The line's `upstream` still names the API.
 {
 	log default {
 		format filter {
@@ -10,6 +12,7 @@
 			request>remote_ip delete
 			request>client_ip delete
 			request>headers>X-Forwarded-For delete
+			error regexp "->[^ ]+" ""
 		}
 	}
 }

@@ -40,11 +40,11 @@ Tick these four and nothing else. For each one, the form then asks the questions
 - **`apps/server/src/api/app.ts`** logs `c.req.path`, which has no query string.
 - **This session's first log fix:** the API's error log no longer holds query parameters. A failed database query's message carried them, so it now logs only the error code.
 - **`deploy/Caddyfile`** strips the query from Caddy's logs and deletes client addresses from them.
-- **This session's second log fix:** Caddy's filter also drops `X-Forwarded-For`, a header that holds the client address.
+- **This session's second log fix:** Caddy's filter also drops `X-Forwarded-For`, a header that holds the client address, and cuts the client address from `error`, where a failed write to a client that left quotes it.
 - **`deploy/compose.yaml`** caps logs at 5 × 10 MB per service.
 - **`apps/server/src/api/rate-limit.ts`** holds the IP address in memory only. Later traffic or a restart clears it, and it isn't saved to disk or written to a log.
 - **`apps/mobile/package.json`** has no analytics, crash reporting, ads or update SDK.
-- **`docs/SECURITY-CHECKS.md` §4.3** re-verifies the host: its three log greps must print 0, 0 and 0.
+- **`docs/SECURITY-CHECKS.md` §4.3** re-verifies the host: its four log greps must print 0, 0, 0 and 0.
 
 ## Not declared, and why
 

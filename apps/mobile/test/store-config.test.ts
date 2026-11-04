@@ -90,6 +90,7 @@ describe('privacy page', () => {
     'request>remote_ip delete',
     'request>client_ip delete',
     'request>headers>X-Forwarded-For delete',
+    'error regexp "->[^ ]+" ""',
   ])('backs "no IP in a log" with the proxy log filter: %s', (rule) => {
     expect(read('../../../deploy/Caddyfile')).toContain(rule);
   });
