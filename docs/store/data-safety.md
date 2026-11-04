@@ -49,7 +49,7 @@ Tick these four and nothing else. For each one, the form then asks the questions
 ## Not declared, and why
 
 - **Location:** the IP address is never used to work out a location, which per Google's FAQ is what would make it location data.
-- **IP address:** leaving it out is a decision, not an oversight. The address is used only as the per-client key for the rate limit (`apps/server/src/api/rate-limit.ts`). It's held in memory, and never stored, logged or used for location. Google says to disclose IPs "based on their particular usage", and no data type on the form describes this use.
+- **IP address:** leaving it out is a decision, not an oversight. The address is used only as the per-client key for the rate limit (`apps/server/src/api/rate-limit.ts`). It's held in memory, and never stored, logged or used for location. Google says to disclose IPs "based on their particular usage". Our reading is that no data type on the form describes this use: the closest, Device or other IDs, is "identifiers that relate to an individual device, browser or app", and this is a network address used only for counting requests. That's our reading, not Google's wording.
 - **Device or other IDs:** none exist.
 - **Personal info:** the app asks for none, and there's no account.
 - **Crash logs:** there's no crash reporter.
