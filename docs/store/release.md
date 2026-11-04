@@ -80,6 +80,7 @@ Do these in order, after the S11 pull request is merged. The merge publishes the
 
 On your computer (the tree must be clean):
 ```bash
+cd "$(git rev-parse --show-toplevel)"
 git switch main && git pull && deploy/deploy.sh root@<server-ip>
 ```
 Success: it ends with `deployed <tag>`, having shown `docker compose ps` and the health check's answer. The API is down for 10–40 s. If it fails, see `docs/DEPLOY.md` §3.
@@ -152,15 +153,16 @@ cd "$(git rev-parse --show-toplevel)/apps/mobile"
 pnpm dlx eas-cli@27.2.0 credentials -p android
 ```
 
-Pick the production profile, then the option that downloads the keystore; its wording may differ. If it offers to show the keystore's passwords, say yes. Save the `.jks` file and its passwords in your password manager, then delete the local copy:
+Pick the production profile, then the option that downloads the keystore; its wording may differ. If it offers to show the keystore's passwords, say yes. EAS saves the keystore in this folder, as `@adveis__our-players.jks`. Save that file and its passwords in your password manager, then delete the local copies. The `rm` also names what the menu's `credentials.json` option leaves behind, in case you picked it:
 
 ```bash
-rm <path-to-the-downloaded.jks>
+rm -f @adveis__our-players.jks credentials.json credentials/android/keystore.jks
+ls *.jks *.keystore credentials.json credentials/android/keystore.jks
 ```
 
-Never put it in the repo. `.gitignore` already blocks `*.jks`, `*.keystore` and `credentials.json`.
+Never put them in the repo. `.gitignore` already blocks `*.jks`, `*.keystore` and `credentials.json`, which is also why `git status` can't show whether they're gone.
 
-Success: the password manager holds the file and passwords, and `git status` shows nothing new.
+Success: the password manager holds the file and passwords, and `ls` prints `No such file or directory` for all four.
 
 ## Support email
 
