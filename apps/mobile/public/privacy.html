@@ -72,10 +72,11 @@
     <p>
       For each request, the server logs the path (which may name a date, game or player), the status
       and how long it took. It logs no IP address and leaves out the rest of the web address, so a
-      line can't be tied to a person. The proxy's error log, written when the API can't answer,
-      holds the path and request headers such as the app or browser type. We read these logs only to
-      watch the service's health and to find and fix bugs. Logs are capped at 50 MB per service and
-      overwritten as they fill, with no fixed time limit.
+      line can't be tied to a person. The proxy's error log, written when a request fails, for
+      example while the API restarts or when a connection drops, holds the path and request headers
+      such as the app or browser type. We read these logs only to watch the service's health and to
+      find and fix bugs. Logs are capped at 50 MB per service and overwritten as they fill, with no
+      fixed time limit.
     </p>
 
     <h2>Deletion</h2>

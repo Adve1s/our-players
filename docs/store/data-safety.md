@@ -33,7 +33,7 @@ Tick these four and nothing else. For each one, the form then asks the questions
 
 **Why Analytics:** we read the log to watch the service's health and to diagnose bugs, and Google's definition of Analytics names exactly that ("to monitor app health, to diagnose and fix bugs or crashes"). Google has no exemption for anonymized data on the collection side, so a log with no IP address still gets declared.
 
-**The proxy's error log** holds the path and request headers such as the app or browser type, and only when the API can't answer. It's covered by the two Analytics rows. The app sends no device ID, so none of those headers holds one.
+**The proxy's error log**, written when a request fails, for example while the API restarts or when a connection drops, holds the path and request headers such as the app or browser type. It's covered by the two Analytics rows. The app sends no device ID, so none of those headers holds one.
 
 ## What the log holds, and how we know
 
