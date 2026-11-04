@@ -83,6 +83,9 @@ describe('privacy page', () => {
   it('says preferences and search text never reach a log or database', () => {
     expect(html.replace(/\s+/g, ' ')).toContain('never written to a log or database');
   });
+  it("says the log is read only for the service's health, the form's Analytics purpose", () => {
+    expect(html.replace(/\s+/g, ' ')).toContain("service's health");
+  });
   it.each([
     'request>remote_ip delete',
     'request>client_ip delete',
