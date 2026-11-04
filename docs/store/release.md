@@ -94,7 +94,7 @@ This drops older log lines that hold a client address, because the deploy only r
 **2. Check the logs.** Still on the host, in `/opt/our-players`, run `docs/SECURITY-CHECKS.md` §4.3's four log greps:
 ```bash
 docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -cE 'remote_ip|client_ip|X-Forwarded-For'
-docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -v 'served key authentication certificate' | sed -E 's/"User-Agent":\[[^]]*\]//' | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -vcE '^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)'
+docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -v 'served key authentication' | sed -E 's/"User-Agent":\[[^]]*\]//' | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -vcE '^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)'
 docker compose logs --since 48h api | grep -c '"path":"[^"]*?'
 docker compose logs --since 48h api | grep -c 'Failed query'
 ```

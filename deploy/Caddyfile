@@ -1,10 +1,11 @@
 # No `log` directive in the site block, so Caddy writes no access log (the API logs paths without
 # query strings). Caddy's own error logs still carry the request URI (e.g. while the API restarts):
 # the filter cuts it at `?` so preferences in the query (countries, favorites) never reach a log,
-# and drops the client address, so no log holds IP addresses. That includes X-Forwarded-For: the proxy's
+# and drops the client address, so no request the app or site makes leaves an IP address in a log. That includes X-Forwarded-For: the proxy's
 # own warning (a response cut off mid-copy) logs the outgoing request, with the client address in that header.
 # The same warning's `error` quotes the client address when a write to a client that left fails
 # ("write tcp <server>-><client>:<port>: ..."), so the regexp cuts the `->` part. The line's `upstream` still names the API.
+# shortcut: a hand-made POST cut off mid-body still logs the client address in `msg`, which the filter can't reach (the app and site send only GET); answer non-GET in Caddy if that ever matters.
 {
 	log default {
 		format filter {
