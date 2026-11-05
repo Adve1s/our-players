@@ -57,7 +57,7 @@ The package change reaches `app.json`, VISION §11 (with the Analytics wording f
 {
   "cli": { "version": ">= 27.2.0", "appVersionSource": "remote" },
   "build": {
-    "base": { "node": "24.22.0", "corepack": true },
+    "base": { "node": "24.22.0", "pnpm": "12.14.0" },
     "development": { "extends": "base", "developmentClient": true, "distribution": "internal" },
     "preview": {
       "extends": "base",
@@ -78,7 +78,7 @@ The package change reaches `app.json`, VISION §11 (with the Analytics wording f
 - **Version code:** EAS stores it remotely and raises it on every production build, so "every upload needs a higher one" can't be forgotten. `version` in `app.json` (1.0.0, shown in About) is changed by hand.
 - **`development`** exists because §S11 lists it. It needs `expo-dev-client`, a new dependency nobody needs yet, so it stays uninstalled and Expo Go remains the dev path. `release.md` says so.
 - **API URL:** `apiBaseUrl` silently falls back to localhost, so a test pins both profiles' URL. `apps/mobile/.env` is git-ignored, so EAS doesn't upload it.
-- **The CLI** isn't a repo dependency: `pnpm dlx eas-cli@27.2.0` from `apps/mobile`, a pinned version old enough for `minimumReleaseAge`. Implementers check the `corepack` key against that CLI's `eas.json` schema, because the docs only show it for Yarn; if unsupported, use `"pnpm": "12.14.0"`.
+- **The CLI** isn't a repo dependency: `pnpm dlx eas-cli@27.2.0` from `apps/mobile`, a pinned version old enough for `minimumReleaseAge`. `pnpm` is pinned to `12.14.0`, the repo's `packageManager`. The first build tried `"corepack": true` and failed: EAS enabled Corepack, then installed its default pnpm over Corepack's `pnpx` shim (`EEXIST`).
 - **Submitting:** by hand in the console (owner, 2026-11-04). `eas submit` could do even the first upload, but it needs a Google Cloud service account and its key: a setup job and one more secret, to save about a minute per release. It can be added later without touching the app.
 - **Free plan:** EAS's free tier costs nothing but queues builds and has a monthly limit (expo.dev/pricing).
 
