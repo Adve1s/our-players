@@ -27,7 +27,7 @@ All **on your computer**, from the repo root. `trivy`, `gitleaks` and `zizmor` a
 pnpm audit
 pnpm --filter @our-players/server audit --prod --audit-level moderate
 ```
-Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `6 ignored: 1 low | 4 moderate | 1 high` (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical, or any advisory in the second, is a new finding.
+Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `5 ignored: 4 moderate | 1 high` (6 before the S11 re-run) (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical, or any advisory in the second, is a new finding.
 
 **Repo files** (lockfile, Dockerfile, secrets):
 ```bash
