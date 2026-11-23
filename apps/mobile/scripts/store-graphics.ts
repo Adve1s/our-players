@@ -18,10 +18,14 @@ const font = (weight: number, file: string) => {
   return `@font-face{font-family:Instrument Sans;font-weight:${weight};src:url(data:font/ttf;base64,${ttf.toString('base64')})}`;
 };
 
+const ICON_VIEWBOX = 'viewBox="0 0 1024 1024"';
+const icon = readFileSync(resolve('assets/icon.svg'), 'utf8');
+// The crop below is in icon.svg's coordinates; a changed root would otherwise render the whole 1024 box.
+if (!icon.includes(ICON_VIEWBOX)) throw new Error(`assets/icon.svg no longer has ${ICON_VIEWBOX}`);
 // The mark's own box, round ray caps included, so it sits on the layout without the icon's padding.
-const mark = readFileSync(resolve('assets/icon.svg'), 'utf8')
+const mark = icon
   .replace(/<rect id="field"[^>]*\/>/, '')
-  .replace('viewBox="0 0 1024 1024"', 'viewBox="287.5 332.5 449 358.5" width="202" height="161.3"');
+  .replace(ICON_VIEWBOX, 'viewBox="287.5 332.5 449 358.5" width="202" height="161.3"');
 
 const FEATURE = `<!doctype html><style>
 ${font(700, '700Bold/InstrumentSans_700Bold.ttf')}
@@ -34,7 +38,14 @@ p{margin:8px 0 0;font-size:29px;font-weight:500;line-height:1.3}
 async function main(): Promise<void> {
   mkdirSync(OUT, { recursive: true });
   // PNG32 forces the alpha channel Play's console page asks for; the field stays opaque.
-  execFileSync('magick', ['public/icon-512.png', `PNG32:${resolve(OUT, 'icon-512.png')}`]);
+  const args = ['public/icon-512.png', `PNG32:${resolve(OUT, 'icon-512.png')}`];
+  // ImageMagick 7 (Arch) is `magick`; Ubuntu's apt package is 6, which only has `convert`.
+  try {
+    execFileSync('magick', args);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    execFileSync('convert', args);
+  }
   console.log(resolve(OUT, 'icon-512.png'));
 
   const browser = await chromium.launch({

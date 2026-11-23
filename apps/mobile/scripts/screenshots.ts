@@ -1,6 +1,7 @@
 // TS 6 loads no @types by default, and this Node script needs them.
 /// <reference types="node" />
 import { type ChildProcess, spawn } from 'node:child_process';
+import { mkdirSync, rmSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -702,13 +703,12 @@ type Capture = {
   viewport: { width: number; height: number };
   deviceScaleFactor: number;
   file: string;
-  runAfter: boolean;
 };
 
 async function capture(
   b: Browser,
   shot: Shot,
-  { colorScheme, viewport, deviceScaleFactor, file, runAfter }: Capture,
+  { colorScheme, viewport, deviceScaleFactor, file }: Capture,
 ): Promise<void> {
   // A fresh context per shot = a fresh install (no stored preferences unless the shot has some).
   const context = await b.newContext({
@@ -732,7 +732,7 @@ async function capture(
     await shot.take(page);
     // Finishes CSS transitions (a switch just toggled would be caught mid-slide).
     await page.screenshot({ path: file, animations: 'disabled' });
-    if (runAfter) await shot.after?.(page);
+    await shot.after?.(page);
   } finally {
     await context.close();
   }
@@ -777,6 +777,10 @@ async function main(): Promise<void> {
   browser = b;
   const written: string[] = [];
   if (process.argv.includes('--store')) {
+    const storeDir = resolve('../../docs/store/graphics/screenshots');
+    // Every file here gets uploaded, so a renamed or dropped shot must not leave its old image behind.
+    rmSync(storeDir, { recursive: true, force: true });
+    mkdirSync(storeDir, { recursive: true });
     for (const [i, { name, scroll }] of STORE_SHOTS.entries()) {
       const shot = SHOTS.find((s) => s.name === name);
       if (!shot) throw new Error(`no shot named ${name}`);
@@ -784,20 +788,17 @@ async function main(): Promise<void> {
         await shot.take(page);
         await scroll?.(page);
       };
-      const file = resolve(
-        '../../docs/store/graphics/screenshots',
-        `${String(i + 1).padStart(2, '0')}-${name}.png`,
-      );
+      const file = resolve(storeDir, `${String(i + 1).padStart(2, '0')}-${name}.png`);
       await step(`store-${name}`, () =>
         capture(
           b,
-          { ...shot, take },
+          // The listing shows the screen only; the checks in `after` belong to the regular run.
+          { ...shot, take, after: undefined },
           {
             colorScheme: 'dark',
             viewport: STORE_VIEWPORT,
             deviceScaleFactor: 3,
             file,
-            runAfter: false,
           },
         ),
       );
@@ -813,7 +814,6 @@ async function main(): Promise<void> {
             viewport: { width: 412, height: 915 },
             deviceScaleFactor: 2,
             file,
-            runAfter: true,
           }),
         );
         written.push(file);
