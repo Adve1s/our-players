@@ -12,7 +12,7 @@ if (source.split('<g id="mark"').length !== 2 || source.split('<rect id="field"'
 const FIELD = /<rect id="field"[^>]*\/>/;
 // shortcut: MARK stops at the first </g>, so the mark can't contain nested <g>; switch to a DOM parse if it ever needs groups
 const MARK = /<g id="mark"[\s\S]*?<\/g>/;
-// The mark is sized for Android's adaptive safe zone (66 of 108 dp), which also fits the
+// The mark is sized for Android's adaptive safe zone (66 of 108 dp; the launcher layers shrink it below), which also fits the
 // W3C maskable safe radius (40%). Plain squares have no mask, so they zoom it to fill the
 // tile, the favicon most so it reads in a 16 px tab.
 const scaled = (s: number) =>

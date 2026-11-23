@@ -107,7 +107,7 @@ curl -sS https://ourplayers.adveis.dev/privacy | grep -c 'Privacy policy'
 ```
 Success: the run shows a ✓ in the terminal (`completed success` when piped), and the count is above `0` (it's `2` today). `0` means the site answered with the app and not the policy. Checking the status code proves nothing, because a missing page still answers 200. Then on your phone, tap Settings → About → Privacy policy. Success: the browser opens the policy.
 
-**4. If the review changed the app,** build a new AAB as in [Ship an update](#ship-an-update), repeat §4.4 and check it on your phone.
+**4. Build the AAB that goes to the closed track,** whenever the app changed after the internal-track upload. For S11 it always did: the launcher icon and splash shrank to 70% after the phone check (versionCode 3 still has the big ones). Build it as in [Ship an update](#ship-an-update), repeat §4.4, put it on Internal testing and check it on your phone: the icon, the splash and that Today loads.
 
 **5. Fill in the console.** Only after steps 1 to 3:
 
@@ -117,7 +117,7 @@ Success: the run shows a ✓ in the terminal (`completed success` when piped), a
 - [ ] **Store listing and contact details:** `listing.md`. Graphics are in `docs/store/graphics/`.
 - [ ] **Countries:** Test and release → Testing → Closed testing → Countries / regions → all countries.
 - [ ] **Tester list:** Closed testing → Testers → create an email list with your own Google account. Save.
-- [ ] **The release:** on Internal testing, promote the release to the closed track, or create a new release on Closed testing with the same AAB.
+- [ ] **The release:** on Internal testing, promote the step 4 release (not versionCode 3) to the closed track, or create a new release on Closed testing with the step 4 AAB.
 - [ ] **Dashboard:** its setup list must show nothing left to do.
 - [ ] **Submit:** Publishing overview → Send for review. The console's wording may differ.
 
