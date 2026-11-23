@@ -21,8 +21,10 @@ const scaled = (s: number) =>
     `<g id="mark" transform="translate(512 512) scale(${s}) translate(-512 -512)"`,
   );
 const markOnly = source.replace(FIELD, '');
+// At full size the mark fills most of the 72 dp a launcher shows, which looked oversized on the phone (S11).
+const launcherMark = scaled(0.7).replace(FIELD, '');
 // The launcher tints a monochrome icon itself; only the alpha counts.
-const monochrome = markOnly.replace(/#(FFB547|F5F5F4)/g, '#FFFFFF');
+const monochrome = launcherMark.replace(/#(FFB547|F5F5F4)/g, '#FFFFFF');
 const fieldOnly = source.replace(MARK, '');
 
 const b64 = (svg: string) => Buffer.from(svg).toString('base64');
@@ -35,7 +37,7 @@ const SIZES: [string, number, string][] = [
   ['public/apple-touch-icon.png', 180, tile],
   ['assets/images/favicon.png', 48, b64(scaled(1.7))],
   ['assets/images/icon.png', 1024, tile],
-  ['assets/images/android-icon-foreground.png', 1024, b64(markOnly)],
+  ['assets/images/android-icon-foreground.png', 1024, b64(launcherMark)],
   ['assets/images/android-icon-background.png', 1024, b64(fieldOnly)],
   ['assets/images/android-icon-monochrome.png', 1024, b64(monochrome)],
   ['assets/images/splash-icon.png', 1024, b64(markOnly)],
