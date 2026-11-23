@@ -577,5 +577,5 @@ One entry per session, newest last, at most ~12 lines. Format:
 
 ### S11 review fixes — 2026-11-23 — PR #32 (`s11-closed-test`)
 - `/code-review` left 8 comments. Fixed (6): a failed query's 500 also logs its SQL (`$n` placeholders only), so it can be debugged; one shared broken test DB instead of three; `store-graphics` checks the icon's viewBox before cropping and falls back to `convert` (Ubuntu's ImageMagick 6); `--store` empties its folder first; the `runAfter` flag is gone.
-- Declined with replies (2): Postgres's own log (it logs no parameter values: `log_parameter_max_length_on_error` 0, statements with placeholders, inputs validated before the DB; 0 ERROR lines in 30 days on the host); `openURL`'s rejection (no realistic case, and a silent catch hides errors).
+- Declined with replies (2): Postgres's own log (its parameter list and `STATEMENT:` lines hold no values: `log_parameter_max_length_on_error` 0, `$n` placeholders; only a cast error's message quotes a value, and no preference or search value is ever cast: search goes to `strpos` on text, countries and IDs compare with text columns, leagues pass a zod enum; 0 ERROR lines in 30 days on the host); `openURL`'s rejection (no realistic case, and a silent catch hides errors).
 - Graphics unchanged by the script fixes (re-run: 0 pixels differ). Tests: 1616, the query-logging case red first.

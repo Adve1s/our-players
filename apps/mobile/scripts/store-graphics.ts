@@ -22,6 +22,8 @@ const ICON_VIEWBOX = 'viewBox="0 0 1024 1024"';
 const icon = readFileSync(resolve('assets/icon.svg'), 'utf8');
 // The crop below is in icon.svg's coordinates; a changed root would otherwise render the whole 1024 box.
 if (!icon.includes(ICON_VIEWBOX)) throw new Error(`assets/icon.svg no longer has ${ICON_VIEWBOX}`);
+if (!/<rect id="field"[^>]*\/>/.test(icon))
+  throw new Error('assets/icon.svg has no <rect id="field"/>');
 // The mark's own box, round ray caps included, so it sits on the layout without the icon's padding.
 const mark = icon
   .replace(/<rect id="field"[^>]*\/>/, '')
