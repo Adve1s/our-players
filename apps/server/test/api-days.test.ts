@@ -433,30 +433,38 @@ describe('logs', () => {
     expect(failed[0]).not.toContain('?');
   });
 
-  it.each([
-    {
-      route: 'search',
-      path: '/v1/players/search?q=porzingis&leagues=NBA',
-      values: ['porzingis', 'NBA'],
-    },
-    { route: 'players by ID', path: `/v1/players?ids=${RUST}`, values: [RUST] },
-    { route: 'countries', path: '/v1/countries?leagues=NBA', values: ['NBA'] },
-  ])('a failed $route query logs its code and none of its params', async ({ path, values }) => {
-    const broken = await createTestDb();
-    await broken.db.execute(sql`drop table players cascade`);
-    const { get, lines } = setup(broken.db);
-
-    await get(path, 500, errorResponseSchema);
-    await broken.close();
-
-    const logged = lines.map((l) => JSON.parse(l) as Record<string, unknown>);
-    expect(logged.find((l) => l.msg === 'request failed')).toMatchObject({
-      error: 'DrizzleQueryError',
-      code: '42P01',
+  describe('a failed query', () => {
+    // One database whose players table is gone fails every route below the same way.
+    let broken: DbHandle;
+    beforeAll(async () => {
+      broken = await createTestDb();
+      await broken.db.execute(sql`drop table players cascade`);
     });
-    for (const line of lines) {
-      for (const value of values) expect(line).not.toContain(value);
-    }
+    afterAll(() => broken.close());
+
+    it.each([
+      {
+        route: 'search',
+        path: '/v1/players/search?q=porzingis&leagues=NBA',
+        values: ['porzingis', 'NBA'],
+      },
+      { route: 'players by ID', path: `/v1/players?ids=${RUST}`, values: [RUST] },
+      { route: 'countries', path: '/v1/countries?leagues=NBA', values: ['NBA'] },
+    ])('for $route logs its code and SQL but none of its params', async ({ path, values }) => {
+      const { get, lines } = setup(broken.db);
+
+      await get(path, 500, errorResponseSchema);
+
+      const logged = lines.map((l) => JSON.parse(l) as Record<string, unknown>);
+      expect(logged.find((l) => l.msg === 'request failed')).toMatchObject({
+        error: 'DrizzleQueryError',
+        code: '42P01',
+        query: expect.stringContaining('"players"'),
+      });
+      for (const line of lines) {
+        for (const value of values) expect(line).not.toContain(value);
+      }
+    });
   });
 
   it('a driver message quoting a value stays out of the log', async () => {

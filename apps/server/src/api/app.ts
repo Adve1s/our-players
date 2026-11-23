@@ -96,11 +96,13 @@ export function createApp({ db, now, log, corsOrigins = [], rateLimitPerMinute }
       return errorBody(c, 400, 'BAD_REQUEST', err.message);
     }
     // A query error's message carries its params (search text, preferences), and the driver's message can quote one.
+    // Its SQL is safe to log: values are $n placeholders (the only sql.raw is column names in db/upsert.ts).
     const detail =
       err instanceof DrizzleQueryError
         ? {
             error: 'DrizzleQueryError',
             code: (err.cause as { code?: unknown } | undefined)?.code,
+            query: err.query,
           }
         : { error: err.message };
     log.error('request failed', { method: c.req.method, path: c.req.path, ...detail });
