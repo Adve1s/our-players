@@ -6,7 +6,7 @@ import {
   gameResponseSchema,
   type PlayerRow,
 } from '@our-players/shared';
-import { eq } from 'drizzle-orm';
+import { DrizzleQueryError, eq, sql } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { z } from 'zod';
@@ -431,6 +431,67 @@ describe('logs', () => {
     const failed = lines.filter((l) => l.includes('request failed'));
     expect(failed).toHaveLength(1);
     expect(failed[0]).not.toContain('?');
+  });
+
+  describe('a failed query', () => {
+    // One database whose players table is gone fails every route below the same way.
+    let broken: DbHandle;
+    beforeAll(async () => {
+      broken = await createTestDb();
+      await broken.db.execute(sql`drop table players cascade`);
+    });
+    afterAll(() => broken.close());
+
+    it.each([
+      {
+        route: 'search',
+        path: '/v1/players/search?q=porzingis&leagues=NBA',
+        values: ['porzingis', 'NBA'],
+      },
+      { route: 'players by ID', path: `/v1/players?ids=${RUST}`, values: [RUST] },
+      { route: 'countries', path: '/v1/countries?leagues=NBA', values: ['NBA'] },
+    ])('for $route logs its code and SQL but none of its params', async ({ path, values }) => {
+      const { get, lines } = setup(broken.db);
+
+      await get(path, 500, errorResponseSchema);
+
+      const logged = lines.map((l) => JSON.parse(l) as Record<string, unknown>);
+      expect(logged.find((l) => l.msg === 'request failed')).toMatchObject({
+        error: 'DrizzleQueryError',
+        code: '42P01',
+        query: expect.stringContaining('"players"'),
+      });
+      for (const line of lines) {
+        for (const value of values) expect(line).not.toContain(value);
+      }
+    });
+  });
+
+  it('a driver message quoting a value stays out of the log', async () => {
+    const { app, get, lines } = setup();
+    app.get('/boom', () => {
+      const cause = Object.assign(new Error('invalid input syntax: "LVA"'), { code: '22P02' });
+      throw new DrizzleQueryError('select $1', ['LVA'], cause);
+    });
+
+    await get('/boom', 500, errorResponseSchema);
+
+    const failed = lines.find((l) => l.includes('request failed'));
+    expect(failed).toContain('22P02');
+    expect(failed).not.toContain('LVA');
+  });
+
+  it('any other error keeps its message in the log', async () => {
+    const { app, get, lines } = setup();
+    app.get('/boom', () => {
+      throw new Error('game nhl-1: not in its own day');
+    });
+
+    await get('/boom', 500, errorResponseSchema);
+
+    expect(lines.find((l) => l.includes('request failed'))).toContain(
+      'game nhl-1: not in its own day',
+    );
   });
 
   it('an HTTPException other than 400 answers the generic 500 and is logged', async () => {

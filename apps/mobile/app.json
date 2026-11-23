@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Our Players",
+    "owner": "adveis",
     "slug": "our-players",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +9,7 @@
     "scheme": "ourplayers",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "io.github.adve1s.ourplayers",
+      "package": "dev.adveis.ourplayers",
       "adaptiveIcon": {
         "backgroundColor": "#1D2024",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -35,7 +36,7 @@
         {
           "backgroundColor": "#1D2024",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "imageWidth": 140,
           "dark": { "backgroundColor": "#1D2024" }
         }
       ]
@@ -43,6 +44,9 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": { "projectId": "8bad90da-449c-4e09-bc47-21be4df9fbe7" }
     }
   }
 }

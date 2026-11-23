@@ -27,7 +27,7 @@ All **on your computer**, from the repo root. `trivy`, `gitleaks` and `zizmor` a
 pnpm audit
 pnpm --filter @our-players/server audit --prod --audit-level moderate
 ```
-Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `6 ignored: 1 low | 4 moderate | 1 high` (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical, or any advisory in the second, is a new finding.
+Success: the first ends with `All found vulnerabilities were already reviewed and decided to be ignored` and `5 ignored: 4 moderate | 1 high` (6 before the S11 re-run) (the accepted D1 and D3 advisories, section 5), or with no vulnerabilities; the second prints `No known vulnerabilities found`. A new line of severity high or critical, or any advisory in the second, is a new finding.
 
 **Repo files** (lockfile, Dockerfile, secrets):
 ```bash
@@ -139,7 +139,7 @@ grep -rhoE 'EXPO_PUBLIC_[A-Z_]+' apps/mobile/dist | sort -u
 grep -rhoE 'https://[a-z.]*adveis\.dev' apps/mobile/dist | sort -u
 grep -o '<script[^>]*>' apps/mobile/dist/index.html
 ```
-Success: `0`, `0`, nothing, only `https://api.ourplayers.adveis.dev`, and every `<script` has a `src=` (no inline script, which the CSP would block).
+Success: `0`, `0`, nothing, only `https://api.ourplayers.adveis.dev` and `https://ourplayers.adveis.dev` (the privacy link), and every `<script` has a `src=` (no inline script, which the CSP would block).
 
 ### 4.3 Host
 
@@ -160,8 +160,10 @@ systemctl is-active unattended-upgrades && apt-config dump APT::Periodic
 stat -c '%a %n' /opt/our-players /opt/our-players/.env /root/.ssh /root/.ssh/authorized_keys
 wc -l < /root/.ssh/authorized_keys
 docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedSince}}'
-docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -cE 'remote_ip|client_ip'
+docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -cE 'remote_ip|client_ip|X-Forwarded-For'
+docker compose logs --since 48h caddy | grep -v '"logger":"admin.api"' | grep -v 'served key authentication' | sed -E 's/"User-Agent":\[[^]]*\]//' | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -vcE '^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)'
 docker compose logs --since 48h api | grep -c '"path":"[^"]*?'
+docker compose logs --since 48h api | grep -c 'Failed query'
 journalctl --disk-usage && du -sh /var/lib/docker/containers
 ```
 Success, line by line:
@@ -172,7 +174,7 @@ Success, line by line:
 - `active`, and `APT::Periodic::Update-Package-Lists "1"` and `APT::Periodic::Unattended-Upgrade "1"`.
 - `755 /opt/our-players`, `600 /opt/our-players/.env`, `700 /root/.ssh`, `600 /root/.ssh/authorized_keys`; `1` key (yours; more means someone else can log in).
 - The API's newest image is your last deploy; `caddy:2` and `postgres:17` were created within the last month (section 6 pulls them).
-- `0` and `0`: no client IPs in Caddy's logs, no query strings (preferences) in the API's. The first command skips Caddy's `admin.api` lines: each deploy's `caddy reload` logs one with `"remote_ip":"127.0.0.1"` (Caddy reloading itself, not a visitor).
+- `0`, `0`, `0` and `0`: no client IPs in Caddy's log fields (the `X-Forwarded-For` header included), no raw public IPv4 address anywhere else in Caddy's lines (a failed write to a client that left quotes its address in `error`), no query strings (preferences) in the API's, and no failed-query params in the API's (a Drizzle query error's message carries them). The third and fourth `0` are separate checks: the query-string one looks only at `path`. The `Failed query` check, the raw-address check, and `X-Forwarded-For` in the first, apply after S11's API deploy; before it any of them can be above `0`. The first two commands skip Caddy's `admin.api` lines: each deploy's `caddy reload` logs one with `"remote_ip":"127.0.0.1"` (Caddy reloading itself, not a visitor). The raw-address check also skips what isn't a visitor's address: certificate lines (`served key authentication`, with or without `certificate`: Let's Encrypt's validation servers, as in `docs/DEPLOY.md` §7), `User-Agent` values (a browser's `Chrome/120.0.0.0` looks like an address) and private addresses (the containers' own network). It looks at IPv4 only, because the API has no `AAAA` record (DNS check in section 4.1). To see what it counted, change its last `-vcE` to `-vE`. A count from a `readfrom tcp` line is a hand-made POST cut off mid-body, not the app or site, which send only GET: Caddy's filter can't reach that line's `msg` (`shortcut:` in `deploy/Caddyfile`).
 - The journal and container logs stay small (S16: 45.5M and 3.2M); Docker rotates container logs at 5 × 10 MB.
 
 ### 4.4 Android
@@ -190,9 +192,13 @@ aapt dump permissions <path-to.apk>
 ```
 For an AAB (`bundletool` from github.com/google/bundletool):
 ```bash
-bundletool dump manifest --bundle=<path-to.aab> | grep uses-permission
+bundletool dump manifest --bundle=<path-to.aab> | grep -E 'uses-permission|targetSdkVersion|package='
 ```
-Success: `android.permission.INTERNET` and `io.github.adve1s.ourplayers.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (added by androidx.core: a signature-level permission the app defines for itself, not one the user grants), nothing else. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.)
+With no Java installed, download `bundletool-all-<version>.jar` from that page's Releases, save it as `bundletool.jar` and run it through mise, which adds nothing to the repo:
+```bash
+mise x java@temurin-21 -- java -jar bundletool.jar dump manifest --bundle=<path-to.aab> | grep -E 'uses-permission|targetSdkVersion|package='
+```
+Success: `android.permission.INTERNET` and `dev.adveis.ourplayers.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (added by androidx.core: a signature-level permission the app defines for itself, not one the user grants), no other permission. In particular, no `com.google.android.gms.permission.AD_ID`: the Advertising ID form answers No. (Expo or a library may add a permission the introspect step didn't show; if one appears, tell Claude before uploading.) The same output shows `android:targetSdkVersion` 36 and `package="dev.adveis.ourplayers"`.
 
 ### 4.5 Accounts and tokens
 

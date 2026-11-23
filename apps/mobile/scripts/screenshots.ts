@@ -1,6 +1,7 @@
 // TS 6 loads no @types by default, and this Node script needs them.
 /// <reference types="node" />
 import { type ChildProcess, spawn } from 'node:child_process';
+import { mkdirSync, rmSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -393,6 +394,7 @@ const SHOTS: Shot[] = [
     take: async (page) => {
       await tab(page, 'Settings');
       await page.getByText('Sweden').waitFor();
+      await page.getByRole('link', { name: 'Privacy policy' }).waitFor();
       await page.getByRole('link', { name: 'Add to Home Screen' }).scrollIntoViewIfNeeded();
     },
   },
@@ -677,6 +679,65 @@ const SHOTS: Shot[] = [
   },
 ];
 
+// The Play listing's phone screenshots. 360x720 @3x is 1080x2160, exactly at Play's 2:1 limit.
+// `scroll` ends the image on a row's edge instead of mid-row.
+const STORE_SHOTS: { name: string; scroll?: (page: Page) => Promise<void> }[] = [
+  { name: 'night-mixed' },
+  // Not game-hockey: at this width its table cuts TOI mid-digit and shows no player of ours.
+  {
+    name: 'game-basketball',
+    scroll: (page) =>
+      page
+        .getByRole('button', { name: /^Draymond Green, / })
+        .evaluate((el) => el.scrollIntoView({ block: 'end' })),
+  },
+  { name: 'player-skater' },
+  // No search-results: the seed lacks most rosters, so its "No team" would misrepresent real players.
+  // Unscrolled, so Latvia shows ticked. The country list is its own 5.67-row scroller, so a row is always cut.
+  { name: 'settings' },
+];
+const STORE_VIEWPORT = { width: 360, height: 720 };
+
+type Capture = {
+  colorScheme: 'light' | 'dark';
+  viewport: { width: number; height: number };
+  deviceScaleFactor: number;
+  file: string;
+};
+
+async function capture(
+  b: Browser,
+  shot: Shot,
+  { colorScheme, viewport, deviceScaleFactor, file }: Capture,
+): Promise<void> {
+  // A fresh context per shot = a fresh install (no stored preferences unless the shot has some).
+  const context = await b.newContext({
+    viewport,
+    deviceScaleFactor,
+    colorScheme,
+    // The app's fades and the skeleton pulse show their end state, so a shot never lands mid-animation.
+    reducedMotion: 'reduce',
+    timezoneId: 'Europe/Riga',
+    locale: 'en-GB',
+  });
+  try {
+    if (shot.prefs) {
+      const state = { ...DEFAULT_PREFS, ...shot.prefs };
+      await context.addInitScript(
+        (value) => localStorage.setItem('prefs', value),
+        JSON.stringify({ state, version: 1 }),
+      );
+    }
+    const page = await context.newPage();
+    await shot.take(page);
+    // Finishes CSS transitions (a switch just toggled would be caught mid-slide).
+    await page.screenshot({ path: file, animations: 'disabled' });
+    await shot.after?.(page);
+  } finally {
+    await context.close();
+  }
+}
+
 async function cleanup(): Promise<void> {
   for (const child of children) {
     try {
@@ -715,38 +776,48 @@ async function main(): Promise<void> {
   );
   browser = b;
   const written: string[] = [];
-  for (const colorScheme of ['light', 'dark'] as const) {
-    for (const shot of SHOTS) {
-      const file = join(OUT, `${colorScheme}-${shot.name}.png`);
-      await step(`${colorScheme}-${shot.name}`, async () => {
-        // A fresh context per shot = a fresh install (no stored preferences unless the shot has some).
-        const context = await b.newContext({
-          viewport: { width: 412, height: 915 },
-          deviceScaleFactor: 2,
-          colorScheme,
-          // The app's fades and the skeleton pulse show their end state, so a shot never lands mid-animation.
-          reducedMotion: 'reduce',
-          timezoneId: 'Europe/Riga',
-          locale: 'en-GB',
-        });
-        try {
-          if (shot.prefs) {
-            const state = { ...DEFAULT_PREFS, ...shot.prefs };
-            await context.addInitScript(
-              (value) => localStorage.setItem('prefs', value),
-              JSON.stringify({ state, version: 1 }),
-            );
-          }
-          const page = await context.newPage();
-          await shot.take(page);
-          // Finishes CSS transitions (a switch just toggled would be caught mid-slide).
-          await page.screenshot({ path: file, animations: 'disabled' });
-          await shot.after?.(page);
-        } finally {
-          await context.close();
-        }
-      });
+  if (process.argv.includes('--store')) {
+    const storeDir = resolve('../../docs/store/graphics/screenshots');
+    // Every file here gets uploaded, so a renamed or dropped shot must not leave its old image behind.
+    rmSync(storeDir, { recursive: true, force: true });
+    mkdirSync(storeDir, { recursive: true });
+    for (const [i, { name, scroll }] of STORE_SHOTS.entries()) {
+      const shot = SHOTS.find((s) => s.name === name);
+      if (!shot) throw new Error(`no shot named ${name}`);
+      const take = async (page: Page) => {
+        await shot.take(page);
+        await scroll?.(page);
+      };
+      const file = resolve(storeDir, `${String(i + 1).padStart(2, '0')}-${name}.png`);
+      await step(`store-${name}`, () =>
+        capture(
+          b,
+          // The listing shows the screen only; the checks in `after` belong to the regular run.
+          { ...shot, take, after: undefined },
+          {
+            colorScheme: 'dark',
+            viewport: STORE_VIEWPORT,
+            deviceScaleFactor: 3,
+            file,
+          },
+        ),
+      );
       written.push(file);
+    }
+  } else {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      for (const shot of SHOTS) {
+        const file = join(OUT, `${colorScheme}-${shot.name}.png`);
+        await step(`${colorScheme}-${shot.name}`, () =>
+          capture(b, shot, {
+            colorScheme,
+            viewport: { width: 412, height: 915 },
+            deviceScaleFactor: 2,
+            file,
+          }),
+        );
+        written.push(file);
+      }
     }
   }
   console.log(`wrote ${written.length} screenshots:\n${written.join('\n')}`);

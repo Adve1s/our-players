@@ -778,7 +778,7 @@ Then plan and build it: tokens and shared components first, then screens, then t
 **Goal:** the finished app is ready for Google: its first build checked on your phone through internal testing, its store documents written, its security re-checked and all of it reviewed and merged. After the merge you submit it to the closed track with Claude's help. Once Google approves it you can add testers, on your own time, with no session or PR open (D-069).
 
 **In scope**
-- App identity per VISION §11, already in `app.json` since S00 (verify it): name **Our Players**, package `io.github.adve1s.ourplayers`. Icon, adaptive icon and splash come from S17's brand source (`assets/icon.svg` and the `icons` script); check `app.json` points at them.
+- App identity per VISION §11, in `app.json`: name **Our Players**, package `dev.adveis.ourplayers` (D-070). Icon, adaptive icon and splash come from S17's brand source (`assets/icon.svg` and the `icons` script); check `app.json` points at them.
 - `eas.json` profiles (development, preview, production), version codes (every upload needs a higher one), a production AAB build with the production `EXPO_PUBLIC_API_URL` (`https://api.ourplayers.adveis.dev`, DEPLOY.md §9).
 - Check `docs/store/play-requirements.md` against Google's current rules, then meet them.
 - Internal track first, because it has no review wait: create the app, fill in what the console requires before an internal release, create an email list with your own account and upload. This is the first native build, so check it on your phone (icon, adaptive icon, splash, fonts).
@@ -794,7 +794,7 @@ Then plan and build it: tokens and shared components first, then screens, then t
 
 **Acceptance criteria**
 1. A production AAB builds (you run the EAS build; Claude fixes config issues).
-2. The uploaded AAB's package is `io.github.adve1s.ourplayers` — permanent from this upload on.
+2. The uploaded AAB's package is `dev.adveis.ourplayers` — permanent from this upload on.
 3. Installed from internal testing on your phone, it loads Today from the production API without crashing (run by you).
 4. Signing credentials backed up (you confirm); `docs/store/release.md` written.
 5. `docs/store/` complete, listing graphics ready; the privacy page is in the PR and the app links to its URL.
