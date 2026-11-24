@@ -40,3 +40,6 @@ Thumbs.db
 
 # Reference screenshots for the visual overhaul (S17): other apps, not ours to publish
 design-refs/
+
+# Playwright MCP output (S18 design loop)
+.playwright-mcp/
