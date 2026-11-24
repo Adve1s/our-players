@@ -26,7 +26,11 @@
       "Bash(gh pr checks *)",
       "Bash(gh pr list *)",
       "Bash(gh run list *)",
-      "Bash(gh run view *)"
+      "Bash(gh run view *)",
+      "Bash(npx expo install *)",
+      "Bash(git revert *)",
+      "mcp__playwright",
+      "mcp__mobbin"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -40,7 +44,10 @@
       "Read(**/.env)",
       "Read(**/.env.*)",
       "Read(!.env.example)",
-      "Edit(**/test/fixtures/**)"
+      "Edit(**/test/fixtures/**)",
+      "mcp__playwright__browser_run_code_unsafe",
+      "mcp__playwright__browser_file_upload",
+      "mcp__playwright__browser_drop"
     ],
     "ask": [
       "Bash(git push *)",
