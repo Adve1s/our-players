@@ -42,7 +42,7 @@ From the Dashboard, "Apply for production". Review "usually takes seven days or 
 ## Also check in the console
 
 - **Android developer verification:** the Play Console Home page shows the status of the account and app. Google enforced it in four countries from 30 Sep 2026 and plans to go global in 2027 (Android Developers Blog, June 2026).
-- **Public developer profile and email:** a personal account's developer email is shown on Google Play, is verified with a one-time code and must stay working. Google shows a personal account's legal name, country and developer email; in the EEA and UK, a non-trader shows only email and country.
+- **Public developer profile and email:** a personal account's developer email is shown on Google Play, is verified with a one-time code and must stay working. Google shows a personal account's legal name, country and developer email, trader or not (the trader declaration's consent screen shows all three, 2026-11-24); the full address only if the account earns money. The public email is set under Manage account → Contact details → "Details shown as part of your Play developer profile", separate from the private contact email.
 - **Trader declaration:** every active account must declare trader or non-trader status by 1 Feb 2027, wherever its apps are distributed.
 - **16 KB memory pages:** apps targeting API 35 or higher must support them, and updates that don't can't be released from 1 Feb 2027 (developer.android.com). Check the upload's warnings and App bundle explorer.
 
