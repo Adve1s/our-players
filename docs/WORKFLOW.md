@@ -83,7 +83,7 @@ A cloud session runs on an Anthropic-managed VM against your GitHub repo. Start 
    ```
    On a fresh clone the project plugins are already listed in `.claude/settings.json`; Claude Code should offer to install them when you trust the folder (otherwise run the commands above).
 7. **Start Claude Code** in the repo and accept the trust prompt (project allow rules apply only after that).
-8. **Check the setup:** `/plugin` (superpowers, context7 and ponytail from the project, plus typescript-lsp from your user settings; a fresh clone or cloud session shows only the three project ones), `/skills` (handoff, walkthrough, the superpowers and ponytail skills), `/hooks` (the kit's SessionStart and PostToolUse hooks plus the plugins'), `/mcp` (context7 connected), `/permissions`, and "which custom subagents are available?" (reviewer, test-writer).
+8. **Check the setup:** `/plugin` (superpowers, context7 and ponytail from the project, plus typescript-lsp from your user settings; a fresh clone or cloud session shows only the three project ones), `/skills` (handoff, walkthrough, the superpowers and ponytail skills), `/hooks` (the kit's SessionStart and PostToolUse hooks plus the plugins'), `/mcp` (context7 and playwright connected; S18 also uses Mobbin, added at user scope), `/permissions`, and "which custom subagents are available?" (reviewer, test-writer, design-critic).
 9. Sessions start in **default** mode (`permissions.defaultMode`): edits ask until you `Shift+Tab` to auto, right before you approve the plan. In the VS Code extension, set `claudeCode.initialPermissionMode` to `default`.
 10. **Optional:** a desktop notification when Claude needs you — a `Notification` hook running `notify-send` in `~/.claude/settings.json`; a status line showing context tokens (`/statusline …`). Both are already set up on your machine.
 11. Personal preferences go in `.claude/settings.local.json` and `CLAUDE.local.md` — both gitignored.
@@ -141,7 +141,7 @@ Each practice comes from Anthropic's Claude Code guidance or engineering write-u
 
 ### 7. Steering and tools
 - Correct early (`Esc`), be specific, park out-of-scope ideas. → CLAUDE.md, the PROGRESS.md parking lot.
-- Tool definitions cost context; prefer CLIs where they exist. → `gh` for GitHub. The one MCP server, context7, earns its place because Expo and friends change faster than model training, and its two tools load on demand.
+- Tool definitions cost context; prefer CLIs where they exist. → `gh` for GitHub. context7 earns its place because Expo and friends change faster than model training, and its two tools load on demand; Playwright (project, pinned) and Mobbin (user scope, paid) serve S18's design critic (D-074).
 
 ### 8. Learning while delegating
 - Read the briefing's files; `/walkthrough` for code you didn't write; the `/code-review` comments are a running code-review lesson.
