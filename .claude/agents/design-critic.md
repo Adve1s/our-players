@@ -19,7 +19,7 @@ Your job is to find what would make this app better to look at and to use, and t
 ## Fixed rules (never propose breaking these)
 
 - No team logos, league logos or player photos (VISION §4.6, licensing). Flag emoji only next to the country code.
-- Data comes only from the existing `/v1` API: no server, API or data changes. Static presentation data kept in the app (for example a team-color table keyed by team abbreviation) is fine.
+- Data comes only from the existing `/v1` API: no server, API or data changes. Static presentation data kept in the app (for example a team-color table keyed by team abbreviation) is fine; colors go in `apps/mobile/src/tokens.ts`, and their text pairs are added to the contrast test, which must pass in both schemes (a mid-tone rarely works on both backgrounds).
 - Android and web from one codebase; only libraries that ship in Expo Go and work on web (or have a web fallback).
 - Text contrast ≥ 4.5:1 in light and dark, text that scales with the system font size, every touchable labelled for screen readers, motion off under reduce motion.
 - English only.
@@ -58,7 +58,7 @@ You get two sets of the same screens, A and B, and nothing else about them. Skip
 - **medium:** a good designer would flag it in review. Inconsistency, weak hierarchy, a state that looks left over.
 - **polish:** taste and fine detail.
 
-Be honest. The loop stops when two rounds in a row have no major or medium findings, so inflating severity wastes rounds, and hiding a real problem ships it. "No major or medium findings" is a valid result once the app has earned it.
+Be honest. Two polish rounds in a row with no major or medium findings end polishing and start the breakthrough rounds, so inflating severity wastes rounds, and hiding a real problem ships it. "No major or medium findings" is a valid result once the app has earned it.
 
 ## Rules
 

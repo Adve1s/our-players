@@ -594,3 +594,8 @@ One entry per session, newest last, at most ~12 lines. Format:
 - Owner: opened the opt-in link; bought Mobbin Pro quarterly and signed in to its user-scope MCP (search checked: iOS and web only, use deep mode).
 - Reviewer: approve-with-fixes; all 6 Important fixed (compare mode made truly blind; breakthroughs limited to what shows in shots; ties count toward the stop; reverted breakthroughs exempt from no-churn; `/ponytail lite` as an owner step; partial keep redoes the captures, a keep uploads the new listing graphics) and 4 of 5 minors (token grep inline, Android permissions logged, web fallback, stale docs). Left: the critic agent has no tool restriction (Edit is possible, the agent is told not to), because an MCP-tool allow list in agent frontmatter wasn't verified.
 - Verify: 78 files, 1616 tests (`--maxWorkers=2`).
+
+### docs-s18-design-loop review fixes — 2026-11-24 — PR #34 (`docs-s18-design-loop`)
+- `/code-review` left 7 comments, all fixed: the breakthrough's "before" shots are retaken on HEAD first; the critic's stop rule wording; CLAUDE.md's S18 line covers `.claude/rules/` too; the token grep catches `rgba(` and animation timings (named colors by eye); team colors live in `tokens.ts` with their contrast pairs; `screenshots.ts` selectors follow rewording and keep file names; the Chromium path is Arch's, with the off-Arch fallback (`--browser chromium` + `install-browser`).
+- Reviewer: approve-with-fixes; its one Important (the first off-Arch fallback picked installed Chrome, not Playwright's Chromium) fixed, 2 of 3 minors fixed.
+- Verify: 78 files, 1616 tests (`--maxWorkers=2`).
