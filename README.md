@@ -57,7 +57,7 @@ It needs a Chromium: either `pnpm --filter @our-players/mobile exec playwright i
 ## Shipping
 
 - **API:** `deploy/deploy.sh root@<server-ip>` from a clean `main` (`docs/DEPLOY.md`).
-- **Web app:** a push to `main` that touches the app deploys it to Cloudflare (`.github/workflows/deploy-web.yml`).
+- **Web app:** a push to `main` that touches the app or its shared code deploys it to Cloudflare (`.github/workflows/deploy-web.yml`).
 - **Android:** EAS builds, uploaded to Google Play by hand (`docs/store/release.md`).
 - **Security:** a weekly dependency audit in CI, and a manual checklist before each store milestone (`docs/SECURITY-CHECKS.md`).
 

@@ -9,7 +9,7 @@ Every Play Console form except Data safety, in the console's order. Console menu
 Do these first. Play Console → Home → **Manage account** (Developer account). The trader declaration starts from Home's "Declare your trader status" → **Get started**.
 
 1. **Public developer email:** **Contact details** → "Details shown as part of your Play developer profile" (the contact email above it is private). Check what it is. It's public on every app you publish, so it should be `ourplayers@adveis.dev` or an address you accept being public. Google's 6-digit verification code reaches you through the forward. It must stay verified and working.
-2. **Developer name:** Adveis. You can change it at any time. Google still shows a personal account's **legal name**, country and developer email alongside it, trader or not: the consent box in the trader declaration covers exactly that (seen in the console, 2026-11-24). The address and phone stay private unless the account earns money.
+2. **Developer name:** Adveis. You can change it at any time. Google still shows a personal account's **legal name**, country and developer email alongside it, trader or not: the consent box in the trader declaration covers exactly that (seen in the console, 2026-11-24). The full address shows only if the account earns money; the phone stays private.
 3. **Trader status:** declare **non-trader**, due by 1 February 2027. The app is free, with no ads or sales, and made as a hobby. Google's page says consumer protection rights then don't apply to contracts with you, and that declaring the wrong status can get an account suspended. If the app ever earns money, declare again.
 4. **Verification status:** check it on Home. Success: no warning about the account or the app.
 
