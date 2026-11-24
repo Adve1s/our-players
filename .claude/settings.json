@@ -27,10 +27,24 @@
       "Bash(gh pr list *)",
       "Bash(gh run list *)",
       "Bash(gh run view *)",
-      "Bash(npx expo install *)",
-      "Bash(git revert *)",
-      "mcp__playwright",
-      "mcp__mobbin"
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_navigate_back",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_hover",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_drag",
+      "mcp__playwright__browser_emulate_media",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_close",
+      "mcp__mobbin__search_screens",
+      "mcp__mobbin__search_flows",
+      "mcp__mobbin__search_sections"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -47,7 +61,10 @@
       "Edit(**/test/fixtures/**)",
       "mcp__playwright__browser_run_code_unsafe",
       "mcp__playwright__browser_file_upload",
-      "mcp__playwright__browser_drop"
+      "mcp__playwright__browser_drop",
+      "mcp__mobbin__save_content",
+      "mcp__mobbin__add_comment",
+      "mcp__mobbin__create_collection"
     ],
     "ask": [
       "Bash(git push *)",

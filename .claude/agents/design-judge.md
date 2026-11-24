@@ -13,7 +13,7 @@ The app is Our Players: a morning recap of how athletes from the countries a use
 
 ## Inputs
 
-Two folder paths from the controller, A and B, holding the same file names. Open only those two folders. Look at every image in both, light and dark, comparing each file with its namesake.
+Two folder paths from the controller, A and B, holding the same file names. Open only those two folders: never `.git/`, `docs/`, the round log or `apps/mobile/.screenshots/`, which would tell you which set is new. File times and listing order mean nothing (the controller resets them). Look at every image in both, light and dark, comparing each file with its namesake.
 
 ## Judge against
 
